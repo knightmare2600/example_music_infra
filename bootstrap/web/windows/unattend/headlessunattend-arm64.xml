@@ -17,6 +17,13 @@
  ** <Format>/<Letter> to the partition just created — without it the partition was never formatted). Both fixed to   **
  ** DiskID=0 + NTFS/C: format, matching the amd64 file's fix exactly.                                                **
  **                                                                                                                  **
+ ** FIXED 2026-10-13 (Robert, live, VMware/UEFI firmware): the single-Primary-partition layout above never actually  **
+ ** worked — this file had never been live-tested (../headlessunattend.xml, amd64, is the only one that has been;    **
+ ** do not re-apply this specific fix there without separately confirming it's needed, see that file's own history). **
+ ** Added the standard Microsoft GPT/UEFI 3-partition layout: EFI System Partition (FAT32, 100MB) + MSR (Microsoft    **
+ ** Reserved, 16MB, no format/letter) ahead of the Primary/NTFS/C: partition, which moved from PartitionID 1 to 3.    **
+ ** <ImageInstall><InstallTo><PartitionID> updated to match (3, not 1).                                              **
+ **                                                                                                                  **
  ** VirtIO guest driver injection: NOT part of this unattend.xml, a manual WinPE step.                               **
  **                                                                                                                  **
  ** Sample answer file for headless deployment                                                                       **
@@ -132,6 +139,16 @@
                     <CreatePartitions>
                         <CreatePartition wcm:action="add">
                             <Order>1</Order>
+                            <Type>EFI</Type>
+                            <Size>100</Size>
+                        </CreatePartition>
+                        <CreatePartition wcm:action="add">
+                            <Order>2</Order>
+                            <Type>MSR</Type>
+                            <Size>16</Size>
+                        </CreatePartition>
+                        <CreatePartition wcm:action="add">
+                            <Order>3</Order>
                             <Extend>true</Extend>
                             <Type>Primary</Type>
                         </CreatePartition>
@@ -140,6 +157,16 @@
                         <ModifyPartition wcm:action="add">
                             <Order>1</Order>
                             <PartitionID>1</PartitionID>
+                            <Label>System</Label>
+                            <Format>FAT32</Format>
+                        </ModifyPartition>
+                        <ModifyPartition wcm:action="add">
+                            <Order>2</Order>
+                            <PartitionID>2</PartitionID>
+                        </ModifyPartition>
+                        <ModifyPartition wcm:action="add">
+                            <Order>3</Order>
+                            <PartitionID>3</PartitionID>
                             <Label>Windows</Label>
                             <Letter>C</Letter>
                             <Format>NTFS</Format>
@@ -154,7 +181,7 @@
                 <OSImage>
                     <InstallTo>
                         <DiskID>0</DiskID>
-                        <PartitionID>1</PartitionID>
+                        <PartitionID>3</PartitionID>
                     </InstallTo>
                     <WillShowUI>OnError</WillShowUI>
                     <InstallFrom>
