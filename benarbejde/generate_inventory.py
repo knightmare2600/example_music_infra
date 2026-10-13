@@ -460,6 +460,15 @@ DEVICE_GROUP_MAP = {
   # now spans both sites (INI groups union across files the same way pvenodes/firewalls
   # already do) so --limit works exactly the same way here as everywhere else.
   "DNS": "dns",
+  # CLP (2026-10-13, Robert): the real test host (EXACLPCLD001, renamed from
+  # EXANIXCLD001/Type NIX -- NIX was a placeholder, see role_codes.csv's own CLP row)
+  # needs playbooks/cloudpanel/site.yml's own [cloudpanel_servers] group membership the
+  # same way FWL/DCS/PVE/DNS already fold into their groups above -- without this it
+  # falls into the generic site_devices catch-all and the group has to be hand-maintained
+  # in a separate .ini (configs/inventory/cloudpanel.ini, now retired). No fixed-slot
+  # entry needed in build_ini() itself -- extra_group_blocks already handles any group
+  # not in the special-cased fixed-template list, same as NAS/DNS.
+  "CLP": "cloudpanel_servers",
 }
 
 # Manageability default when devices.csv's own Managed column is blank (true for every row at the

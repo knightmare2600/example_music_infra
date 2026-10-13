@@ -70,7 +70,7 @@ sites:
     country: "Germany"
     country_code: "DE"
     entity: "Example Music (Deutschland) GmbH"
-    office_name: ""
+    office_name: "Bundeshaus"
     street_address: "Berliner Platz 2"
     postal_code: "53103"
   BRD:
