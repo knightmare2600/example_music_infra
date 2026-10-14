@@ -27,6 +27,17 @@
 # Tags: preflight
 # =============================================================================
 # Changelog:
+#   2026-10-13  Added a full static-IP section, Robert's ask -- real live incident,
+#               EXACLPCLD001 was still on its original DHCP lease (192.168.69.227)
+#               instead of its real devices.csv-recorded address (192.168.69.40). Same
+#               session-safe nmconnection-keyfile pattern as rudder_server.yml/
+#               tacticalrmm_server.yml/meshcentral_server.yml, including the real
+#               ifupdown-DHCP-stanza-survives-a-reboot fix those files already needed
+#               (EXARMMCLD001, 2026-08-06). Deliberately different from their own
+#               automatic strand-check-then-activate logic: Robert explicitly asked for
+#               an EXPLICIT gated "activate now? (yes/no)" question, default no, shown
+#               alongside the strand-check result as context rather than letting it
+#               auto-decide.
 #   2026-10-07  Initial file. Converted from CloudPanel's own install.sh
 #               (checksum 8146dbe0a488e7088b04071b0c34d59aa0ab1fe9dcec382d395fd155c9e6c476),
 #               Robert's ask.
@@ -78,6 +89,221 @@
       set_fact:
         clp_site_row: "{{ clp_sites_raw.list | selectattr('Site', 'equalto', host_site) | list | first | default({}) }}"
       tags: preflight
+
+    # =========================================================================
+    # Static IP — same session-safe nmconnection-keyfile pattern already proven on
+    # rudder_server.yml/tacticalrmm_server.yml/meshcentral_server.yml (and
+    # roles/firewall/tasks/06_network_manager.yml), adapted for CloudPanel.
+    # Robert's ask, 2026-10-13, real live incident: EXACLPCLD001 was still on its
+    # original DHCP lease (192.168.69.227) instead of its real, devices.csv-recorded
+    # address (192.168.69.40) -- this section is what should have moved it there as
+    # part of normal onboarding, not a one-off manual fix.
+    #
+    # Deliberately DIFFERENT from rudder/tactical/mesh's own automatic
+    # strand-check-then-conditionally-activate logic: Robert explicitly asked for an
+    # EXPLICIT gated question before ever bringing the new address up live, default
+    # "no" -- never silently activate just because the strand-check calculates it's
+    # "safe" this time. The strand-check result is still shown to the operator as
+    # context in the prompt itself, just never used to auto-decide.
+    # =========================================================================
+
+    - name: "[Static IP] Prompt for static IP if not already set"
+      pause:
+        prompt: >
+          Static IP for {{ inventory_hostname }} is not set.
+          Enter static IP (e.g. 192.168.69.40)
+      register: _clp_ip_prompt
+      when: cloudpanel_static_ip is not defined or cloudpanel_static_ip == ""
+      delegate_to: localhost
+      become: false
+      tags: [preflight, network]
+
+    - name: "[Static IP] Set cloudpanel_static_ip from prompt"
+      set_fact:
+        cloudpanel_static_ip: "{{ _clp_ip_prompt.user_input }}"
+      when: _clp_ip_prompt is not skipped
+      tags: [preflight, network]
+
+    - name: "[Static IP] Prompt for gateway if not already set"
+      pause:
+        prompt: >
+          Gateway for {{ inventory_hostname }} is not set.
+          Enter gateway IP [{{ clp_site_row.Gateway | default('e.g. 192.168.69.253') }}]
+      register: _clp_gw_prompt
+      when: cloudpanel_gateway is not defined or cloudpanel_gateway == ""
+      delegate_to: localhost
+      become: false
+      tags: [preflight, network]
+
+    - name: "[Static IP] Set cloudpanel_gateway from prompt (falls back to sites.csv's own Gateway if left blank)"
+      set_fact:
+        cloudpanel_gateway: "{{ _clp_gw_prompt.user_input | default('') | trim != '' | ternary(_clp_gw_prompt.user_input, clp_site_row.Gateway | default('')) }}"
+      when: _clp_gw_prompt is not skipped
+      tags: [preflight, network]
+
+    - name: "[Static IP] Assert static IP and gateway are now set"
+      assert:
+        that:
+          - cloudpanel_static_ip is defined and cloudpanel_static_ip != ""
+          - cloudpanel_gateway is defined and cloudpanel_gateway != ""
+        fail_msg: >-
+          cloudpanel_static_ip and cloudpanel_gateway must both be set -- set them in
+          host_vars/{{ inventory_hostname }}/main.yml, pass via --extra-vars, or answer
+          the prompts above.
+      tags: [preflight, network]
+
+    - name: "[Static IP] Set DNS/domain facts (same source of truth windows_bootstrap/rudder already use)"
+      set_fact:
+        cloudpanel_dns: "{{ cloudpanel_dns | default(site_services.dns.ip) }}"
+        cloudpanel_domain: "{{ cloudpanel_domain | default((lookup('file', ad_forest_json_path | default('/etc/example-music/ad_forest.json')) | from_json).domain_fqdn) }}"
+      tags: [preflight, network]
+
+    - name: "[Static IP] Detect current network interface"
+      shell: |
+        for iface in $(ls /sys/class/net/); do
+          [[ "$iface" == "lo" ]] && continue
+          ip_addr=$(ip -4 addr show "$iface" 2>/dev/null | grep -oP '(?<=inet\s)\d+\.\d+\.\d+\.\d+' | head -1)
+          if [[ -n "$ip_addr" ]]; then
+            echo "$iface"
+            exit 0
+          fi
+        done
+        exit 1
+      args:
+        executable: /bin/bash
+      register: _clp_detected_iface
+      changed_when: false
+      tags: [preflight, network]
+
+    - name: "[Static IP] Set interface name fact"
+      set_fact:
+        clp_iface: "{{ cloudpanel_network_interface | default(_clp_detected_iface.stdout | trim, true) }}"
+      tags: [preflight, network]
+
+    - name: "[Static IP] Read interface MAC address"
+      slurp:
+        src: "/sys/class/net/{{ clp_iface }}/address"
+      register: _clp_iface_mac_raw
+      tags: [preflight, network]
+
+    - name: "[Static IP] Set MAC address fact"
+      set_fact:
+        clp_mac: "{{ _clp_iface_mac_raw.content | b64decode | trim }}"
+      tags: [preflight, network]
+
+    - name: "[Static IP] Pin interface name via systemd .link"
+      copy:
+        dest: "/etc/systemd/network/10-cloudpanel-prov.link"
+        content: |
+          # Example Music — CloudPanel server interface pin
+          # Written by cloudpanel/playbooks/00-preflight.yml on {{ ansible_date_time.iso8601 }}
+          # MAC: {{ clp_mac }}  interface: {{ clp_iface }}
+          [Match]
+          MACAddress={{ clp_mac }}
+          [Link]
+          Name={{ clp_iface }}
+        mode: "0644"
+      tags: [preflight, network]
+
+    - name: "[Static IP] Mask ifupdown to prevent conflict with NetworkManager"
+      systemd:
+        name: "networking.service"
+        masked: true
+        enabled: false
+      failed_when: false
+      tags: [preflight, network]
+
+    - name: "[Static IP] Check for /etc/network/interfaces"
+      stat:
+        path: /etc/network/interfaces
+      register: _clp_interfaces_file
+      tags: [preflight, network]
+
+    # Same real bug fix as rudder_server.yml's own 2026-08-06 EXARMMCLD001 incident:
+    # masking networking.service does NOT stop allow-hotplug's own udev-triggered ifup
+    # mechanism, so a leftover DHCP stanza for this exact interface keeps assigning a
+    # second, dynamic address alongside the new static one, surviving a full reboot.
+    - name: "[Static IP] Remove ifupdown DHCP stanza for {{ clp_iface }} (prevents a stray second dynamic address)"
+      shell: |
+        set -e
+        if grep -qE "^(auto|allow-|iface)\s+{{ clp_iface }}\b" /etc/network/interfaces; then
+          sed -i "/^auto\s\+{{ clp_iface }}\b/d"      /etc/network/interfaces
+          sed -i "/^allow-.*\s{{ clp_iface }}\b/d"     /etc/network/interfaces
+          sed -i "/^iface[[:space:]]\+{{ clp_iface }}\b/,/^[^[:space:]]/d" /etc/network/interfaces
+          echo changed
+        else
+          echo unchanged
+        fi
+      register: _clp_ifupdown_cleanup
+      changed_when: _clp_ifupdown_cleanup.stdout | trim == 'changed'
+      when: _clp_interfaces_file.stat.exists
+      tags: [preflight, network]
+
+    - name: "[Static IP] Ensure NetworkManager is running"
+      systemd:
+        name: NetworkManager
+        state: started
+        enabled: true
+      tags: [preflight, network]
+
+    - name: "[Static IP] Write cloudpanel-static NetworkManager connection profile"
+      template:
+        src: cloudpanel-static.nmconnection.j2
+        dest: /etc/NetworkManager/system-connections/cloudpanel-static.nmconnection
+        owner: root
+        group: root
+        mode: "0600"
+      notify: Reload NetworkManager connections
+      tags: [preflight, network]
+
+    - name: "[Static IP] Flush handlers (reload NM connection state, if the profile actually changed)"
+      meta: flush_handlers
+      tags: [preflight, network]
+
+    - name: "[Static IP] Detect current live IP on {{ clp_iface }}"
+      shell: "nmcli -g IP4.ADDRESS dev show {{ clp_iface }} 2>/dev/null | head -1 | cut -d/ -f1"
+      register: _clp_ip_live
+      changed_when: false
+      failed_when: false
+      tags: [preflight, network]
+
+    - name: "[Static IP] Ask whether to activate the new address now (default no — see prompt for why)"
+      pause:
+        prompt: >
+          cloudpanel-static profile written to disk (not yet live). Current live address on
+          {{ clp_iface }} is {{ _clp_ip_live.stdout | trim | default('unknown') }}; the new
+          profile sets {{ cloudpanel_static_ip }}. If this session is connected via
+          {{ clp_iface }}, activating now WILL likely drop it mid-run. Activate now?
+          (yes/no) [no]
+      register: _clp_activate_prompt
+      delegate_to: localhost
+      become: false
+      tags: [preflight, network]
+
+    # pause has no default: parameter -- pressing Enter gives user_input: "" (empty
+    # string, not undefined), so the plain `| default(...)` filter alone wouldn't catch
+    # it; the boolean second arg (default(..., true)) is what makes an empty string
+    # also fall through to the default, matching the "[no]" shown in the prompt above.
+    - name: "[Static IP] Set activation decision (blank input = no)"
+      set_fact:
+        clp_activate_now: "{{ (_clp_activate_prompt.user_input | default('no', true)) | lower | trim in ['yes', 'y'] }}"
+      tags: [preflight, network]
+
+    - name: "[Static IP] Bring up cloudpanel-static connection (operator said yes)"
+      command: nmcli connection up cloudpanel-static
+      changed_when: false
+      when: clp_activate_now
+      tags: [preflight, network]
+
+    - name: "[Static IP] Note — not activated, operator said no (or accepted the default)"
+      debug:
+        msg: >-
+          cloudpanel-static profile is written to disk but NOT applied live. Reboot this
+          host, or run `nmcli connection up cloudpanel-static` yourself from a session
+          that isn't riding {{ clp_iface }} (e.g. console/out-of-band), once you're ready
+          to apply it.
+      when: not clp_activate_now
+      tags: [preflight, network]
 
     - name: "[Preflight] Resolve environment"
       ansible.builtin.include_tasks: ../../../tasks/nodeinfo_environment.yml
@@ -191,4 +417,11 @@
           - "OS          : {{ ansible_distribution }} {{ ansible_distribution_version }} ({{ ansible_distribution_release }})"
           - "DB engine   : {{ cloudpanel_db_engine }} (mechanism: {{ clp_db_recipe.mechanism }})"
           - "Environment : {{ resolved_environment }}"
+          - "Static IP   : {{ cloudpanel_static_ip }} on {{ clp_iface }} (activated live: {{ clp_activate_now }})"
       tags: preflight
+
+  handlers:
+
+    - name: Reload NetworkManager connections
+      ansible.builtin.command: nmcli connection reload
+      changed_when: true
