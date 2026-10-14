@@ -1,0 +1,22 @@
+[connection]
+id=cloudpanel-static
+uuid={{ (inventory_hostname + '-cloudpanel-static') | to_uuid }}
+type=ethernet
+interface-name={{ clp_iface }}
+autoconnect=true
+autoconnect-priority=100
+autoconnect-retries=-1
+
+[ethernet]
+
+[ipv4]
+address1={{ cloudpanel_static_ip }}/{{ cloudpanel_prefix | default('24') }},{{ cloudpanel_gateway }}
+method=manual
+dns={{ cloudpanel_dns }};
+dns-search={{ cloudpanel_domain }};
+
+[ipv6]
+addr-gen-mode=default
+method=ignore
+
+[proxy]
