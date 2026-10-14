@@ -1,0 +1,86 @@
+---
+# =============================================================================
+# tasks/explorer_patcher.yml
+# Example Music Limited — ExplorerPatcher (optional, opt-in)
+# =============================================================================
+# Downloads ExplorerPatcher directly from its upstream GitHub release
+# (arch-aware: amd64/ep_setup.exe or arm64/ep_setup_arm64.exe — there is no
+# x86 build at all upstream, confirmed against the real release assets, not
+# assumed) and installs it via win_package.
+#
+# Pinned to release 26100.8457.70.3 (the version Robert asked for) rather than
+# tracking "latest" — same deliberate-pin convention as tasks/dua_cli.yml.
+# Bump the version string below explicitly when a newer release is wanted.
+#
+# No silent-install flag is documented anywhere upstream (checked the real
+# README and the wiki's own "Installer How To" page directly — only /uninstall
+# and /extract [path] are documented at all). Robert tested live: run elevated
+# with no arguments, it installs with no GUI shown at all — confirmed directly,
+# not assumed, so no `arguments:` is passed here.
+#
+# product_id matches the real Uninstall registry subkey name the installer
+# itself writes (confirmed directly against the installer's own open-source
+# code, ep_setup/ep_setup.c + ExplorerPatcher/def.h upstream: EP_CLSID
+# "{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}" + "_" + PRODUCT_NAME
+# "ExplorerPatcher") — this is also exactly what win_package itself checks to
+# decide "already installed", giving real idempotency without a separate
+# win_stat/check-first task the way dua_cli.yml needs one (ExplorerPatcher is
+# a real installer that registers in Programs and Features; dua.exe is a bare
+# portable binary with no such registration to check against).
+#
+# Requires host_arch (set by tasks/arch_facts.yml, already included earlier
+# in 50-binaries.yml) and install_explorer_patcher (the opt-in boolean fact
+# from 00-preflight.yml's own vars_prompt, default no).
+# =============================================================================
+# Changelog:
+#   2026-10-13  Initial file. Robert's ask, live-verified the no-args silent
+#               install himself before asking for this to be automated.
+# =============================================================================
+
+- name: "[explorer-patcher] Map host_arch to release asset filename"
+  set_fact:
+    explorer_patcher_asset: >-
+      {{ {'x86_64': 'ep_setup.exe', 'arm64': 'ep_setup_arm64.exe'}[host_arch] | default('') }}
+  when: install_explorer_patcher | default(false) | bool
+
+- name: "[explorer-patcher] WARN — no release build for this architecture"
+  debug:
+    msg: >-
+      ExplorerPatcher has no upstream release build for host_arch={{ host_arch }}
+      (only amd64/ep_setup.exe and arm64/ep_setup_arm64.exe exist) — skipping.
+  when:
+    - install_explorer_patcher | default(false) | bool
+    - explorer_patcher_asset | default('') == ''
+
+- name: "[explorer-patcher] Ensure staging directory exists"
+  ansible.windows.win_file:
+    path: 'C:\Windows\Temp\explorer-patcher'
+    state: directory
+  when:
+    - install_explorer_patcher | default(false) | bool
+    - explorer_patcher_asset | default('') != ''
+
+- name: "[explorer-patcher] Download installer"
+  ansible.windows.win_get_url:
+    url:  "https://github.com/valinet/ExplorerPatcher/releases/download/26100.8457.70.3/{{ explorer_patcher_asset }}"
+    dest: "C:\\Windows\\Temp\\explorer-patcher\\{{ explorer_patcher_asset }}"
+  when:
+    - install_explorer_patcher | default(false) | bool
+    - explorer_patcher_asset | default('') != ''
+
+- name: "[explorer-patcher] Install (no GUI shown, confirmed live by Robert — no args needed)"
+  ansible.windows.win_package:
+    path:       "C:\\Windows\\Temp\\explorer-patcher\\{{ explorer_patcher_asset }}"
+    product_id: "{D17F1E1A-5919-4427-8F89-A1A8503CA3EB}_ExplorerPatcher"
+    state:      present
+  when:
+    - install_explorer_patcher | default(false) | bool
+    - explorer_patcher_asset | default('') != ''
+
+- name: "[explorer-patcher] Clean up staging directory"
+  ansible.windows.win_file:
+    path: 'C:\Windows\Temp\explorer-patcher'
+    state: absent
+  when:
+    - install_explorer_patcher | default(false) | bool
+    - explorer_patcher_asset | default('') != ''

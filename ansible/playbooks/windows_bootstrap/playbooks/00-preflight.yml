@@ -86,6 +86,11 @@
 #
 # =============================================================================
 # Changelog:
+#   2026-10-13  Robert's ask: added install_explorer_patcher_input vars_prompt (yes/no,
+#               default no) and its derived install_explorer_patcher boolean fact, gating
+#               the new optional ExplorerPatcher install (ansible/playbooks/windows_bootstrap/
+#               tasks/explorer_patcher.yml, included from 50-binaries.yml). Same
+#               opt-in/default-no pattern as windows_dc's own "Populate AD..." prompt.
 #   2026-10-10  CRITICAL FIX, real live incident (Robert, EXADCSCLD001): Phase A5's own DNS
 #               decision used to short-circuit to BIND9-only the moment is_first_dc was
 #               answered "yes" at the earlier vars_prompt -- is_first_dc is a per-SITE
@@ -470,6 +475,11 @@
       private: false
       default: ""
 
+    - name: install_explorer_patcher_input
+      prompt: "Install ExplorerPatcher (https://github.com/valinet/ExplorerPatcher)? (yes/no)"
+      private: false
+      default: "no"
+
   vars:
     ansible_become:               false
     ansible_become_method:        runas
@@ -560,6 +570,7 @@
         target_hostname:            "{{ target_hostname }}"
         target_ip:                  "{{ target_ip }}"
         vault_domain_join_password: "{{ vault_domain_join_password }}"
+        install_explorer_patcher:   "{{ install_explorer_patcher_input | lower | trim in ['yes', 'y'] }}"
       no_log: true
 
     # ── A2 — Blank hostname: read current from host, adopt if it's already valid ──
