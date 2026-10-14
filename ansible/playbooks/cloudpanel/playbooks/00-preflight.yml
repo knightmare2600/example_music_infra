@@ -27,6 +27,21 @@
 # Tags: preflight
 # =============================================================================
 # Changelog:
+#   2026-10-14  Cosmetic, Robert's ask: the three Static IP questions (IP/gateway/
+#               activate-now) used ansible.builtin.pause, which hardcodes a "[task
+#               name]\n" header before the prompt text (confirmed directly against the
+#               installed pause action plugin's own source, not fixable via the
+#               playbook) -- on top of the custom callback's own task-start line, this
+#               rendered as three lines per question. Migrated all three to real
+#               vars_prompt instead, same mechanism windows_bootstrap/00-preflight.yml
+#               and firewallme/90-firewall.yml's own WAN-activation question already
+#               use, and same reasoning 90-firewall.yml's own changelog documents for
+#               why some prompts can/can't move (vars_prompt evaluates once, before any
+#               task -- no gathered facts, no sites.csv lookup, no detected interface/
+#               live IP yet). The activate-now question's live-IP/target-IP diagnostic,
+#               previously embedded in the pause prompt text itself, is now a separate
+#               debug task shown just before the decision is acted on, instead of
+#               inside the question.
 #   2026-10-14  Real live finding, EXACLPCLD001: NetworkManager wasn't pre-installed on
 #               this box's base image at all ("Could not find the requested service").
 #               Added an explicit `apt: name: network-manager` task before trying to
@@ -56,6 +71,48 @@
 
   vars:
     sites_csv_src: "{{ playbook_dir }}/../../../../benarbejde/sites.csv"
+
+  # vars_prompt renders as one clean line (no "[task name]\n" header before the
+  # question) -- that header is hardcoded into every ansible.builtin.pause prompt
+  # instead, confirmed directly against the installed ansible.plugins.action.pause
+  # source (prompt = "[%s]\n%s:" % (task_name, prompt_text)), not fixable from the
+  # playbook side. Same real vars_prompt mechanism already used by
+  # windows_bootstrap/playbooks/00-preflight.yml and firewallme/playbooks/
+  # 90-firewall.yml's own WAN-activation question -- Robert's ask, steal from there.
+  #
+  # Evaluated ONCE, before any task in this play runs -- no gathered facts, no
+  # sites.csv/clp_site_row lookup, no detected interface/live IP exist yet (same
+  # genuine constraint 90-firewall.yml's own changelog documents for exactly this
+  # reason). That's why these three prompts stay generic, with no live-detected
+  # value embedded in the question text itself -- the live static-IP-vs-gateway
+  # fallback and the live-IP-vs-target-IP diagnostic both still happen later, in
+  # tasks, same as before, just no longer inside the question text.
+  #
+  # Also means these three prompts are automatically skipped entirely if the
+  # matching var is already supplied via --extra-vars (confirmed directly against
+  # ansible.executor.playbook_executor's own vars_prompt handling) -- same effect
+  # as the old pause tasks' own `when: ... is not defined` guard.
+  vars_prompt:
+    - name: cloudpanel_static_ip
+      prompt: "Static IP to assign to this CloudPanel host (e.g. 192.168.69.40)"
+      private: false
+      default: ""
+
+    - name: cloudpanel_gateway
+      prompt: "Gateway IP for this host (leave blank to use this site's own sites.csv Gateway)"
+      private: false
+      default: ""
+
+    - name: cloudpanel_activate_now_answer
+      prompt: |-
+        ==== Static IP Activation ====
+        [!] The new cloudpanel-static NetworkManager profile is written to disk either way.
+        [!] If this session is connected via the interface being reconfigured, activating it
+        [!] now WILL likely drop it mid-run. Say N and run `nmcli connection up cloudpanel-static`
+        [!] yourself from an out-of-band session once ready, or reboot to apply it safely.
+        Activate the new static IP now? [y/N]
+      private: false
+      default: "n"
 
   tasks:
 
@@ -109,42 +166,15 @@
     # strand-check-then-conditionally-activate logic: Robert explicitly asked for an
     # EXPLICIT gated question before ever bringing the new address up live, default
     # "no" -- never silently activate just because the strand-check calculates it's
-    # "safe" this time. The strand-check result is still shown to the operator as
-    # context in the prompt itself, just never used to auto-decide.
+    # "safe" this time. The strand-check result (live IP vs target IP) is shown to the
+    # operator as a separate debug line right before the decision is acted on (see
+    # 2026-10-14's changelog entry for why it's no longer embedded in the question
+    # text itself), never used to auto-decide.
     # =========================================================================
 
-    - name: "[Static IP] Prompt for static IP if not already set"
-      pause:
-        prompt: >-
-          Static IP for {{ inventory_hostname }} is not set.
-          Enter static IP (e.g. 192.168.69.40)
-      register: _clp_ip_prompt
-      when: cloudpanel_static_ip is not defined or cloudpanel_static_ip == ""
-      delegate_to: localhost
-      become: false
-      tags: [preflight, network]
-
-    - name: "[Static IP] Set cloudpanel_static_ip from prompt"
+    - name: "[Static IP] Set cloudpanel_gateway (falls back to sites.csv's own Gateway if left blank at the prompt)"
       set_fact:
-        cloudpanel_static_ip: "{{ _clp_ip_prompt.user_input }}"
-      when: _clp_ip_prompt is not skipped
-      tags: [preflight, network]
-
-    - name: "[Static IP] Prompt for gateway if not already set"
-      pause:
-        prompt: >-
-          Gateway for {{ inventory_hostname }} is not set.
-          Enter gateway IP [{{ clp_site_row.Gateway | default('e.g. 192.168.69.253') }}]
-      register: _clp_gw_prompt
-      when: cloudpanel_gateway is not defined or cloudpanel_gateway == ""
-      delegate_to: localhost
-      become: false
-      tags: [preflight, network]
-
-    - name: "[Static IP] Set cloudpanel_gateway from prompt (falls back to sites.csv's own Gateway if left blank)"
-      set_fact:
-        cloudpanel_gateway: "{{ _clp_gw_prompt.user_input | default('') | trim != '' | ternary(_clp_gw_prompt.user_input, clp_site_row.Gateway | default('')) }}"
-      when: _clp_gw_prompt is not skipped
+        cloudpanel_gateway: "{{ cloudpanel_gateway | default('') | trim != '' | ternary(cloudpanel_gateway, clp_site_row.Gateway | default('')) }}"
       tags: [preflight, network]
 
     - name: "[Static IP] Assert static IP and gateway are now set"
@@ -287,26 +317,21 @@
       failed_when: false
       tags: [preflight, network]
 
-    - name: "[Static IP] Ask whether to activate the new address now (default no — see prompt for why)"
-      pause:
-        prompt: >-
+    - name: "[Static IP] Show live-vs-target IP before acting on the activation answer"
+      # The activate-now consent question itself (cloudpanel_activate_now_answer) was
+      # already asked up front as a real vars_prompt -- before this interface/live-IP
+      # detection had even run, so it couldn't embed these values in the question text.
+      # This is purely informational context, shown once the real numbers exist.
+      debug:
+        msg: >-
           cloudpanel-static profile written to disk (not yet live). Current live address on
           {{ clp_iface }} is {{ _clp_ip_live.stdout | trim | default('unknown') }}; the new
-          profile sets {{ cloudpanel_static_ip }}. If this session is connected via
-          {{ clp_iface }}, activating now WILL likely drop it mid-run. Activate now?
-          (yes/no) [no]
-      register: _clp_activate_prompt
-      delegate_to: localhost
-      become: false
+          profile sets {{ cloudpanel_static_ip }}.
       tags: [preflight, network]
 
-    # pause has no default: parameter -- pressing Enter gives user_input: "" (empty
-    # string, not undefined), so the plain `| default(...)` filter alone wouldn't catch
-    # it; the boolean second arg (default(..., true)) is what makes an empty string
-    # also fall through to the default, matching the "[no]" shown in the prompt above.
     - name: "[Static IP] Set activation decision (blank input = no)"
       set_fact:
-        clp_activate_now: "{{ (_clp_activate_prompt.user_input | default('no', true)) | lower | trim in ['yes', 'y'] }}"
+        clp_activate_now: "{{ (cloudpanel_activate_now_answer | default('n')) | lower | trim in ['y', 'yes'] }}"
       tags: [preflight, network]
 
     - name: "[Static IP] Bring up cloudpanel-static connection (operator said yes)"
