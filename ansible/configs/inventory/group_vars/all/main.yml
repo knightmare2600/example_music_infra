@@ -58,6 +58,12 @@ common_packages:
   - molly-guard
   - net-tools
   - nmap
+  # parted -- added 2026-10-14 (Robert), needed to grow a partition/filesystem after
+  # resizing a VM's underlying disk (EXACLPCLD001's own disk was undersized for a real
+  # CloudPanel install -- see cloudpanel/00-preflight.yml's checkRootPartitionSize()
+  # changelog). Not previously in this list at all; growing a disk online was always a
+  # manual, unscripted step before now.
+  - parted
   - telnet
   - tmux
   - tree
