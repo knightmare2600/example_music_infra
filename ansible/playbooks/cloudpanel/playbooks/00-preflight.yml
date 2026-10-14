@@ -27,6 +27,12 @@
 # Tags: preflight
 # =============================================================================
 # Changelog:
+#   2026-10-14  Real live finding, EXACLPCLD001: NetworkManager wasn't pre-installed on
+#               this box's base image at all ("Could not find the requested service").
+#               Added an explicit `apt: name: network-manager` task before trying to
+#               start/enable it -- rudder_server.yml/tacticalrmm_server.yml/firewallme's
+#               06_network_manager.yml all assume it's already present too, which had
+#               just never been hit as a real gap before now.
 #   2026-10-13  Added a full static-IP section, Robert's ask -- real live incident,
 #               EXACLPCLD001 was still on its original DHCP lease (192.168.69.227)
 #               instead of its real devices.csv-recorded address (192.168.69.40). Same
@@ -237,6 +243,20 @@
       register: _clp_ifupdown_cleanup
       changed_when: _clp_ifupdown_cleanup.stdout | trim == 'changed'
       when: _clp_interfaces_file.stat.exists
+      tags: [preflight, network]
+
+    # 2026-10-14, real live finding (EXACLPCLD001): NetworkManager isn't pre-installed
+    # on every base image in this estate -- confirmed live, "Could not find the
+    # requested service NetworkManager: host". rudder_server.yml/tacticalrmm_server.yml/
+    # firewallme's own 06_network_manager.yml all assume it's already present too (none
+    # of them have an install step either) -- that's held for every box tried so far by
+    # luck of the base image, not a real guarantee. Fixed here rather than carrying the
+    # same latent gap forward; worth the same fix in those three files too at some point
+    # (not done here, out of scope for this change).
+    - name: "[Static IP] Ensure network-manager package is installed"
+      apt:
+        name: network-manager
+        state: present
       tags: [preflight, network]
 
     - name: "[Static IP] Ensure NetworkManager is running"
