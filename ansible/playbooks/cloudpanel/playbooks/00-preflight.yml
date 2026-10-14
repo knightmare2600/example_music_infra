@@ -115,7 +115,7 @@
 
     - name: "[Static IP] Prompt for static IP if not already set"
       pause:
-        prompt: >
+        prompt: >-
           Static IP for {{ inventory_hostname }} is not set.
           Enter static IP (e.g. 192.168.69.40)
       register: _clp_ip_prompt
@@ -132,7 +132,7 @@
 
     - name: "[Static IP] Prompt for gateway if not already set"
       pause:
-        prompt: >
+        prompt: >-
           Gateway for {{ inventory_hostname }} is not set.
           Enter gateway IP [{{ clp_site_row.Gateway | default('e.g. 192.168.69.253') }}]
       register: _clp_gw_prompt
@@ -289,7 +289,7 @@
 
     - name: "[Static IP] Ask whether to activate the new address now (default no — see prompt for why)"
       pause:
-        prompt: >
+        prompt: >-
           cloudpanel-static profile written to disk (not yet live). Current live address on
           {{ clp_iface }} is {{ _clp_ip_live.stdout | trim | default('unknown') }}; the new
           profile sets {{ cloudpanel_static_ip }}. If this session is connected via
@@ -365,7 +365,7 @@
         that:
           - ansible_distribution in ['Debian', 'Ubuntu']
           - >-
-            (ansible_distribution == 'Debian' and ansible_distribution_version in ['11', '12', '13'])
+            (ansible_distribution == 'Debian' and ansible_distribution_major_version in ['11', '12', '13'])
             or
             (ansible_distribution == 'Ubuntu' and ansible_distribution_version in ['22.04', '24.04', '26.04'])
         fail_msg: >-
