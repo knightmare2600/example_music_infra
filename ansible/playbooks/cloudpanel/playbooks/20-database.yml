@@ -31,6 +31,17 @@
 # Tags: database
 # =============================================================================
 # Changelog:
+#   2026-10-14  Real live finding, EXACLPCLD001 (full site.yml run): this file's own
+#               re-derivation of clp_db_recipe compared os_version against the raw
+#               ansible_distribution_version ("13.7" on Debian), never matching
+#               cloudpanel_db_matrix's bare-major Debian rows ("11"/"12"/"13") --
+#               00-preflight.yml hit and fixed the identical bug in its own copy of
+#               this same lookup earlier the same day, but this file's deliberately
+#               self-contained, re-derive-everything-fresh copy (see this file's own
+#               header) was never swept for the same mistake until this run exposed it.
+#               Fixed identically: added clp_os_version_for_db_matrix (Debian->major,
+#               Ubuntu->full version). Repo-wide grep afterward confirmed no third copy
+#               exists anywhere else.
 #   2026-10-07  Initial file. Converted from CloudPanel's own install.sh,
 #               Robert's ask.
 # =============================================================================
@@ -42,12 +53,23 @@
 
   tasks:
 
+    - name: "[Database] Set the OS version string the database matrix actually keys on"
+      # Same fix as 00-preflight.yml's own copy of this lookup (2026-10-14): Debian's
+      # rows in cloudpanel_db_matrix key on the bare major ("11"/"12"/"13"), since
+      # ansible_distribution_version returns the full point release (e.g. "13.7"),
+      # which never matches. Ubuntu's rows key on the full version ("22.04") and
+      # ansible_distribution_version already returns that flat, so it's used as-is.
+      set_fact:
+        clp_os_version_for_db_matrix: >-
+          {{ (ansible_distribution == 'Debian') | ternary(ansible_distribution_major_version, ansible_distribution_version) }}
+      tags: database
+
     - name: "[Database] Re-derive the database recipe for this OS/version/engine"
       set_fact:
         clp_db_recipe: >-
           {{ cloudpanel_db_matrix
              | selectattr('os_name', 'equalto', ansible_distribution)
-             | selectattr('os_version', 'equalto', ansible_distribution_version)
+             | selectattr('os_version', 'equalto', clp_os_version_for_db_matrix)
              | selectattr('db_engine', 'equalto', cloudpanel_db_engine)
              | list | first | default({}) }}
       tags: database
