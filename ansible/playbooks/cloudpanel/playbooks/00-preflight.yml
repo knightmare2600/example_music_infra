@@ -376,12 +376,23 @@
 
     # -- install.sh's checkDatabaseEngine() -- one lookup against the matrix instead
     #    of re-deriving the same validation from a parallel case statement --
+    - name: "[Preflight] Set the OS version string the database matrix actually keys on"
+      # Same Debian-vs-Ubuntu split as the OS/version assert above: Debian's rows in
+      # cloudpanel_db_matrix key on the bare major ("11"/"12"/"13"), since
+      # ansible_distribution_version returns the full point release (e.g. "13.7"),
+      # which never matches. Ubuntu's rows key on the full version ("22.04") and
+      # ansible_distribution_version already returns that flat, so it's used as-is.
+      set_fact:
+        clp_os_version_for_db_matrix: >-
+          {{ (ansible_distribution == 'Debian') | ternary(ansible_distribution_major_version, ansible_distribution_version) }}
+      tags: preflight
+
     - name: "[Preflight] Look up this OS/version/engine in the database matrix"
       set_fact:
         clp_db_recipe: >-
           {{ cloudpanel_db_matrix
              | selectattr('os_name', 'equalto', ansible_distribution)
-             | selectattr('os_version', 'equalto', ansible_distribution_version)
+             | selectattr('os_version', 'equalto', clp_os_version_for_db_matrix)
              | selectattr('db_engine', 'equalto', cloudpanel_db_engine)
              | list | first | default({}) }}
       tags: preflight
@@ -395,7 +406,7 @@
           {{ ansible_distribution }} {{ ansible_distribution_version }} -- see
           group_vars/cloudpanel_servers/main.yml's cloudpanel_db_matrix for every
           combination install.sh itself actually supports.
-        success_msg: "Database Engine {{ cloudpanel_db_engine }} supported via {{ clp_db_recipe.mechanism }}."
+        success_msg: "Database Engine {{ cloudpanel_db_engine }} supported via {{ clp_db_recipe.mechanism | default('n/a') }}."
       tags: preflight
 
     # -- install.sh's checkPortConflicts() -- wait_for's own state:stopped check IS
