@@ -26,6 +26,10 @@
 # Tags: binaries, fonts
 # =============================================================================
 # Changelog:
+#   2026-10-13  Added ExplorerPatcher (tasks/explorer_patcher.yml), Robert's ask -- optional,
+#               opt-in via 00-preflight.yml's own install_explorer_patcher_input vars_prompt
+#               (default no). Arch-aware upstream GitHub release download, same category as
+#               dua-cli, included right alongside it.
 #   2026-09-19  CRITICAL, found live (Robert, EXAANSFRD001 -- mid-EXADCSFRD001 build): this
 #               play's hosts: line only checked {{ target | default('all') }} -- "target" is
 #               never set anywhere in this chain; only site.yml's own documented
@@ -95,6 +99,10 @@
 
     - name: Include dua-cli deployment tasks
       include_tasks: ../tasks/dua_cli.yml
+      tags: binaries
+
+    - name: Include ExplorerPatcher deployment tasks (optional, opt-in — see 00-preflight.yml's own prompt)
+      include_tasks: ../tasks/explorer_patcher.yml
       tags: binaries
 
     # ── Flat binaries (single build, no arch subfolder at all) ─────────────────
