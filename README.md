@@ -494,13 +494,13 @@ Native ARM64 binaries for tools that either lacked them entirely or only offered
 
 Pull requests submitted directly to other projects' own repositories — no separate fork or port repo of mine involved, just patches sent upstream. Distinct from Porting Work above (which are my own maintained forks/ports).
 
-| Project | Pull Request | Description |
-|---|---|---|
-| [salt](https://github.com/saltstack/salt) | [#70003](https://github.com/saltstack/salt/pull/70003) | Add native Windows arm64 minion MSI support |
-| [relenv](https://github.com/saltstack/relenv) | [#328](https://github.com/saltstack/relenv/pull/328) | Windows arm64 support (Salt's own relocatable Python environment builder — a real dependency of the minion build pipeline) |
-| [pymssql](https://github.com/pymssql/pymssql) | [#1013](https://github.com/pymssql/pymssql/pull/1013) | Add native Windows arm64 wheel builds (a Salt dependency needed for the ARM64 build to complete at all) |
+| Project | Pull Request | Status | Description |
+|---|---|---|---|
+| [salt](https://github.com/saltstack/salt) | [#70003](https://github.com/saltstack/salt/pull/70003) | Open | Add native Windows arm64 minion MSI support |
+| [relenv](https://github.com/saltstack/relenv) | [#328](https://github.com/saltstack/relenv/pull/328) | Open | Windows arm64 support (Salt's own relocatable Python environment builder — a real dependency of the minion build pipeline) |
+| [pymssql](https://github.com/pymssql/pymssql) | [#1013](https://github.com/pymssql/pymssql/pull/1013) | Merged | Add native Windows arm64 wheel builds (a Salt dependency needed for the ARM64 build to complete at all) |
 
-All three are open, unmerged as of 2026-08-31 — together they're what made a native ARM64 Windows Salt minion build possible at all. Used here to produce a custom `Salt-Minion-3008.0-Py3-ARM64.msi` (see `docs/buildsheets/buildsheet-salt-minion.md`) ahead of any of this landing in an official upstream release. relenv's PR was originally [#318](https://github.com/saltstack/relenv/pull/318) — accidentally auto-closed when its source fork was deleted, GitHub won't allow reopening a PR whose head repo is gone, so it was resubmitted as #328 with the same commits.
+Together these are what made a native ARM64 Windows Salt minion build possible at all. Used here to produce a custom `Salt-Minion-3008.0-Py3-ARM64.msi` (see `docs/buildsheets/buildsheet-salt-minion.md`) ahead of any of this landing in an official upstream release. relenv's PR was originally [#318](https://github.com/saltstack/relenv/pull/318) — accidentally auto-closed when its source fork was deleted, GitHub won't allow reopening a PR whose head repo is gone, so it was resubmitted as #328 with the same commits. pymssql's merged 2026-10-15; salt and relenv are both still open, unmerged as of the same date.
 
 | Project | Pull Request | Status | Description |
 |---|---|---|---|
