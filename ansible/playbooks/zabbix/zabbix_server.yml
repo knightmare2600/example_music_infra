@@ -57,6 +57,15 @@
 # Tags: zabbix, monitoring
 # =============================================================================
 # Changelog:
+#   2026-10-16  Real need found live: EXAZABCLD001 was just rebuilt via zabbixme.sh itself
+#               (confirmed still solid), which generated and already rotated its own real
+#               DB/Admin passwords (/root/.zabbix_db_credentials, /root/.zabbix_api_credentials)
+#               -- running this playbook as originally written would have generated DIFFERENT
+#               passwords on its first real run and desynced from what's actually live.
+#               Both KeePass-sync tasks now default kcs_current_value to an optional
+#               zbx_db_password_preseed/zbx_admin_password_preseed extra-var (blank otherwise,
+#               unchanged behaviour for a genuinely fresh host) so the real, already-rotated
+#               values can be filed into KeePass instead of inventing new ones.
 #   2026-10-16  Initial file. Robert's ask: now that zabbixme.sh is confirmed solid (just
 #               rebuilt EXAZABCLD001 from scratch with it, clean run), port it to Ansible
 #               and file its two credentials into KeePass the same way windows_dc does,
@@ -492,13 +501,21 @@
     # domain-admin/local-admin password filing (Robert's explicit ask for this port): nothing
     # exists on a genuinely fresh install, so the first run generates; every run after that
     # just defers to the existing KeePass value.
+    #
+    # kcs_current_value defaults to zbx_db_password_preseed (blank unless passed via -e) --
+    # NOT hardcoded blank. Needed for a box zabbixme.sh already built: the real MariaDB user
+    # password already exists and is live right now, sitting in /root/.zabbix_db_credentials.
+    # Without this, the first real run of this playbook would generate a DIFFERENT password
+    # and immediately desync from what mysql_user/zabbix_server.conf actually need to match --
+    # pass -e zbx_db_password_preseed=<the real value> the first time this runs against an
+    # already-built-by-zabbixme.sh host, to file the REAL value instead of inventing a new one.
     - name: "[MariaDB] KeePass sync -- zabbix DB user password"
       include_tasks: ../../tasks/keepass_credential_sync.yml
       vars:
         kcs_repo_root: "{{ zbx_kcs_repo_root }}"
         kcs_keepass_path: "Infrastructure/{{ host_site }}/{{ zbx_real_hostname }}-zabbix-db"
         kcs_username: "zabbix"
-        kcs_current_value: ""
+        kcs_current_value: "{{ zbx_db_password_preseed | default('') }}"
         kcs_can_generate: true
         kcs_generate_length: 28
         kcs_credentials_json_role: "ZABBIX_DB"
@@ -835,13 +852,22 @@
     # the KeePass-generated value so the default is never left live. Login failing here
     # (not the rotation call itself) just means a PREVIOUS run already rotated it --
     # not treated as an error, same as zabbixme.sh's own framing.
+    #
+    # kcs_current_value defaults to zbx_admin_password_preseed (blank unless passed via -e) --
+    # same reasoning as the DB password above: a box zabbixme.sh already built has a REAL,
+    # already-rotated Admin password live right now (/root/.zabbix_api_credentials). Pass
+    # -e zbx_admin_password_preseed=<the real value> the first time this runs against such a
+    # host; without it, the login-with-default-then-rotate branch below is a no-op (default
+    # login correctly fails, since it's already rotated) and the subsequent re-auth would
+    # have nothing real to authenticate with -- KeePass would end up either empty or holding
+    # a freshly-generated value the live server was never actually told about.
     - name: "[API] KeePass sync -- Zabbix Admin/API password"
       include_tasks: ../../tasks/keepass_credential_sync.yml
       vars:
         kcs_repo_root: "{{ zbx_kcs_repo_root }}"
         kcs_keepass_path: "Infrastructure/{{ host_site }}/{{ zbx_real_hostname }}-zabbix-admin"
         kcs_username: "Admin"
-        kcs_current_value: ""
+        kcs_current_value: "{{ zbx_admin_password_preseed | default('') }}"
         kcs_can_generate: true
         kcs_generate_length: 24
         kcs_credentials_json_role: "ZABBIX_ADMIN"
