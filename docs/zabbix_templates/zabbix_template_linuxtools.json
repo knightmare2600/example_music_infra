@@ -1,0 +1,162 @@
+{
+  "zabbix_export": {
+    "version": "7.0",
+    "template_groups": [
+      {
+        "uuid": "ccb6f655-6776-402c-84ee-18b8b9c87c10",
+        "name": "Templates/Example Music"
+      }
+    ],
+    "templates": [
+      {
+        "uuid": "6149b3c5-9375-4fab-bd7d-46fa17b9df7f",
+        "template": "linuxtools_examplemusic",
+        "name": "Linux Tools (Example Music)",
+        "description": "Companion template for ansible/playbooks/linux/tools.yml -- the first of Robert's 'every playbook gets a Zabbix template' initiative (2026-10-16).\n\nHOW IT WORKS\n  One master item reads /etc/example-music/zabbix_status/linux_tools.json via vfs.file.contents every hour. That file is written by linux/tools.yml itself at the end of every run -- Ansible already knows this state from its own tasks (ansible_facts.packages, the update-motd symlink task), so this deliberately does NOT re-derive it a second time via a separate agent-side script. All other items are DEPENDENT on the master and extract fields via JSONPath.\n\nSTALENESS\n  The {$LINUXTOOLS.STATUS.MAXAGE} macro (default 2d) drives a nodata() trigger on the master item itself -- catches linux/tools.yml not having run recently at all, not just config drift the report would otherwise go stale on.\n\nIMPORT INSTRUCTIONS\n  Zabbix API: configuration.import (rules: createMissing for groups/templates/items/triggers, updateExisting for the rest). Or via the UI: Data collection -> Templates -> Import.\n  Link to each Linux host this playbook manages.\n\nNOT YET DONE (flagged, not forgotten)\n  Package presence is currently reported by Ansible (missing_packages/_count), not checked natively by the agent via vfs.file.exists per-package -- Robert's own stated preference (checksum-stable dpkg -L copyright paths) fits a native per-package item better long-term, via an LLD discovery rule driven by common_packages rather than this template needing updates every time that list changes. Deferred to the next iteration once this v1 is proven -- the discoveryrule.create/itemprototype.create/triggerprototype.create API shapes haven't been verified yet.",
+        "groups": [
+          {
+            "name": "Templates/Example Music"
+          }
+        ],
+        "items": [
+          {
+            "uuid": "a86b70bb-9f59-4baa-94e5-bd664915693a",
+            "name": "Linux Tools: status report (master)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.contents[/etc/example-music/zabbix_status/linux_tools.json]",
+            "delay": "1h",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Raw JSON status report written by linux/tools.yml at the end of every run. All other items in this template depend on this one.",
+            "tags": [
+              { "tag": "component", "value": "linux-tools" },
+              { "tag": "item-type", "value": "master" }
+            ],
+            "triggers": [
+              {
+                "uuid": "9db2a224-6697-42d3-8a10-aade934e4f9d",
+                "expression": "nodata(/Linux Tools (Example Music)/vfs.file.contents[/etc/example-music/zabbix_status/linux_tools.json],{$LINUXTOOLS.STATUS.MAXAGE})=1",
+                "name": "Linux Tools: no status report for {$LINUXTOOLS.STATUS.MAXAGE} on {HOST.NAME} -- linux/tools.yml may not be running",
+                "priority": "AVERAGE",
+                "description": "linux/tools.yml hasn't written a fresh status report within {$LINUXTOOLS.STATUS.MAXAGE}. Either the playbook hasn't run against this host recently, or the zabbix-agent/file path is broken. Check: ls -la /etc/example-music/zabbix_status/linux_tools.json and re-run linux/tools.yml.",
+                "tags": [
+                  { "tag": "component", "value": "linux-tools" },
+                  { "tag": "scope", "value": "availability" }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "f2a2f25c-3cf2-44e7-9270-baa86ebb80ac",
+            "name": "Linux Tools: missing packages count",
+            "type": "DEPENDENT",
+            "key": "examplemusic.linuxtools.missing_packages_count",
+            "delay": "0",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "Count of common_packages (group_vars/all/main.yml) not currently installed, per the last linux/tools.yml run's own ansible_facts.packages check.",
+            "master_item": {
+              "key": "vfs.file.contents[/etc/example-music/zabbix_status/linux_tools.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [ "$.missing_packages_count" ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ],
+            "tags": [
+              { "tag": "component", "value": "linux-tools" }
+            ],
+            "triggers": [
+              {
+                "uuid": "d119bc13-66f8-4043-8a92-2a75d62d2e0a",
+                "expression": "last(/Linux Tools (Example Music)/examplemusic.linuxtools.missing_packages_count)>0",
+                "name": "Linux Tools: {ITEM.LASTVALUE} package(s) missing on {HOST.NAME}",
+                "priority": "WARNING",
+                "description": "One or more packages in common_packages (group_vars/all/main.yml) are not installed. Check the 'Linux Tools: missing packages (list)' item for which ones, then re-run linux/tools.yml.",
+                "tags": [
+                  { "tag": "component", "value": "linux-tools" },
+                  { "tag": "scope", "value": "configuration-drift" }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "c8039ca9-5779-4ca5-82bf-4ad488b06bee",
+            "name": "Linux Tools: missing packages (list)",
+            "type": "DEPENDENT",
+            "key": "examplemusic.linuxtools.missing_packages",
+            "delay": "0",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "The actual list of missing package names, for diagnosis -- no trigger of its own, see the count item's trigger.",
+            "master_item": {
+              "key": "vfs.file.contents[/etc/example-music/zabbix_status/linux_tools.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [ "$.missing_packages" ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ],
+            "tags": [
+              { "tag": "component", "value": "linux-tools" }
+            ]
+          },
+          {
+            "uuid": "4ef61dd9-a113-4541-80f5-eaa9137c49c6",
+            "name": "Linux Tools: update-motd symlink healthy",
+            "type": "DEPENDENT",
+            "key": "examplemusic.linuxtools.update_motd_linked",
+            "delay": "0",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /etc/update-motd.d/98-update-status is a real symlink to /usr/local/bin/update-motd, 0 otherwise.",
+            "master_item": {
+              "key": "vfs.file.contents[/etc/example-music/zabbix_status/linux_tools.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [ "$.update_motd_linked" ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ],
+            "tags": [
+              { "tag": "component", "value": "linux-tools" }
+            ],
+            "triggers": [
+              {
+                "uuid": "f2f0ca0c-d75c-424d-bf1d-eca148018093",
+                "expression": "last(/Linux Tools (Example Music)/examplemusic.linuxtools.update_motd_linked)=0",
+                "name": "Linux Tools: update-motd not linked on {HOST.NAME}",
+                "priority": "WARNING",
+                "description": "The update-motd symlink is missing or broken. Re-run linux/tools.yml -- see its 'Link update-motd into /etc/update-motd.d' task.",
+                "tags": [
+                  { "tag": "component", "value": "linux-tools" },
+                  { "tag": "scope", "value": "configuration-drift" }
+                ]
+              }
+            ]
+          }
+        ],
+        "macros": [
+          {
+            "macro": "{$LINUXTOOLS.STATUS.MAXAGE}",
+            "value": "2d",
+            "description": "How long the status report can go without a fresh write before the staleness trigger fires. Override per-host if a host is deliberately on a less frequent Ansible run schedule."
+          }
+        ],
+        "tags": [
+          { "tag": "target", "value": "linux" }
+        ]
+      }
+    ]
+  }
+}
