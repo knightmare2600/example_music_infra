@@ -4,6 +4,13 @@
 #   ansible-playbook playbooks/linux/tools.yml -i configs/inventory
 #
 # Changelog:
+#   2026-10-16  Added Zabbix agent onboarding (tasks/zabbix_agent_onboard.yml) to the
+#               nodeinfo.json block — Robert's ask, standing rule going forward: every
+#               playbook family gets a companion Zabbix template, starting with the actual
+#               prerequisite nothing else can be tested without (agent install + API
+#               registration). Grouped with nodeinfo.json rather than a separate block
+#               since both need the same host_site from hostname_facts.yml and the same
+#               EXA-hostname-conformant precondition.
 #   2026-07-02  Add /etc/example-music deploy for sites.csv and devices.csv
 #   2026-07-06  Add dotfile deployment (gitconfig, tmux, vim, zshrc)
 #   2026-07-06  Add optional user creation via vars_prompt
@@ -559,12 +566,26 @@
           ansible.builtin.file:
             path: /etc/.environment
             state: absent
+
+        # -------------------------------------------------------------------
+        # Zabbix agent onboarding (2026-10-16, Robert's ask) — standing rule going
+        # forward: every host gets monitored automatically as part of the normal
+        # baseline, not as a separate manual onboarding step. Same host_site
+        # (from hostname_facts.yml just above) this block already needs for
+        # nodeinfo.json, so it's grouped here rather than duplicating a second
+        # hostname_facts.yml call + block/rescue pair elsewhere in this play.
+        # See tasks/zabbix_agent_onboard.yml's own header for the full design.
+        # -------------------------------------------------------------------
+        - name: Include Zabbix agent onboarding tasks
+          include_tasks: ../../tasks/zabbix_agent_onboard.yml
+          vars:
+            zbx_kcs_repo_root: "{{ playbook_dir }}/../../.."
       rescue:
-        - name: nodeinfo.json skipped — hostname not yet EXA-convention
+        - name: nodeinfo.json + Zabbix onboarding skipped — hostname not yet EXA-convention
           ansible.builtin.debug:
             msg: >-
-              Skipping nodeinfo.json for {{ inventory_hostname }} — hostname
-              doesn't match EXA[ROLE][SITE][NNN] yet (expected for hosts still
+              Skipping nodeinfo.json and Zabbix agent onboarding for {{ inventory_hostname }}
+              — hostname doesn't match EXA[ROLE][SITE][NNN] yet (expected for hosts still
               mid-bootstrap). Re-run once it's been renamed.
 
     # -------------------------------------------------------------------------

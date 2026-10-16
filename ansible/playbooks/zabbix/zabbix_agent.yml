@@ -1,0 +1,49 @@
+---
+# =============================================================================
+# playbooks/zabbix/zabbix_agent.yml
+# Example Music Limited — Zabbix agent onboarding (one-shot, Linux only)
+# =============================================================================
+# Thin entry point around tasks/zabbix_agent_onboard.yml -- see that file's own header
+# for the full design (classic agent, PSK, active checks, API host.create). This playbook
+# exists for onboarding an EXISTING host that doesn't have the agent yet, one at a time;
+# linux/tools.yml now includes the same shared tasks file automatically for every new/
+# re-run host going forward (Robert's own explicit choice, 2026-10-16).
+#
+# Usage:
+#   ansible-playbook -i configs/inventory playbooks/zabbix/zabbix_agent.yml --limit <hostname>
+#
+# Tags: zabbix, monitoring
+# =============================================================================
+# Changelog:
+#   2026-10-16  Initial file. Part of the same work as tasks/zabbix_agent_onboard.yml --
+#               see that file's own header for the full design/verification trail.
+# =============================================================================
+
+- name: Zabbix — Agent onboarding (Linux)
+  hosts: "{{ target_hosts | default(target | default('all')) }}"
+  become: true
+  gather_facts: true
+
+  tasks:
+    - name: Include hostname facts
+      include_tasks: ../../tasks/hostname_facts.yml
+      tags: [zabbix, monitoring]
+
+    # nodeinfo.json -- mandatory for every module, written early (post-hostname-resolution),
+    # per the repo-wide standing rule (2026-10-09). Minimal fields only (role/site/
+    # bootstrapped_by) -- this playbook almost always runs against a host that already has
+    # a richer nodeinfo.json from its own original onboarding playbook; this just refreshes
+    # bootstrapped_by/role without needing a second sites.csv lookup here.
+    - name: Write nodeinfo.json
+      tags: always
+      include_tasks: ../../tasks/nodeinfo.yml
+      vars:
+        nodeinfo_role: "{{ host_role | lower }}"
+        nodeinfo_site: "{{ host_site }}"
+        nodeinfo_bootstrapped_by: "zabbix/zabbix_agent.yml"
+
+    - name: Include Zabbix agent onboarding tasks
+      include_tasks: ../../tasks/zabbix_agent_onboard.yml
+      vars:
+        zbx_kcs_repo_root: "{{ playbook_dir }}/../../.."
+      tags: [zabbix, monitoring]
