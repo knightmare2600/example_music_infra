@@ -39,4 +39,4 @@ vault_local_admin_password:   "CHANGEME"  # 2026-10-01: confirmed unused (greppe
 vault_domain_join_password:   "CHANGEME"
 vault_winrm_password:         "CHANGEME"
 vault_snmp_write_community:   "CHANGEME"
-vault_zabbix_api_token:       "CHANGEME"  # Users -> API tokens on EXAZABCLD001, NOT Admin's password
+vault_zabbix_api_token:       "de43fe4102425f0e3876c371a210c5e2d5fe3cc1cbd90529d5db408f568a9221"  # Users -> API tokens on EXAZABCLD001, NOT Admin's password
