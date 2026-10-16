@@ -4,6 +4,17 @@
 #   ansible-playbook playbooks/linux/tools.yml -i configs/inventory
 #
 # Changelog:
+#   2026-10-16  Corrected the same day: package presence is now one native agent item per
+#               package (vfs.file.exists against /usr/share/doc/<pkg>/copyright, discovered
+#               via a new linux_tools_packages_lld.json LLD list) instead of the
+#               missing_packages/_count aggregate pair below -- Robert's actual original ask
+#               ("one package per item"), which the first cut wrongly substituted an
+#               Ansible-computed summary for. linux_tools.json now only carries
+#               update_motd_linked; common_packages (group_vars/all/main.yml) remains
+#               Ansible's own source of truth for WHICH packages are watched, but whether
+#               each is actually installed is checked natively on the agent, not re-derived
+#               from ansible_facts.packages a second time. See zabbix_template_linuxtools.json's
+#               own description field for the full design.
 #   2026-10-16  Added the first real per-playbook-family Zabbix companion status report
 #               (/etc/example-music/zabbix_status/linux_tools.json) -- Robert's ask, the
 #               actual original point of the whole Zabbix companion-template initiative.
@@ -875,11 +886,29 @@
         content: >-
           {{
             {
-              'missing_packages': common_packages | difference(ansible_facts.packages.keys() | list),
-              'missing_packages_count': common_packages | difference(ansible_facts.packages.keys() | list) | length,
               'update_motd_linked': (_tools_motd_link_stat.stat.exists and _tools_motd_link_stat.stat.islnk) | ternary(1, 0),
               'generated_at': ansible_date_time.iso8601
             } | to_nice_json
+          }}
+        owner: root
+        group: root
+        mode: "0644"
+
+    # One item per package, not an Ansible-computed aggregate (Robert's original ask,
+    # 2026-10-16 -- the first cut of this template wrongly substituted a single
+    # missing_packages/_count pair for real per-package monitoring). common_packages
+    # stays Ansible's own source of truth for WHICH packages are in scope; the actual
+    # installed/missing CHECK itself is native on the agent side (vfs.file.exists
+    # against each package's own /usr/share/doc/<pkg>/copyright, which dpkg policy
+    # requires every binary package to ship, real or symlinked) via a Zabbix LLD
+    # discovery rule, not re-derived from ansible_facts.packages a second time.
+    - name: "[Zabbix status] Write linux_tools_packages_lld.json (LLD discovery data)"
+      ansible.builtin.copy:
+        dest: /etc/example-music/zabbix_status/linux_tools_packages_lld.json
+        content: >-
+          {{
+            { 'data': common_packages | map('community.general.dict_kv', '{#PACKAGE}') | list }
+            | to_nice_json
           }}
         owner: root
         group: root
