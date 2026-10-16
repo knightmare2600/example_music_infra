@@ -4,6 +4,13 @@
 #   ansible-playbook playbooks/linux/tools.yml -i configs/inventory
 #
 # Changelog:
+#   2026-10-16  Real live finding, EXAZABCLD001's rebuild test (fresh Debian, first-ever
+#               run): "The requested handler 'Restart zabbix-agent' was not found" the
+#               first time tasks/zabbix_agent_onboard.yml's own notify: actually fired (a
+#               genuinely new zabbix_agentd.conf write) -- a handler notified from an
+#               included tasks file resolves against the PLAY's own handler list, not the
+#               included file's scope. Added "Restart zabbix-agent" to this play's own
+#               handlers: block (also added to zabbix_agent.yml's own play, same reason).
 #   2026-10-16  Added Zabbix agent onboarding (tasks/zabbix_agent_onboard.yml) to the
 #               nodeinfo.json block — Robert's ask, standing rule going forward: every
 #               playbook family gets a companion Zabbix template, starting with the actual
@@ -832,4 +839,15 @@
     - name: Restart journald
       ansible.builtin.systemd:
         name:  systemd-journald
+        state: restarted
+
+    # Notified from tasks/zabbix_agent_onboard.yml's own "[Zabbix] Write zabbix_agentd.conf"
+    # task -- handlers notified from an included tasks file are still resolved against the
+    # PLAY's own handler list, not the included file's scope, so this needs defining here
+    # too (and in zabbix_agent.yml's own play) rather than just once. Real bug, found live
+    # 2026-10-16 (EXAZABCLD001's rebuild test): "The requested handler 'Restart zabbix-agent'
+    # was not found" the first time the notify actually fired (a genuinely new conf write).
+    - name: Restart zabbix-agent
+      ansible.builtin.systemd:
+        name:  zabbix-agent
         state: restarted

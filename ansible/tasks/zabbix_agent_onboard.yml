@@ -67,12 +67,31 @@
 # the ambiguity entirely rather than gambling on untested path-resolution semantics.
 # =============================================================================
 # Changelog:
+#   2026-10-16  Real live finding, EXAZABCLD001's rebuild test (fresh Debian, first contact
+#               via the bare-IP -i "<ip>," pattern every first-run onboarding in this repo
+#               uses): every identity-bearing reference below (PSK path, KeePass entry,
+#               zabbix_agentd.conf's Hostname=, the API's host.create "host" field) used
+#               inventory_hostname directly -- which during a bare-IP run IS the literal IP
+#               string, not the real hostname. Filed the PSK/KeePass entry under
+#               "192.168.69.237" instead of "EXAZABCLD001"; a later re-run once the host is
+#               in static inventory under its real name would have treated it as an
+#               entirely different host (new PSK, second KeePass entry, second Zabbix
+#               registration) rather than recognising it as the same one. Fixed by adding
+#               zbx_real_hostname, using the exact same target_hostname -> ansible_hostname
+#               -> inventory_hostname precedence tasks/hostname_facts.yml itself already
+#               established for this exact scenario -- not a new pattern, just failing to
+#               apply the existing one consistently the first time.
 #   2026-10-16  Initial file. Robert's ask: a companion Zabbix template for every playbook
 #               family, starting with the actual prerequisite nothing else can be tested
 #               without -- agent install + registration. Folded into linux/tools.yml as a
 #               standing rule going forward (Robert's own explicit choice, AskUserQuestion),
 #               not just a one-shot onboarding playbook as the Sept 3 plan originally scoped.
 # =============================================================================
+
+- name: "[Zabbix] Resolve the real hostname (bare-IP-run safe, matches hostname_facts.yml's own precedence)"
+  set_fact:
+    zbx_real_hostname: "{{ target_hostname | default(ansible_hostname | default(inventory_hostname)) }}"
+  tags: [zabbix, monitoring]
 
 - name: "[Zabbix] Detect repo tree for this architecture (debian/debian-arm64, matches zabbixme.sh)"
   set_fact:
@@ -117,18 +136,18 @@
 
 - name: "[Zabbix] Check for an existing PSK file"
   ansible.builtin.stat:
-    path: "/etc/zabbix/agent_psk/{{ inventory_hostname }}.psk"
+    path: "/etc/zabbix/agent_psk/{{ zbx_real_hostname }}.psk"
   register: zbx_psk_stat
   tags: [zabbix, monitoring]
 
 - name: "[Zabbix] Generate PSK (openssl rand -hex 32 -- first onboarding only)"
-  ansible.builtin.shell: "openssl rand -hex 32 > /etc/zabbix/agent_psk/{{ inventory_hostname }}.psk"
+  ansible.builtin.shell: "openssl rand -hex 32 > /etc/zabbix/agent_psk/{{ zbx_real_hostname }}.psk"
   when: not zbx_psk_stat.stat.exists
   tags: [zabbix, monitoring]
 
 - name: "[Zabbix] Set PSK file ownership/permissions (readable only by the zabbix user)"
   ansible.builtin.file:
-    path: "/etc/zabbix/agent_psk/{{ inventory_hostname }}.psk"
+    path: "/etc/zabbix/agent_psk/{{ zbx_real_hostname }}.psk"
     owner: zabbix
     group: zabbix
     mode: "0600"
@@ -136,7 +155,7 @@
 
 - name: "[Zabbix] Read the PSK back (needed for the API call below, whether just-generated or pre-existing)"
   ansible.builtin.slurp:
-    src: "/etc/zabbix/agent_psk/{{ inventory_hostname }}.psk"
+    src: "/etc/zabbix/agent_psk/{{ zbx_real_hostname }}.psk"
   register: zbx_psk_raw
   tags: [zabbix, monitoring]
 
@@ -150,8 +169,8 @@
   include_tasks: keepass_credential_sync.yml
   vars:
     kcs_repo_root: "{{ zbx_kcs_repo_root }}"
-    kcs_keepass_path: "Infrastructure/{{ host_site }}/{{ inventory_hostname }}-zabbix-psk"
-    kcs_username: "{{ inventory_hostname }}-psk"
+    kcs_keepass_path: "Infrastructure/{{ host_site }}/{{ zbx_real_hostname }}-zabbix-psk"
+    kcs_username: "{{ zbx_real_hostname }}-psk"
     kcs_current_value: "{{ zbx_psk_value }}"
     kcs_can_generate: false
     kcs_credentials_json_role: "ZABBIX"
@@ -168,11 +187,11 @@
       LogFileSize=1
       Server={{ site_services.zabbix.ip }}
       ServerActive={{ site_services.zabbix.ip }}
-      Hostname={{ inventory_hostname }}
+      Hostname={{ zbx_real_hostname }}
       TLSConnect=psk
       TLSAccept=psk
-      TLSPSKIdentity={{ inventory_hostname }}-psk
-      TLSPSKFile=/etc/zabbix/agent_psk/{{ inventory_hostname }}.psk
+      TLSPSKIdentity={{ zbx_real_hostname }}-psk
+      TLSPSKFile=/etc/zabbix/agent_psk/{{ zbx_real_hostname }}.psk
       # EnableRemoteCommands is deprecated in 7.0 -- AllowKey is the real current mechanism
       # (confirmed against the real 7.0 config-parameter docs, not the 2026-09-03 design
       # doc's older wording). DenyKey=system.run[*] ships as the package default; this
@@ -212,7 +231,7 @@
       method: host.get
       params:
         filter:
-          host: ["{{ inventory_hostname }}"]
+          host: ["{{ zbx_real_hostname }}"]
       id: 1
     status_code: 200
   register: zbx_host_check
@@ -316,7 +335,7 @@
       jsonrpc: "2.0"
       method: host.create
       params:
-        host: "{{ inventory_hostname }}"
+        host: "{{ zbx_real_hostname }}"
         groups: >-
           {{
             [{'groupid': zbx_autoreg_group.json.result[0].groupid}] +
@@ -327,7 +346,7 @@
           - templateid: "{{ zbx_template_check.json.result[0].templateid }}"
         tls_connect: 2
         tls_accept: 2
-        tls_psk_identity: "{{ inventory_hostname }}-psk"
+        tls_psk_identity: "{{ zbx_real_hostname }}-psk"
         tls_psk: "{{ zbx_psk_value }}"
       id: 1
     status_code: 200
