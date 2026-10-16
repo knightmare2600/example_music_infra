@@ -17,6 +17,13 @@ routinely as a sweep alongside role-specific plays.
 `files/` holds the dotfiles pushed by the `tools.yml` tasks above — plain `win_copy`/`copy`
 sources, not templated.
 
+`tools.yml` needs `community.general` (the `dict_kv` filter, used to build the Zabbix LLD
+package-discovery report) — install with:
+
+```bash
+ansible-galaxy collection install -r requirements.yml
+```
+
 ---
 
 ## Why `/etc/example-music/` is populated here

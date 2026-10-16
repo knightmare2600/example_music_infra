@@ -12,7 +12,7 @@
         "uuid": "6149b3c593754fabbd7d46fa17b9df7f",
         "template": "linuxtools_examplemusic",
         "name": "Linux Tools (Example Music)",
-        "description": "Companion template for ansible/playbooks/linux/tools.yml -- the first of Robert's 'every playbook gets a Zabbix template' initiative (2026-10-16).\n\nHOW IT WORKS\n  One master item reads /etc/example-music/zabbix_status/linux_tools.json via vfs.file.contents every hour. That file is written by linux/tools.yml itself at the end of every run -- Ansible already knows this state from its own tasks (ansible_facts.packages, the update-motd symlink task), so this deliberately does NOT re-derive it a second time via a separate agent-side script. All other items are DEPENDENT on the master and extract fields via JSONPath.\n\nSTALENESS\n  The {$LINUXTOOLS.STATUS.MAXAGE} macro (default 2d) drives a nodata() trigger on the master item itself -- catches linux/tools.yml not having run recently at all, not just config drift the report would otherwise go stale on.\n\nIMPORT INSTRUCTIONS\n  Zabbix API: configuration.import (rules: createMissing for groups/templates/items/triggers, updateExisting for the rest). Or via the UI: Data collection -> Templates -> Import.\n  Link to each Linux host this playbook manages.\n\nNOT YET DONE (flagged, not forgotten)\n  Package presence is currently reported by Ansible (missing_packages/_count), not checked natively by the agent via vfs.file.exists per-package -- Robert's own stated preference (checksum-stable dpkg -L copyright paths) fits a native per-package item better long-term, via an LLD discovery rule driven by common_packages rather than this template needing updates every time that list changes. Deferred to the next iteration once this v1 is proven -- the discoveryrule.create/itemprototype.create/triggerprototype.create API shapes haven't been verified yet.",
+        "description": "Companion template for ansible/playbooks/linux/tools.yml -- the first of Robert's 'every playbook gets a Zabbix template' initiative (2026-10-16).\n\nHOW IT WORKS\n  One master item reads /etc/example-music/zabbix_status/linux_tools.json via vfs.file.contents every hour -- currently just update_motd_linked, written by linux/tools.yml itself at the end of every run. That file also drives the staleness trigger below. Package presence is a SEPARATE mechanism, see PACKAGE DISCOVERY.\n\nPACKAGE DISCOVERY (one item per package, not an aggregate)\n  A discovery rule reads /etc/example-music/zabbix_status/linux_tools_packages_lld.json, also written by linux/tools.yml -- an LLD-format {\"data\":[{\"{#PACKAGE}\":\"...\"}]} list of every package in common_packages (group_vars/all/main.yml). Ansible owns WHICH packages are in scope (it's the only source of truth for common_packages); it deliberately does NOT re-report whether each one is installed -- that's a genuinely native, independent agent-side check per discovered package: vfs.file.exists[/usr/share/doc/{#PACKAGE}/copyright]. Debian policy requires every binary package to ship a copyright file at that path (real file or a symlink when sharing docs with another binary from the same source) -- a stable, checksum-independent proxy for 'is this package installed', with no custom UserParameter script needed. One item + one trigger per discovered package, not a single missing_packages_count/list pair -- that was v1's mistake, corrected same day once Robert flagged it ('this crap... one package per item').\n  Known limitation: a package whose doc directory was deleted by something outside dpkg (rare, broken state) would false-negative here even though dpkg still lists it installed -- accepted, not solved, since classic zabbix-agent has no native dpkg-aware key and this avoids deploying a custom script just to cover that edge case.\n\nSTALENESS\n  The {$LINUXTOOLS.STATUS.MAXAGE} macro (default 2d) drives a nodata() trigger on the master item itself -- catches linux/tools.yml not having run recently at all, not just config drift the report would otherwise go stale on.\n\nIMPORT INSTRUCTIONS\n  Zabbix API: configuration.import (rules: createMissing for groups/templates/items/triggers/discoveryRules, updateExisting for the rest). Or via the UI: Data collection -> Templates -> Import.\n  Link to each Linux host this playbook manages.",
         "groups": [
           {
             "name": "Templates/Example Music"
@@ -48,67 +48,6 @@
             ]
           },
           {
-            "uuid": "f2a2f25c3cf244e79270baa86ebb80ac",
-            "name": "Linux Tools: missing packages count",
-            "type": "DEPENDENT",
-            "key": "examplemusic.linuxtools.missing_packages_count",
-            "delay": "0",
-            "history": "30d",
-            "trends": "90d",
-            "value_type": "UNSIGNED",
-            "description": "Count of common_packages (group_vars/all/main.yml) not currently installed, per the last linux/tools.yml run's own ansible_facts.packages check.",
-            "master_item": {
-              "key": "vfs.file.contents[/etc/example-music/zabbix_status/linux_tools.json]"
-            },
-            "preprocessing": [
-              {
-                "type": "JSONPATH",
-                "parameters": [ "$.missing_packages_count" ],
-                "error_handler": "DISCARD_VALUE"
-              }
-            ],
-            "tags": [
-              { "tag": "component", "value": "linux-tools" }
-            ],
-            "triggers": [
-              {
-                "uuid": "d119bc1366f840438a922a75d62d2e0a",
-                "expression": "last(/Linux Tools (Example Music)/examplemusic.linuxtools.missing_packages_count)>0",
-                "name": "Linux Tools: {ITEM.LASTVALUE} package(s) missing on {HOST.NAME}",
-                "priority": "WARNING",
-                "description": "One or more packages in common_packages (group_vars/all/main.yml) are not installed. Check the 'Linux Tools: missing packages (list)' item for which ones, then re-run linux/tools.yml.",
-                "tags": [
-                  { "tag": "component", "value": "linux-tools" },
-                  { "tag": "scope", "value": "configuration-drift" }
-                ]
-              }
-            ]
-          },
-          {
-            "uuid": "c8039ca957794ca582bf4ad488b06bee",
-            "name": "Linux Tools: missing packages (list)",
-            "type": "DEPENDENT",
-            "key": "examplemusic.linuxtools.missing_packages",
-            "delay": "0",
-            "history": "30d",
-            "trends": "0",
-            "value_type": "TEXT",
-            "description": "The actual list of missing package names, for diagnosis -- no trigger of its own, see the count item's trigger.",
-            "master_item": {
-              "key": "vfs.file.contents[/etc/example-music/zabbix_status/linux_tools.json]"
-            },
-            "preprocessing": [
-              {
-                "type": "JSONPATH",
-                "parameters": [ "$.missing_packages" ],
-                "error_handler": "DISCARD_VALUE"
-              }
-            ],
-            "tags": [
-              { "tag": "component", "value": "linux-tools" }
-            ]
-          },
-          {
             "uuid": "4ef61dd9a113454180f5eaa9137c49c6",
             "name": "Linux Tools: update-motd symlink healthy",
             "type": "DEPENDENT",
@@ -141,6 +80,48 @@
                 "tags": [
                   { "tag": "component", "value": "linux-tools" },
                   { "tag": "scope", "value": "configuration-drift" }
+                ]
+              }
+            ]
+          }
+        ],
+        "discovery_rules": [
+          {
+            "uuid": "93b735a3a45a45f7a2016e405a3ee546",
+            "name": "Linux Tools: package discovery",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.contents[/etc/example-music/zabbix_status/linux_tools_packages_lld.json]",
+            "delay": "1h",
+            "lifetime": "7d",
+            "description": "Reads the LLD-format package list written by linux/tools.yml (one {#PACKAGE} entry per common_packages name, group_vars/all/main.yml). lifetime=7d: a package dropped from common_packages has its item/trigger cleaned up within a week rather than lingering forever.",
+            "item_prototypes": [
+              {
+                "uuid": "11c3f70bf9d04ac88b0923ec24755741",
+                "name": "Package installed: {#PACKAGE}",
+                "type": "ZABBIX_ACTIVE",
+                "key": "vfs.file.exists[/usr/share/doc/{#PACKAGE}/copyright]",
+                "delay": "1h",
+                "history": "30d",
+                "trends": "90d",
+                "value_type": "UNSIGNED",
+                "description": "1 if /usr/share/doc/{#PACKAGE}/copyright exists (real file or symlink -- Debian policy requires every binary package to ship one), 0 otherwise. Native agent check, independent of linux/tools.yml's own ansible_facts.packages -- Ansible only supplies the list of packages to watch, not whether each is installed.",
+                "tags": [
+                  { "tag": "component", "value": "linux-tools" },
+                  { "tag": "package", "value": "{#PACKAGE}" }
+                ],
+                "triggers": [
+                  {
+                    "uuid": "f2824fff36314e1b92ee25de033c0c93",
+                    "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/usr/share/doc/{#PACKAGE}/copyright])=0",
+                    "name": "Linux Tools: package {#PACKAGE} missing on {HOST.NAME}",
+                    "priority": "WARNING",
+                    "description": "{#PACKAGE} is in common_packages (group_vars/all/main.yml) but /usr/share/doc/{#PACKAGE}/copyright doesn't exist -- package is not installed, or was removed outside Ansible. Re-run linux/tools.yml.",
+                    "tags": [
+                      { "tag": "component", "value": "linux-tools" },
+                      { "tag": "scope", "value": "configuration-drift" },
+                      { "tag": "package", "value": "{#PACKAGE}" }
+                    ]
+                  }
                 ]
               }
             ]

@@ -1,0 +1,9 @@
+# requirements.yml
+# Install with: ansible-galaxy collection install -r requirements.yml
+#
+# community.general -- dict_kv filter (tools.yml's Zabbix LLD package-discovery
+#                      report, linux_tools_packages_lld.json)
+
+collections:
+  - name: community.general
+    version: ">=11.0.0"
