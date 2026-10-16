@@ -15,6 +15,11 @@
 # Tags: zabbix, monitoring
 # =============================================================================
 # Changelog:
+#   2026-10-16  Real live finding, EXAZABCLD001's rebuild test (fresh Debian, first-ever
+#               run): "The requested handler 'Restart zabbix-agent' was not found" --
+#               notify: from an included tasks file resolves against the PLAY's own
+#               handler list, not the included file's scope. Added the handler here too
+#               (also added to linux/tools.yml's own handlers: block, same reason).
 #   2026-10-16  Initial file. Part of the same work as tasks/zabbix_agent_onboard.yml --
 #               see that file's own header for the full design/verification trail.
 # =============================================================================
@@ -47,3 +52,15 @@
       vars:
         zbx_kcs_repo_root: "{{ playbook_dir }}/../../.."
       tags: [zabbix, monitoring]
+
+  # Notified from tasks/zabbix_agent_onboard.yml's own "[Zabbix] Write zabbix_agentd.conf"
+  # task -- a handler notified from an included tasks file is resolved against the PLAY's
+  # own handler list, not the included file's scope, so linux/tools.yml needs this exact
+  # same handler defined too (it does, as of this same fix) rather than sharing one
+  # definition. Real bug, found live 2026-10-16 (EXAZABCLD001's rebuild test): "The
+  # requested handler 'Restart zabbix-agent' was not found".
+  handlers:
+    - name: Restart zabbix-agent
+      ansible.builtin.systemd:
+        name:  zabbix-agent
+        state: restarted
