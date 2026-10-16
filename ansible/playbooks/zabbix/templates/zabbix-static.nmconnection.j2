@@ -1,0 +1,22 @@
+[connection]
+id=zabbix-static
+uuid={{ (inventory_hostname + '-zabbix-static') | to_uuid }}
+type=ethernet
+interface-name={{ zbx_iface }}
+autoconnect=true
+autoconnect-priority=100
+autoconnect-retries=-1
+
+[ethernet]
+
+[ipv4]
+address1={{ zbx_static_ip }}/{{ zbx_prefix | default('24') }},{{ zbx_gateway }}
+method=manual
+dns={{ zbx_dns }};
+dns-search={{ zbx_domain }};
+
+[ipv6]
+addr-gen-mode=default
+method=ignore
+
+[proxy]

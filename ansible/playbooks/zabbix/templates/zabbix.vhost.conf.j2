@@ -1,0 +1,37 @@
+# Managed by Ansible (playbooks/zabbix/zabbix_server.yml) -- do not edit by hand.
+# Hitting "/" 301-redirects to the Zabbix WebUI, same as asking for the FQDN directly --
+# both land on the same vhost, both redirect to /zabbix/.
+<VirtualHost *:80>
+    ServerName zabbix.{{ zbx_domain }}
+    ServerAlias {{ zbx_static_ip }}
+
+    DocumentRoot /var/www/html
+    Alias /zabbix {{ zbx_frontend_root_path }}
+
+    RedirectMatch 301 ^/$ /zabbix/
+
+    <Directory {{ zbx_frontend_root_path }}>
+        Options FollowSymLinks
+        AllowOverride None
+        Require all granted
+    </Directory>
+
+    # api_jsonrpc.php reachable only from VRK/FRD/site subnets (Robert point 6) --
+    # everything else (the UI itself) stays open to the LAN as normal. "Require local"
+    # covers 127.0.0.0/8 AND ::1 AND Unix domain sockets -- curl resolving "localhost" to
+    # ::1 first (tries IPv6 before IPv4 by default) needs this alongside the IPv4-only
+    # site-subnet Require ip lines below, or every loopback API check gets a clean 403.
+    <Location /zabbix/api_jsonrpc.php>
+        Require local
+        Require ip {{ site_services.provisioning_edinburgh.subnet }}
+        Require ip {{ site_services.provisioning_fredericia_havn.subnet }}
+{% for subnet in zbx_trapper_subnets %}
+{% if subnet not in [site_services.provisioning_edinburgh.subnet, site_services.provisioning_fredericia_havn.subnet] %}
+        Require ip {{ subnet }}
+{% endif %}
+{% endfor %}
+    </Location>
+
+    ErrorLog ${APACHE_LOG_DIR}/zabbix_error.log
+    CustomLog ${APACHE_LOG_DIR}/zabbix_access.log combined
+</VirtualHost>
