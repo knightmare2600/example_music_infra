@@ -4,6 +4,15 @@
 #   ansible-playbook playbooks/linux/tools.yml -i configs/inventory
 #
 # Changelog:
+#   2026-10-16  Added the first real per-playbook-family Zabbix companion status report
+#               (/etc/example-music/zabbix_status/linux_tools.json) -- Robert's ask, the
+#               actual original point of the whole Zabbix companion-template initiative.
+#               Ansible computes missing_packages/update_motd_linked itself (already has
+#               the facts from tasks above) rather than having a separate agent-side
+#               script re-derive the same state -- the Zabbix template (docs/
+#               zabbix_templates/zabbix_template_linuxtools.json, once exported) just
+#               reads this file via a master item, same pattern already proven in
+#               zabbix_template_proxmox_nicguard.yaml.
 #   2026-10-16  Real live finding, EXAZABCLD001's rebuild test (fresh Debian, first-ever
 #               run): "The requested handler 'Restart zabbix-agent' was not found" the
 #               first time tasks/zabbix_agent_onboard.yml's own notify: actually fired (a
@@ -834,6 +843,47 @@
         - { regexp: '^#?MaxRetentionSec=', line: 'MaxRetentionSec=30day' }
         - { regexp: '^#?SystemMaxUse=',    line: 'SystemMaxUse=500M' }
       notify: Restart journald
+
+    # -------------------------------------------------------------------------
+    # Zabbix companion status report (2026-10-16, Robert's ask — the first real
+    # per-playbook-family Zabbix template). Deliberately does NOT re-derive
+    # package/config state via a separate agent-side script -- Ansible already
+    # knows this from the tasks above (ansible_facts.packages, already gathered
+    # by "Gather installed package facts"); the Zabbix template just reads what
+    # Ansible already determined, same master-item + dependent-items pattern
+    # already proven in docs/zabbix_templates/zabbix_template_proxmox_nicguard.yaml.
+    # A separate /etc/example-music/zabbix_status/ subdirectory, not mixed in
+    # with nodeinfo.json/sites.csv etc. -- keeps monitoring-report artifacts
+    # distinct as more playbook families get their own companion report here.
+    # -------------------------------------------------------------------------
+    - name: "[Zabbix status] Ensure status report directory exists"
+      ansible.builtin.file:
+        path: /etc/example-music/zabbix_status
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: "[Zabbix status] Check update-motd symlink health"
+      ansible.builtin.stat:
+        path: /etc/update-motd.d/98-update-status
+      register: _tools_motd_link_stat
+
+    - name: "[Zabbix status] Write linux_tools.json"
+      ansible.builtin.copy:
+        dest: /etc/example-music/zabbix_status/linux_tools.json
+        content: >-
+          {{
+            {
+              'missing_packages': common_packages | difference(ansible_facts.packages.keys() | list),
+              'missing_packages_count': common_packages | difference(ansible_facts.packages.keys() | list) | length,
+              'update_motd_linked': (_tools_motd_link_stat.stat.exists and _tools_motd_link_stat.stat.islnk) | ternary(1, 0),
+              'generated_at': ansible_date_time.iso8601
+            } | to_nice_json
+          }}
+        owner: root
+        group: root
+        mode: "0644"
 
   handlers:
     - name: Restart journald
