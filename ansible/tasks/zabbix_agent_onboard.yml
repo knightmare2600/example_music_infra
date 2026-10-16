@@ -1,0 +1,347 @@
+---
+# =============================================================================
+# tasks/zabbix_agent_onboard.yml
+# Example Music Limited — Zabbix agent install, PSK encryption, API registration (Linux)
+# =============================================================================
+# Shared tasks file, included from two callers:
+#   - ansible/playbooks/zabbix/zabbix_agent.yml  (one-shot, --limit <hostname>)
+#   - ansible/playbooks/linux/tools.yml           (automatic, every run, hosts: all)
+#
+# Classic zabbix-agent only (Robert: "agent is agent not agent2, I am not using agent2"),
+# matching bootstrap/web/provision/zabbixme.sh's own server-side choice. Windows agents are
+# explicitly out of scope here -- Salt handles that (MSI), per Robert's own stated
+# sequencing ("we'll write one for ansible and salt for the zabbix agent"). This file only
+# ever runs against Linux hosts; callers are responsible for not including it on Windows.
+#
+# Requires (caller must already have included/gathered):
+#   - tasks/hostname_facts.yml (host_site)
+#   - group_vars/all/site_services.yml -- site_services.zabbix.ip (the real server address,
+#     NOT hardcoded here -- see generate_inventory.py's compute_site_services(), added
+#     2026-10-16 specifically for this)
+#   - group_vars/all/vault.yml -- vault_zabbix_api_token (a dedicated Zabbix API token,
+#     Users -> API tokens on EXAZABCLD001, deliberately NOT Admin's own password -- see
+#     that file's own 2026-10-16 changelog entry for why: this task file is included from
+#     linux/tools.yml, a routinely re-run, hosts: all by default play, where a masked
+#     per-run credential prompt would be a real UX regression)
+#   - zbx_kcs_repo_root -- passed explicitly by the CALLER (computed from that caller's own
+#     playbook_dir), same *_repo_root convention as discover_dc_repo_root/example_music_gate_
+#     repo_root elsewhere in this repo. This file does NOT compute its own playbook_dir-
+#     relative path -- the exact bug class fixed in discover_real_dcs.yml earlier this same
+#     session (hardcoding a depth inside a SHARED file breaks the moment a caller at a
+#     different depth includes it; a caller-supplied value is the one that can never drift).
+#
+# API auth: presented as an Authorization: Bearer header, NOT the deprecated JSON-RPC
+# "auth" field -- confirmed against the real Zabbix 7.0 API docs before writing this
+# (api/general/description.html's own token-auth example).
+#
+# Design doc: docs/ansible/zabbix-playbooks-plan.md (2026-09-03) -- verified against the
+# real Zabbix 7.0 packages/docs there, not re-derived here:
+#   - Template name: "Linux by Zabbix agent active" (pre-6.0 "Template OS Linux" is gone)
+#   - Active checks only (agent pushes to the server) -- matches zabbixme.sh's own UFW
+#     Section 6, which already opens port 10051/tcp (Zabbix trapper) inbound to the server
+#   - PSK field semantics: tls_connect/tls_accept = 2 (bitmask) on the API's host object
+#   - host.create's own "interfaces" param is optional, not required, for an active-only host
+#
+# One detail updated past the 2026-09-03 design doc, verified fresh against the real 7.0
+# config-parameter docs before writing this file (not assumed from the older doc):
+#   - EnableRemoteCommands is DEPRECATED in 7.0 -- the real current mechanism is
+#     AllowKey=system.run[*] (DenyKey for the inverse). Used here instead.
+#   - TLSConnect/TLSAccept in zabbix_agentd.conf itself take the NAMED string value "psk",
+#     not the numeric "2" bitmask that only applies to the API's host-object fields -- a
+#     real, easy-to-get-wrong mismatch between the config-file layer and the API layer,
+#     confirmed against the real "Using pre-shared keys" documentation page directly.
+#   - The real API endpoint is /zabbix/api_jsonrpc.php, NOT /api_jsonrpc.php at the
+#     document root -- zabbixme.sh's own Apache vhost aliases the whole frontend under
+#     /zabbix/ (Alias /zabbix ${FRONTEND_ROOT}), confirmed by reading that vhost block
+#     directly rather than assuming the generic Zabbix default-install path. Plain HTTP
+#     (port 80 only, no SSL block anywhere in that vhost) -- NOT the https:// that
+#     role_codes.csv's own ZAB row note claims; flagged to Robert as a doc inconsistency
+#     to confirm, not silently "corrected" in case SSL was added out-of-band since.
+#
+# Config content is written via copy: content: (inline), not a separate template: src:
+# .j2 file -- this is a shared tasks file included from two playbooks at different
+# directory depths, and Ansible's relative template src: resolution bit us earlier today
+# on cloudpanel/00-preflight.yml (resolves relative to the including playbook's own
+# directory, differently for each caller here) with no existing precedent in ansible/tasks/
+# to confirm the behaviour for an *included tasks file* specifically. Inlining sidesteps
+# the ambiguity entirely rather than gambling on untested path-resolution semantics.
+# =============================================================================
+# Changelog:
+#   2026-10-16  Initial file. Robert's ask: a companion Zabbix template for every playbook
+#               family, starting with the actual prerequisite nothing else can be tested
+#               without -- agent install + registration. Folded into linux/tools.yml as a
+#               standing rule going forward (Robert's own explicit choice, AskUserQuestion),
+#               not just a one-shot onboarding playbook as the Sept 3 plan originally scoped.
+# =============================================================================
+
+- name: "[Zabbix] Detect repo tree for this architecture (debian/debian-arm64, matches zabbixme.sh)"
+  set_fact:
+    zbx_debian_tree: "{{ (ansible_architecture == 'aarch64') | ternary('debian-arm64', 'debian') }}"
+  tags: [zabbix, monitoring]
+
+- name: "[Zabbix] Check whether zabbix-release is already installed"
+  ansible.builtin.command: dpkg -s zabbix-release
+  register: zbx_release_check
+  changed_when: false
+  failed_when: false
+  tags: [zabbix, monitoring]
+
+- name: "[Zabbix] Download + install zabbix-release (pins the real repo.zabbix.com/zabbix/7.0 tree)"
+  ansible.builtin.apt:
+    deb: "https://repo.zabbix.com/zabbix/7.0/{{ zbx_debian_tree }}/pool/main/z/zabbix-release/zabbix-release_latest_7.0%2Bdebian{{ ansible_distribution_major_version }}_all.deb"
+  when: zbx_release_check.rc != 0
+  tags: [zabbix, monitoring]
+
+- name: "[Zabbix] apt update (zabbix-release repo just added)"
+  ansible.builtin.apt:
+    update_cache: true
+  when: zbx_release_check.rc != 0
+  tags: [zabbix, monitoring]
+
+- name: "[Zabbix] Install zabbix-agent (classic agent, NOT agent2)"
+  ansible.builtin.apt:
+    name: zabbix-agent
+    state: present
+  tags: [zabbix, monitoring]
+
+# ── PSK: generate once, never regenerate (would desync from what's already registered) ──
+
+- name: "[Zabbix] Ensure PSK directory exists"
+  ansible.builtin.file:
+    path: /etc/zabbix/agent_psk
+    state: directory
+    owner: zabbix
+    group: zabbix
+    mode: "0700"
+  tags: [zabbix, monitoring]
+
+- name: "[Zabbix] Check for an existing PSK file"
+  ansible.builtin.stat:
+    path: "/etc/zabbix/agent_psk/{{ inventory_hostname }}.psk"
+  register: zbx_psk_stat
+  tags: [zabbix, monitoring]
+
+- name: "[Zabbix] Generate PSK (openssl rand -hex 32 -- first onboarding only)"
+  ansible.builtin.shell: "openssl rand -hex 32 > /etc/zabbix/agent_psk/{{ inventory_hostname }}.psk"
+  when: not zbx_psk_stat.stat.exists
+  tags: [zabbix, monitoring]
+
+- name: "[Zabbix] Set PSK file ownership/permissions (readable only by the zabbix user)"
+  ansible.builtin.file:
+    path: "/etc/zabbix/agent_psk/{{ inventory_hostname }}.psk"
+    owner: zabbix
+    group: zabbix
+    mode: "0600"
+  tags: [zabbix, monitoring]
+
+- name: "[Zabbix] Read the PSK back (needed for the API call below, whether just-generated or pre-existing)"
+  ansible.builtin.slurp:
+    src: "/etc/zabbix/agent_psk/{{ inventory_hostname }}.psk"
+  register: zbx_psk_raw
+  tags: [zabbix, monitoring]
+
+- name: "[Zabbix] Set PSK fact (trimmed, decoded)"
+  set_fact:
+    zbx_psk_value: "{{ zbx_psk_raw.content | b64decode | trim }}"
+  no_log: true
+  tags: [zabbix, monitoring]
+
+- name: "[Zabbix] File the PSK into KeePass (already generated above -- this just files it)"
+  include_tasks: keepass_credential_sync.yml
+  vars:
+    kcs_repo_root: "{{ zbx_kcs_repo_root }}"
+    kcs_keepass_path: "Infrastructure/{{ host_site }}/{{ inventory_hostname }}-zabbix-psk"
+    kcs_username: "{{ inventory_hostname }}-psk"
+    kcs_current_value: "{{ zbx_psk_value }}"
+    kcs_can_generate: false
+    kcs_credentials_json_role: "ZABBIX"
+    kcs_result_var: zbx_psk_filed
+  tags: [zabbix, monitoring]
+
+# ── Agent config ─────────────────────────────────────────────────────────────────────
+
+- name: "[Zabbix] Write zabbix_agentd.conf"
+  ansible.builtin.copy:
+    content: |
+      # Managed by Ansible (tasks/zabbix_agent_onboard.yml) -- do not edit by hand.
+      LogFile=/var/log/zabbix/zabbix_agentd.log
+      LogFileSize=1
+      Server={{ site_services.zabbix.ip }}
+      ServerActive={{ site_services.zabbix.ip }}
+      Hostname={{ inventory_hostname }}
+      TLSConnect=psk
+      TLSAccept=psk
+      TLSPSKIdentity={{ inventory_hostname }}-psk
+      TLSPSKFile=/etc/zabbix/agent_psk/{{ inventory_hostname }}.psk
+      # EnableRemoteCommands is deprecated in 7.0 -- AllowKey is the real current mechanism
+      # (confirmed against the real 7.0 config-parameter docs, not the 2026-09-03 design
+      # doc's older wording). DenyKey=system.run[*] ships as the package default; this
+      # overrides it to allow remote commands, per Robert's own original brief.
+      AllowKey=system.run[*]
+      Include=/etc/zabbix/zabbix_agentd.d/*.conf
+    dest: /etc/zabbix/zabbix_agentd.conf
+    owner: root
+    group: root
+    mode: "0644"
+    backup: true
+  notify: Restart zabbix-agent
+  tags: [zabbix, monitoring]
+
+- name: "[Zabbix] Ensure zabbix-agent is running and enabled"
+  ansible.builtin.systemd:
+    name: zabbix-agent
+    state: started
+    enabled: true
+  tags: [zabbix, monitoring]
+
+- name: "[Zabbix] Flush handlers (apply new zabbix_agentd.conf immediately, if changed)"
+  meta: flush_handlers
+  tags: [zabbix, monitoring]
+
+# ── API registration -- idempotent throughout: get before create, every object ─────────
+
+- name: "[Zabbix] Check whether this host is already registered"
+  ansible.builtin.uri:
+    url: "http://{{ site_services.zabbix.ip }}/zabbix/api_jsonrpc.php"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ vault_zabbix_api_token }}"
+    body_format: json
+    body:
+      jsonrpc: "2.0"
+      method: host.get
+      params:
+        filter:
+          host: ["{{ inventory_hostname }}"]
+      id: 1
+    status_code: 200
+  register: zbx_host_check
+  delegate_to: localhost
+  become: false
+  tags: [zabbix, monitoring]
+
+- name: "[Zabbix] Get the auto-registration host group"
+  ansible.builtin.uri:
+    url: "http://{{ site_services.zabbix.ip }}/zabbix/api_jsonrpc.php"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ vault_zabbix_api_token }}"
+    body_format: json
+    body:
+      jsonrpc: "2.0"
+      method: hostgroup.get
+      params:
+        filter:
+          name: ["auto-registration"]
+      id: 1
+    status_code: 200
+  register: zbx_autoreg_group
+  delegate_to: localhost
+  become: false
+  when: zbx_host_check.json.result | length == 0
+  tags: [zabbix, monitoring]
+
+- name: "[Zabbix] Get-or-create this site's own host group (Site - {{ host_site }})"
+  ansible.builtin.uri:
+    url: "http://{{ site_services.zabbix.ip }}/zabbix/api_jsonrpc.php"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ vault_zabbix_api_token }}"
+    body_format: json
+    body:
+      jsonrpc: "2.0"
+      method: hostgroup.get
+      params:
+        filter:
+          name: ["Site - {{ host_site }}"]
+      id: 1
+    status_code: 200
+  register: zbx_site_group_check
+  delegate_to: localhost
+  become: false
+  when: zbx_host_check.json.result | length == 0
+  tags: [zabbix, monitoring]
+
+- name: "[Zabbix] Create this site's host group, if it doesn't exist yet"
+  ansible.builtin.uri:
+    url: "http://{{ site_services.zabbix.ip }}/zabbix/api_jsonrpc.php"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ vault_zabbix_api_token }}"
+    body_format: json
+    body:
+      jsonrpc: "2.0"
+      method: hostgroup.create
+      params:
+        name: "Site - {{ host_site }}"
+      id: 1
+    status_code: 200
+  register: zbx_site_group_create
+  delegate_to: localhost
+  become: false
+  when:
+    - zbx_host_check.json.result | length == 0
+    - zbx_site_group_check.json.result | length == 0
+  tags: [zabbix, monitoring]
+
+- name: "[Zabbix] Get the Linux by Zabbix agent active template ID"
+  ansible.builtin.uri:
+    url: "http://{{ site_services.zabbix.ip }}/zabbix/api_jsonrpc.php"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ vault_zabbix_api_token }}"
+    body_format: json
+    body:
+      jsonrpc: "2.0"
+      method: template.get
+      params:
+        filter:
+          host: ["Linux by Zabbix agent active"]
+      id: 1
+    status_code: 200
+  register: zbx_template_check
+  delegate_to: localhost
+  become: false
+  when: zbx_host_check.json.result | length == 0
+  tags: [zabbix, monitoring]
+
+- name: "[Zabbix] Register host via host.create"
+  ansible.builtin.uri:
+    url: "http://{{ site_services.zabbix.ip }}/zabbix/api_jsonrpc.php"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ vault_zabbix_api_token }}"
+    body_format: json
+    body:
+      jsonrpc: "2.0"
+      method: host.create
+      params:
+        host: "{{ inventory_hostname }}"
+        groups: >-
+          {{
+            [{'groupid': zbx_autoreg_group.json.result[0].groupid}] +
+            ([{'groupid': zbx_site_group_check.json.result[0].groupid}] if zbx_site_group_check.json.result | length > 0
+             else [{'groupid': zbx_site_group_create.json.result.groupids[0]}])
+          }}
+        templates:
+          - templateid: "{{ zbx_template_check.json.result[0].templateid }}"
+        tls_connect: 2
+        tls_accept: 2
+        tls_psk_identity: "{{ inventory_hostname }}-psk"
+        tls_psk: "{{ zbx_psk_value }}"
+      id: 1
+    status_code: 200
+  register: zbx_host_create
+  delegate_to: localhost
+  become: false
+  no_log: true
+  when: zbx_host_check.json.result | length == 0
+  tags: [zabbix, monitoring]
+
+- name: "[Zabbix] Registration summary"
+  ansible.builtin.debug:
+    msg: >-
+      {{ (zbx_host_check.json.result | length > 0)
+         | ternary('Already registered in Zabbix.',
+                    'Newly registered in Zabbix, group "Site - ' + host_site + '", template "Linux by Zabbix agent active".') }}
+  tags: [zabbix, monitoring]

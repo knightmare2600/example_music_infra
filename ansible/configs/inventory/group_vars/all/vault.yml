@@ -19,6 +19,16 @@
 #               it (most managed switches), also scope this community to an SNMP view
 #               restricted to the sysLocation/sysContact/sysName OID subtree at the device
 #               config level, not just in this playbook's own allow-list.
+#   2026-10-16  Added vault_zabbix_api_token -- a dedicated Zabbix 7.0 API token (Users ->
+#               API tokens on EXAZABCLD001, NOT the Admin account's own password), used by
+#               ansible/tasks/zabbix_agent_onboard.yml's host.create/hostgroup.get calls.
+#               Chosen over a masked per-run prompt specifically because this task file is
+#               included from linux/tools.yml (routinely re-run, hosts: all by default) as
+#               well as the one-shot zabbix_agent.yml -- prompting for Admin credentials on
+#               every single estate-wide tools.yml run would be a real UX regression.
+#               Presented as an Authorization: Bearer header, not the deprecated JSON-RPC
+#               "auth" field (confirmed against the real 7.0 API docs before writing any
+#               code -- api/general/description.html's own token-auth example).
 # =============================================================================
 
 vault_local_admin_password:   "CHANGEME"  # 2026-10-01: confirmed unused (grepped -- zero
@@ -29,3 +39,4 @@ vault_local_admin_password:   "CHANGEME"  # 2026-10-01: confirmed unused (greppe
 vault_domain_join_password:   "CHANGEME"
 vault_winrm_password:         "CHANGEME"
 vault_snmp_write_community:   "CHANGEME"
+vault_zabbix_api_token:       "CHANGEME"  # Users -> API tokens on EXAZABCLD001, NOT Admin's password
