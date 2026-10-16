@@ -1570,6 +1570,7 @@ def compute_site_services(csv_path: Path, devices_path: Path, ad_forest_path: Pa
   rdr = lookup("CLD", "RUD")  # 2026-07-20: Type renamed RDR -> RUD (badge readers kept RDR)
   wac = lookup("CLD", "SVR")
   slt = lookup("CLD", "SLT")
+  zab = lookup("CLD", "ZAB")  # 2026-10-16: EXAZABCLD001, single instance, CLD-only (see role_codes.csv)
 
   # Port 8000 is a real, fixed detail of the Fredericia Havn MacBook's python3 http.server setup
   # (menu.ipxe/late_command.sh both hardcode it too) -- not derivable from devices.csv, which has
@@ -1599,6 +1600,7 @@ def compute_site_services(csv_path: Path, devices_path: Path, ad_forest_path: Pa
     "rudder": rdr,
     "wac": wac,
     "salt": slt,
+    "zabbix": zab,
   }
 
   if ad_forest_path is not None and ad_forest_path.exists():

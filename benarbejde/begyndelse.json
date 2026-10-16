@@ -38,5 +38,9 @@
   "salt": {
     "hostname": "EXASLTCLD001",
     "ip": "192.168.69.22"
+  },
+  "zabbix": {
+    "hostname": "EXAZABCLD001",
+    "ip": "192.168.69.13"
   }
 }
