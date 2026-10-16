@@ -1,0 +1,12 @@
+# requirements.yml
+# Install with: ansible-galaxy collection install -r requirements.yml
+#
+# community.general -- ufw (UFW firewall rules), apache2_module (mod_rewrite)
+# community.mysql   -- mysql_db/mysql_user/mysql_variables/mysql_query (MariaDB backend
+#                      for the Zabbix server, zabbix_server.yml)
+
+collections:
+  - name: community.general
+    version: ">=11.0.0"
+  - name: community.mysql
+    version: ">=3.0.0"

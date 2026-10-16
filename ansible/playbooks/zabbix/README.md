@@ -22,8 +22,11 @@ One detail updated past that doc, verified fresh: `EnableRemoteCommands` is depr
 
 | File | What it does |
 |------|-------------|
-| `zabbix_agent.yml` | Entry point — one-shot onboarding for an existing host, `--limit <hostname>` |
-| `../../tasks/zabbix_agent_onboard.yml` | The real work: install, PSK, config, API `host.create`. Shared — also included automatically from `linux/tools.yml` for every new/re-run host going forward (Robert's own explicit choice) |
+| `zabbix_server.yml` | Ansible port of `zabbixme.sh` — the full Zabbix 7.0 server (MariaDB, packages, schema, frontend, Apache vhost, API readiness + Admin rotation, auto-registration group/action, UFW, MOTD) |
+| `zabbix_agent.yml` | Entry point — one-shot agent onboarding for an existing host, `--limit <hostname>` |
+| `../../tasks/zabbix_agent_onboard.yml` | The real agent-side work: install, PSK, config, API `host.create`. Shared — also included automatically from `linux/tools.yml` for every new/re-run host going forward (Robert's own explicit choice) |
+| `../../tasks/zabbix_repo_install.yml` | Shared: arch-aware `zabbix-release` install (debian/debian-arm64 tree), used by both `zabbix_server.yml` and `zabbix_agent_onboard.yml` |
+| `requirements.yml` | `community.general` (ufw, apache2_module) + `community.mysql` (mysql_db/mysql_user/mysql_variables/mysql_query) — `zabbix_server.yml`'s own dependencies |
 
 ## Requires
 
@@ -32,35 +35,45 @@ One detail updated past that doc, verified fresh: `EnableRemoteCommands` is depr
   `site_services.dns`. Already wired up (2026-10-16).
 - **`vault_zabbix_api_token`** in `configs/inventory/group_vars/all/vault.yml` (currently
   `"CHANGEME"`) — a **dedicated** Zabbix API token (Users → API tokens on `EXAZABCLD001`),
-  deliberately not the `Admin` account's own password. Chosen specifically because this
-  task file is included from `linux/tools.yml`, a routinely re-run, `hosts: all` by
-  default play — a masked per-run credential prompt there would be a real UX regression.
-  Presented as an `Authorization: Bearer` header, not the deprecated JSON-RPC `auth` field.
+  deliberately not the `Admin` account's own password. Chosen specifically because
+  `zabbix_agent_onboard.yml` is included from `linux/tools.yml`, a routinely re-run,
+  `hosts: all` by default play — a masked per-run credential prompt there would be a real
+  UX regression. Presented as an `Authorization: Bearer` header, not the deprecated
+  JSON-RPC `auth` field. Only needed for agent registration, NOT for `zabbix_server.yml`
+  itself (that one bootstraps its own Admin password into KeePass on first run, same
+  `keepass_credential_sync.yml` pattern `windows_dc`'s own domain-admin/local-admin
+  passwords use).
+- `ansible-galaxy collection install -r requirements.yml` before running `zabbix_server.yml`.
 
 ## Quick start
 
 ```bash
-# Step 1 — create a dedicated API token on EXAZABCLD001 (Users -> API tokens in the UI),
-#          then set it as a real value
+# Install this family's collection dependencies once
+ansible-galaxy collection install -r playbooks/zabbix/requirements.yml
+
+# Build/rebuild the full Zabbix server (already-named EXA<ROLE><SITE><NNN> host required --
+# this does NOT prompt for hostname/site the way zabbixme.sh itself does)
+ansible-playbook -i configs/inventory playbooks/zabbix/zabbix_server.yml --limit EXAZABCLD001
+
+# Create a dedicated API token on the server (Users -> API tokens in the UI), then set it
 ansible-vault edit configs/inventory/group_vars/all/vault.yml
 
-# Step 2 — onboard a single, already-existing host
+# Onboard a single, already-existing host's agent
 ansible-playbook -i configs/inventory playbooks/zabbix/zabbix_agent.yml --limit <hostname>
 
-# From here on, every linux/tools.yml run onboards new/unregistered hosts automatically.
+# From here on, every linux/tools.yml run onboards new/unregistered hosts' agents automatically.
 ```
 
 ## Not yet built
 
-- **`zabbix_server.yml`/`zabbix_proxy.yml`** — the Ansible ports of `zabbixme.sh` and a new
-  Zabbix proxy playbook, both scoped in `docs/ansible/zabbix-playbooks-plan.md`. Deliberately
-  deferred (Robert's own call) — the real server already works via the bash script and
-  isn't blocking anything; the agent-onboarding piece was the actual prerequisite.
+- **`zabbix_proxy.yml`** — the new Zabbix proxy playbook, scoped in
+  `docs/ansible/zabbix-playbooks-plan.md` but not needed yet (no proxy topology decided).
 - **Windows agent rollout** — Salt's job (MSI install), explicitly out of scope here.
-- **Live-tested against a real host.** Written and syntax-checked, harness-clean, but not
-  yet run against anything real — next step is a disposable test VM (Robert's own choice,
-  not the production estate) before this touches `linux/tools.yml`'s real `hosts: all`.
+- **Live-tested against a real host.** Both `zabbix_server.yml` and the agent onboarding
+  are written, syntax-checked, and harness-clean, but `zabbix_server.yml` specifically has
+  not yet been run for real (the agent side has — see its own commit history for the real
+  bugs found and fixed on `EXAZABCLD001`'s rebuild test).
 - **Per-playbook-family companion templates** (the actual original ask — "every playbook
-  gets a companion Zabbix template"). This is the prerequisite only; template design/build/
-  API-verify/export for `linux/tools.yml` itself (the agreed first "low hanging fruit")
-  comes next, once agent registration is live-confirmed.
+  gets a companion Zabbix template"). The server + agent onboarding were the prerequisite
+  only; template design/build/API-verify/export for `linux/tools.yml` itself (the agreed
+  first "low hanging fruit") comes next.

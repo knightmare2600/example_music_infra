@@ -1,0 +1,1157 @@
+---
+# =============================================================================
+# playbooks/zabbix/zabbix_server.yml
+# Example Music Limited — Zabbix 7.0 server (Ansible port of zabbixme.sh)
+# =============================================================================
+# Direct conversion of bootstrap/web/provision/zabbixme.sh (v1.20.0, feature-complete,
+# live-confirmed idempotent across many real runs on EXAZABCLD001/EXAZABVRK001),
+# following that script's own 14-section chronology -- see each task block's own
+# comment for which bash section it replaces, and docs/ansible/zabbix-playbooks-plan.md
+# (2026-09-03) for the original design doc this follows.
+#
+# Deliberate differences from the bash script, each one justified below:
+#
+# 1. Sections 1-2 (interactive site/hostname selection) are NOT ported. Every other
+#    Ansible-managed service in this estate (rudder_server.yml, cloudpanel/00-preflight.yml,
+#    etc.) assumes the host is ALREADY correctly named before Ansible ever runs against
+#    it (tasks/hostname_facts.yml just reads that name) -- Zabbix gets the same treatment
+#    now that it's Ansible-managed, rather than keeping the bash script's own interactive
+#    prompting. zabbixme.sh itself remains the one true way to pick a hostname for a
+#    genuinely new box at first boot; this playbook is for an ALREADY-NAMED host.
+#
+# 2. Static IP is NOT prompted for at all (unlike cloudpanel/00-preflight.yml, which
+#    genuinely needs a prompt since it's a potentially-multi-instance role). Zabbix is a
+#    single-instance-CLD-only role (zabbixme.sh's own Section 1 comment: "same convention
+#    as Rudder/TacticalRMM/Salt master") with an already-fixed, already-committed address
+#    -- site_services.zabbix.ip (generate_inventory.py's compute_site_services(), added
+#    2026-10-16 specifically for this). Deriving it directly is simpler and more correct
+#    than prompting for a value that's already known, and avoids an operator ever typing
+#    the wrong octet (the exact near-miss zabbixme.sh's own 2026-09-02 changelog records:
+#    "EXAZABCLD001 nearly ended up on 192.168.139.13 instead of 192.168.69.13").
+#
+# 3. DB password and the Zabbix Admin/API password are filed into KeePass via the
+#    existing check-defer-write pattern (tasks/keepass_credential_sync.yml), matching
+#    windows_dc/playbooks/00-dc-preflight.yml's own convention for domain-admin/local-admin
+#    passwords (kcs_can_generate: true, same shape) -- not written to root-only files on
+#    the box the way zabbixme.sh does. Robert's explicit ask for this port.
+#
+# 4. MariaDB database/user creation uses community.mysql.mysql_db/mysql_user (the
+#    collection is already installed, just never used elsewhere in this repo) instead of
+#    raw `CREATE ... IF NOT EXISTS` SQL -- real module-level idempotency rather than a
+#    hand-rolled idempotent SQL string.
+#
+# 5. The Zabbix repo-install step (zabbix-release) is shared with
+#    tasks/zabbix_agent_onboard.yml via tasks/zabbix_repo_install.yml, extracted
+#    specifically so this file doesn't duplicate that arch-aware logic a second time.
+#
+# Everything else (UFW rules incl. the per-site-subnet 10051/tcp trapper loop, MariaDB
+# housekeeping tightening + weekly optimise timer, schema import via the real confirmed
+# path, frontend zabbix.conf.php written directly (skips setup.php), Apache vhost with
+# the VRK/FRD/per-site API Location restriction, API readiness wait + Admin password
+# rotation, auto-registration host group + action, dynamic MOTD, sentinel file) is a
+# faithful port of the real, live-proven bash script -- not re-derived or guessed.
+#
+# Usage:
+#   ansible-playbook -i configs/inventory playbooks/zabbix/zabbix_server.yml --limit EXAZABCLD001
+#
+# Tags: zabbix, monitoring
+# =============================================================================
+# Changelog:
+#   2026-10-16  Initial file. Robert's ask: now that zabbixme.sh is confirmed solid (just
+#               rebuilt EXAZABCLD001 from scratch with it, clean run), port it to Ansible
+#               and file its two credentials into KeePass the same way windows_dc does,
+#               per his own stated sequencing from 2026-09-01 ("we'll backport it to
+#               ansible"). Not yet live-tested.
+# =============================================================================
+
+- name: Zabbix — Server (Ansible port of zabbixme.sh)
+  hosts: "{{ target_hosts | default(target | default('all')) }}"
+  become: true
+  gather_facts: true
+
+  vars:
+    sites_csv_src: "{{ playbook_dir }}/../../../benarbejde/sites.csv"
+    zbx_kcs_repo_root: "{{ playbook_dir }}/../../.."
+
+  # Only the activation gate needs a real prompt -- see this file's own header, point 2,
+  # for why the static IP/gateway questions cloudpanel/00-preflight.yml needs don't apply
+  # here. Same single-line vars_prompt mechanism (not pause -- see that file's own
+  # 2026-10-14 changelog for the real reason pause renders badly), same reasoning: evaluated
+  # once, before any task runs, so it can't embed a live-detected value in its own text.
+  vars_prompt:
+    - name: zbx_activate_now_answer
+      prompt: |-
+        ==== Static IP Activation ====
+        [!] The new zabbix-static NetworkManager profile is written to disk either way.
+        [!] If this session is connected via the interface being reconfigured, activating it
+        [!] now WILL likely drop it mid-run. Say N and run `nmcli connection up zabbix-static`
+        [!] yourself from an out-of-band session once ready, or reboot to apply it safely.
+        Activate the new static IP now? [y/N]
+      private: false
+      default: "n"
+
+  tasks:
+
+    # -- Hostname/site facts, same convention as every other service playbook here --
+    - name: Include hostname facts
+      include_tasks: ../../tasks/hostname_facts.yml
+      tags: [zabbix, monitoring]
+
+    # nodeinfo.json -- mandatory for every module, written early (post-hostname-resolution),
+    # per the repo-wide standing rule (2026-10-09).
+    - name: Load sites.csv for nodeinfo enrichment
+      ansible.builtin.read_csv:
+        path: "{{ sites_csv_src }}"
+      register: zbx_sites_raw
+      delegate_to: localhost
+      become: false
+      run_once: true
+      tags: [zabbix, monitoring]
+
+    - name: Look up this node's site row
+      ansible.builtin.set_fact:
+        zbx_site_row: "{{ zbx_sites_raw.list | selectattr('Site', 'equalto', host_site) | list | first | default({}) }}"
+      tags: [zabbix, monitoring]
+
+    - name: Write nodeinfo.json
+      tags: always
+      include_tasks: ../../tasks/nodeinfo.yml
+      vars:
+        nodeinfo_role: "{{ host_role | lower }}"
+        nodeinfo_site: "{{ host_site }}"
+        nodeinfo_city: "{{ zbx_site_row.City | default('') }}"
+        nodeinfo_country: "{{ zbx_site_row.Country | default('') }}"
+        nodeinfo_country_code: "{{ zbx_site_row.CountryCode | default('') }}"
+        nodeinfo_entity: "{{ zbx_site_row.Entity | default('') }}"
+        nodeinfo_bootstrapped_by: "zabbix/zabbix_server.yml"
+
+    - name: "[Zabbix] Resolve the real hostname (bare-IP-run safe, matches hostname_facts.yml's own precedence)"
+      ansible.builtin.set_fact:
+        zbx_real_hostname: "{{ target_hostname | default(ansible_hostname | default(inventory_hostname)) }}"
+      tags: [zabbix, monitoring]
+
+    # =========================================================================
+    # Section 3 (bash) — OS/arch already gathered by Ansible facts directly
+    # (ansible_distribution/ansible_architecture/ansible_distribution_major_version) --
+    # setOSInfo()'s own uname/lsb_release parsing isn't reproduced here, same reasoning
+    # cloudpanel/00-preflight.yml's own header gives for the identical choice.
+    # =========================================================================
+
+    - name: "[Preflight] Assert this is Debian (zabbixme.sh is Debian-only, not tested on anything else)"
+      ansible.builtin.assert:
+        that:
+          - ansible_distribution == 'Debian'
+        fail_msg: "This playbook is Debian-only (detected {{ ansible_distribution }})."
+      tags: [zabbix, monitoring]
+
+    # =========================================================================
+    # Section 4 (bash) — Base + monitoring toolkit packages
+    # =========================================================================
+
+    - name: "[Base packages] Install base + monitoring toolkit"
+      ansible.builtin.apt:
+        name:
+          - curl
+          - wget
+          - git
+          - vim
+          - htop
+          - tree
+          - jq
+          - python3
+          - arping
+          - network-manager
+          - molly-guard
+          - fail2ban
+          - ufw
+          - ca-certificates
+          - gnupg
+          - apt-transport-https
+          - plocate
+          - fping
+          - nmap
+          - snmp
+          - tcpdump
+          - traceroute
+          - whois
+        state: present
+        update_cache: true
+      tags: [zabbix, monitoring]
+
+    # snmp-mibs-downloader lives in Debian's non-free component (MIB file licensing), not
+    # enabled by this estate's preseed by default -- same real finding zabbixme.sh's own
+    # 2026-09-02 changelog documents. Best-effort: a failure here is a warning, not a
+    # blocker, matching the bash script's own framing exactly.
+    - name: "[Base packages] Check whether snmp-mibs-downloader is already installed"
+      ansible.builtin.command: dpkg -s snmp-mibs-downloader
+      register: zbx_mibs_check
+      changed_when: false
+      failed_when: false
+      tags: [zabbix, monitoring]
+
+    - name: "[Base packages] Enable non-free component (DEB822 .sources format)"
+      ansible.builtin.replace:
+        path: /etc/apt/sources.list.d/debian.sources
+        regexp: '^(Components:.*\bmain\b)((?!.*\bnon-free\b).*)$'
+        replace: '\1 non-free\2'
+      register: zbx_nonfree_deb822
+      failed_when: false
+      when: zbx_mibs_check.rc != 0
+      tags: [zabbix, monitoring]
+
+    - name: "[Base packages] Enable non-free component (classic sources.list format)"
+      ansible.builtin.replace:
+        path: /etc/apt/sources.list
+        regexp: '^(deb .*\bmain\b)((?!.*\bnon-free\b).*)$'
+        replace: '\1 non-free\2'
+      register: zbx_nonfree_classic
+      failed_when: false
+      when: zbx_mibs_check.rc != 0
+      tags: [zabbix, monitoring]
+
+    - name: "[Base packages] apt update (non-free component just enabled, if it was)"
+      ansible.builtin.apt:
+        update_cache: true
+      when:
+        - zbx_mibs_check.rc != 0
+        - (zbx_nonfree_deb822 is defined and zbx_nonfree_deb822 is changed) or (zbx_nonfree_classic is defined and zbx_nonfree_classic is changed)
+      tags: [zabbix, monitoring]
+
+    - name: "[Base packages] Install snmp-mibs-downloader (best-effort, non-free)"
+      ansible.builtin.apt:
+        name: snmp-mibs-downloader
+        state: present
+      register: zbx_mibs_install
+      failed_when: false
+      when: zbx_mibs_check.rc != 0
+      tags: [zabbix, monitoring]
+
+    - name: "[Base packages] WARN -- snmp-mibs-downloader not installable"
+      ansible.builtin.debug:
+        msg: >-
+          snmp-mibs-downloader could not be installed (non-free component, possibly not
+          available on this image). snmpwalk/snmpget will work but show numeric OIDs
+          instead of resolved names. Install manually later if needed.
+      when:
+        - zbx_mibs_check.rc != 0
+        - zbx_mibs_install is defined and zbx_mibs_install is failed
+
+    - name: "[Base packages] Enable MIB resolution (remove the default 'mibs :' suppression line)"
+      ansible.builtin.lineinfile:
+        path: /etc/snmp/snmp.conf
+        regexp: '^mibs :$'
+        state: absent
+      failed_when: false
+      tags: [zabbix, monitoring]
+
+    - name: "[Base packages] Download MIBs (download-mibs)"
+      ansible.builtin.command: download-mibs
+      register: zbx_download_mibs
+      changed_when: true
+      failed_when: false
+      tags: [zabbix, monitoring]
+
+    # =========================================================================
+    # Section 5 (bash) — Network / Static IP. Same session-safe NetworkManager
+    # pattern already proven on rudder_server.yml/tacticalrmm_server.yml/
+    # meshcentral_server.yml/cloudpanel/00-preflight.yml -- see this file's own
+    # header, point 2, for why the IP itself is derived, not prompted for.
+    # =========================================================================
+
+    - name: "[Static IP] Set static IP + gateway facts (site_services/sites.csv -- no prompt, single-instance role)"
+      ansible.builtin.set_fact:
+        zbx_static_ip: "{{ zbx_static_ip | default(site_services.zabbix.ip) }}"
+        zbx_gateway: "{{ zbx_gateway | default(zbx_site_row.Gateway | default('')) }}"
+      tags: [zabbix, monitoring]
+
+    - name: "[Static IP] Assert static IP and gateway are both resolved"
+      ansible.builtin.assert:
+        that:
+          - zbx_static_ip is defined and zbx_static_ip != ""
+          - zbx_gateway is defined and zbx_gateway != ""
+        fail_msg: >-
+          zbx_static_ip/zbx_gateway could not be resolved -- check devices.csv has a real
+          ZAB row for this site (generate_inventory.py's compute_site_services()) and
+          sites.csv has a Gateway value for {{ host_site }}.
+      tags: [zabbix, monitoring]
+
+    - name: "[Static IP] Set DNS/domain facts (same source of truth windows_bootstrap/rudder/cloudpanel already use)"
+      ansible.builtin.set_fact:
+        zbx_dns: "{{ zbx_dns | default(site_services.dns.ip) }}"
+        zbx_domain: "{{ zbx_domain | default((lookup('file', ad_forest_json_path | default('/etc/example-music/ad_forest.json')) | from_json).domain_fqdn) }}"
+      tags: [zabbix, monitoring]
+
+    - name: "[Static IP] Detect current network interface"
+      ansible.builtin.shell: |
+        for iface in $(ls /sys/class/net/); do
+          [[ "$iface" == "lo" ]] && continue
+          ip_addr=$(ip -4 addr show "$iface" 2>/dev/null | grep -oP '(?<=inet\s)\d+\.\d+\.\d+\.\d+' | head -1)
+          if [[ -n "$ip_addr" ]]; then
+            echo "$iface"
+            exit 0
+          fi
+        done
+        exit 1
+      args:
+        executable: /bin/bash
+      register: zbx_detected_iface
+      changed_when: false
+      tags: [zabbix, monitoring]
+
+    - name: "[Static IP] Set interface name fact"
+      ansible.builtin.set_fact:
+        zbx_iface: "{{ zbx_network_interface | default(zbx_detected_iface.stdout | trim, true) }}"
+      tags: [zabbix, monitoring]
+
+    - name: "[Static IP] Read interface MAC address"
+      ansible.builtin.slurp:
+        src: "/sys/class/net/{{ zbx_iface }}/address"
+      register: zbx_iface_mac_raw
+      tags: [zabbix, monitoring]
+
+    - name: "[Static IP] Set MAC address fact"
+      ansible.builtin.set_fact:
+        zbx_mac: "{{ zbx_iface_mac_raw.content | b64decode | trim }}"
+      tags: [zabbix, monitoring]
+
+    - name: "[Static IP] Pin interface name via systemd .link"
+      ansible.builtin.copy:
+        dest: "/etc/systemd/network/10-zabbix-prov.link"
+        content: |
+          # Example Music — Zabbix server interface pin
+          # Written by zabbix/zabbix_server.yml on {{ ansible_date_time.iso8601 }}
+          # MAC: {{ zbx_mac }}  interface: {{ zbx_iface }}
+          [Match]
+          MACAddress={{ zbx_mac }}
+          [Link]
+          Name={{ zbx_iface }}
+        mode: "0644"
+      tags: [zabbix, monitoring]
+
+    - name: "[Static IP] Mask ifupdown to prevent conflict with NetworkManager"
+      ansible.builtin.systemd:
+        name: "networking.service"
+        masked: true
+        enabled: false
+      failed_when: false
+      tags: [zabbix, monitoring]
+
+    - name: "[Static IP] Check for /etc/network/interfaces"
+      ansible.builtin.stat:
+        path: /etc/network/interfaces
+      register: zbx_interfaces_file
+      tags: [zabbix, monitoring]
+
+    - name: "[Static IP] Remove ifupdown DHCP stanza for {{ zbx_iface }} (prevents a stray second dynamic address)"
+      ansible.builtin.shell: |
+        set -e
+        if grep -qE "^(auto|allow-|iface)\s+{{ zbx_iface }}\b" /etc/network/interfaces; then
+          sed -i "/^auto\s\+{{ zbx_iface }}\b/d"      /etc/network/interfaces
+          sed -i "/^allow-.*\s{{ zbx_iface }}\b/d"     /etc/network/interfaces
+          sed -i "/^iface[[:space:]]\+{{ zbx_iface }}\b/,/^[^[:space:]]/d" /etc/network/interfaces
+          echo changed
+        else
+          echo unchanged
+        fi
+      register: zbx_ifupdown_cleanup
+      changed_when: zbx_ifupdown_cleanup.stdout | trim == 'changed'
+      when: zbx_interfaces_file.stat.exists
+      tags: [zabbix, monitoring]
+
+    - name: "[Static IP] Ensure NetworkManager is running"
+      ansible.builtin.systemd:
+        name: NetworkManager
+        state: started
+        enabled: true
+      tags: [zabbix, monitoring]
+
+    - name: "[Static IP] Write zabbix-static NetworkManager connection profile"
+      ansible.builtin.template:
+        src: zabbix-static.nmconnection.j2
+        dest: /etc/NetworkManager/system-connections/zabbix-static.nmconnection
+        owner: root
+        group: root
+        mode: "0600"
+      notify: Reload NetworkManager connections
+      tags: [zabbix, monitoring]
+
+    - name: "[Static IP] Flush handlers (reload NM connection state, if the profile actually changed)"
+      ansible.builtin.meta: flush_handlers
+      tags: [zabbix, monitoring]
+
+    - name: "[Static IP] Detect current live IP on {{ zbx_iface }}"
+      ansible.builtin.shell: "nmcli -g IP4.ADDRESS dev show {{ zbx_iface }} 2>/dev/null | head -1 | cut -d/ -f1"
+      register: zbx_ip_live
+      changed_when: false
+      failed_when: false
+      tags: [zabbix, monitoring]
+
+    - name: "[Static IP] Show live-vs-target IP before acting on the activation answer"
+      ansible.builtin.debug:
+        msg: >-
+          zabbix-static profile written to disk (not yet live). Current live address on
+          {{ zbx_iface }} is {{ zbx_ip_live.stdout | trim | default('unknown') }}; the new
+          profile sets {{ zbx_static_ip }}.
+      tags: [zabbix, monitoring]
+
+    - name: "[Static IP] Set activation decision (blank input = no)"
+      ansible.builtin.set_fact:
+        zbx_activate_now: "{{ (zbx_activate_now_answer | default('n')) | lower | trim in ['y', 'yes'] }}"
+      tags: [zabbix, monitoring]
+
+    - name: "[Static IP] Bring up zabbix-static connection (operator said yes)"
+      ansible.builtin.command: nmcli connection up zabbix-static
+      when: zbx_activate_now
+      tags: [zabbix, monitoring]
+
+    - name: "[Static IP] Note -- not activated, operator said no (or accepted the default)"
+      ansible.builtin.debug:
+        msg: >-
+          zabbix-static profile is written to disk but NOT applied live. Reboot this host,
+          or run `nmcli connection up zabbix-static` yourself from a session that isn't
+          riding {{ zbx_iface }} (e.g. console/out-of-band), once you're ready to apply it.
+      when: not zbx_activate_now
+      tags: [zabbix, monitoring]
+
+    # =========================================================================
+    # Section 6 (bash) — UFW firewall
+    # =========================================================================
+
+    - name: "[UFW] Set default policies"
+      community.general.ufw:
+        direction: "{{ item.direction }}"
+        policy: "{{ item.policy }}"
+      loop:
+        - { direction: incoming, policy: deny }
+        - { direction: outgoing, policy: allow }
+      tags: [zabbix, monitoring]
+
+    - name: "[UFW] Allow SSH/web UI ports"
+      community.general.ufw:
+        rule: allow
+        port: "{{ item.port }}"
+        proto: tcp
+        comment: "{{ item.comment }}"
+      loop:
+        - { port: "22", comment: "SSH" }
+        - { port: "80", comment: "Zabbix web UI (redirects to HTTPS if configured)" }
+        - { port: "443", comment: "Zabbix web UI HTTPS" }
+      tags: [zabbix, monitoring]
+
+    # Every real site subnet (sites.csv's own Subnet column, filtered to genuine dotted-quad
+    # /24 CIDRs -- some rows are "N/A", same skip zabbixme.sh's own bash try/except does)
+    # plus the two provisioning networks (site_services.provisioning_edinburgh/
+    # _fredericia_havn, the Ansible-side equivalent of begyndelse.json's VRK_SUBNET/
+    # FRD_SUBNET) -- Zabbix itself has no native inbound-IP allowlist for the trapper port
+    # agents connect to (10051), same OS-firewall-job reasoning rudder_server.yml's own
+    # UFW section already uses for Rudder's agent ports.
+    - name: "[UFW] Build the list of every site subnet + provisioning networks (for the trapper port)"
+      ansible.builtin.set_fact:
+        zbx_trapper_subnets: >-
+          {{
+            (zbx_sites_raw.list | selectattr('Subnet', 'match', '^\d+\.\d+\.\d+\.\d+/\d+$') | map(attribute='Subnet') | list)
+            + [site_services.provisioning_edinburgh.subnet, site_services.provisioning_fredericia_havn.subnet]
+          }}
+      tags: [zabbix, monitoring]
+
+    - name: "[UFW] Allow Zabbix trapper port (10051/tcp) from every site + provisioning subnet"
+      community.general.ufw:
+        rule: allow
+        src: "{{ item }}"
+        port: "10051"
+        proto: tcp
+        comment: "Zabbix trapper"
+      loop: "{{ zbx_trapper_subnets }}"
+      tags: [zabbix, monitoring]
+
+    - name: "[UFW] Enable"
+      community.general.ufw:
+        state: enabled
+      tags: [zabbix, monitoring]
+
+    # =========================================================================
+    # Section 7 (bash) — MariaDB. community.mysql.mysql_db/mysql_user instead of
+    # raw CREATE ... IF NOT EXISTS SQL -- real module-level idempotency, collection
+    # already installed, just never used elsewhere in this repo yet.
+    # =========================================================================
+
+    - name: "[MariaDB] Install"
+      ansible.builtin.apt:
+        name: [mariadb-server, mariadb-client, python3-pymysql]
+        state: present
+      tags: [zabbix, monitoring]
+
+    - name: "[MariaDB] Ensure running and enabled"
+      ansible.builtin.systemd:
+        name: mariadb
+        state: started
+        enabled: true
+      tags: [zabbix, monitoring]
+
+    # kcs_can_generate: true -- same shape as windows_dc/playbooks/00-dc-preflight.yml's own
+    # domain-admin/local-admin password filing (Robert's explicit ask for this port): nothing
+    # exists on a genuinely fresh install, so the first run generates; every run after that
+    # just defers to the existing KeePass value.
+    - name: "[MariaDB] KeePass sync -- zabbix DB user password"
+      include_tasks: ../../tasks/keepass_credential_sync.yml
+      vars:
+        kcs_repo_root: "{{ zbx_kcs_repo_root }}"
+        kcs_keepass_path: "Infrastructure/{{ host_site }}/{{ zbx_real_hostname }}-zabbix-db"
+        kcs_username: "zabbix"
+        kcs_current_value: ""
+        kcs_can_generate: true
+        kcs_generate_length: 28
+        kcs_credentials_json_role: "ZABBIX_DB"
+        kcs_result_var: zbx_db_password
+      tags: [zabbix, monitoring]
+
+    - name: "[MariaDB] Create database (utf8mb4/utf8mb4_bin -- Zabbix's own current requirement)"
+      community.mysql.mysql_db:
+        name: zabbix
+        encoding: utf8mb4
+        collation: utf8mb4_bin
+        state: present
+        login_unix_socket: /run/mysqld/mysqld.sock
+      tags: [zabbix, monitoring]
+
+    - name: "[MariaDB] Create zabbix DB user"
+      community.mysql.mysql_user:
+        name: zabbix
+        password: "{{ zbx_db_password }}"
+        host: localhost
+        priv: "zabbix.*:ALL"
+        state: present
+        login_unix_socket: /run/mysqld/mysqld.sock
+      tags: [zabbix, monitoring]
+
+    - name: "[MariaDB] Set log_bin_trust_function_creators (required for the schema import below)"
+      community.mysql.mysql_variables:
+        variable: log_bin_trust_function_creators
+        value: "1"
+        login_unix_socket: /run/mysqld/mysqld.sock
+      tags: [zabbix, monitoring]
+
+    # =========================================================================
+    # Section 8 (bash) — Zabbix repository + server/frontend packages
+    # =========================================================================
+
+    - name: "[Zabbix] Install the real zabbix-release package (shared with zabbix_agent_onboard.yml)"
+      include_tasks: ../../tasks/zabbix_repo_install.yml
+      tags: [zabbix, monitoring]
+
+    - name: "[Zabbix] Install server/frontend packages"
+      ansible.builtin.apt:
+        name:
+          - zabbix-server-mysql
+          - zabbix-frontend-php
+          - zabbix-sql-scripts
+          - zabbix-apache-conf
+          - zabbix-agent
+        state: present
+      tags: [zabbix, monitoring]
+
+    - name: "[Zabbix] Stop/disable nginx if present (Apache is this estate's chosen HTTP daemon)"
+      ansible.builtin.systemd:
+        name: nginx
+        state: stopped
+        enabled: false
+      failed_when: false
+      tags: [zabbix, monitoring]
+
+    # =========================================================================
+    # Section 9 (bash) — DB schema import + zabbix_server.conf + housekeeping
+    # =========================================================================
+
+    # Checks the real DB state (does the 'users' table already exist) rather than a
+    # side-channel marker file -- more robust than zabbixme.sh's own marker-file approach,
+    # can't drift out of sync with what the database itself actually has.
+    - name: "[Zabbix] Check whether the schema is already imported"
+      community.mysql.mysql_query:
+        login_db: zabbix
+        login_user: zabbix
+        login_password: "{{ zbx_db_password }}"
+        login_unix_socket: /run/mysqld/mysqld.sock
+        query: "SELECT COUNT(*) AS c FROM information_schema.tables WHERE table_schema='zabbix' AND table_name='users'"
+      register: zbx_schema_check
+      tags: [zabbix, monitoring]
+
+    - name: "[Zabbix] Find the real schema file (dpkg -L, not guessed -- see zabbixme.sh's own 2026-09-02 finding)"
+      ansible.builtin.shell: |
+        set -o pipefail
+        for candidate in \
+          /usr/share/zabbix-sql-scripts/mysql/server.sql.gz \
+          /usr/share/zabbix/sql-scripts/mysql/server.sql.gz \
+          /usr/share/doc/zabbix-server-mysql/create.sql.gz; do
+          [[ -f "$candidate" ]] && { echo "$candidate"; exit 0; }
+        done
+        exit 1
+      args:
+        executable: /bin/bash
+      register: zbx_schema_file
+      changed_when: false
+      when: zbx_schema_check.query_result[0][0].c == 0
+      tags: [zabbix, monitoring]
+
+    - name: "[Zabbix] FAIL -- could not find the DB schema anywhere expected"
+      ansible.builtin.fail:
+        msg: >-
+          Could not find the Zabbix DB schema (checked /usr/share/zabbix-sql-scripts/mysql/
+          server.sql.gz and two older fallback paths). Find it manually:
+          dpkg -L zabbix-sql-scripts zabbix-server-mysql | grep -i sql
+      when:
+        - zbx_schema_check.query_result[0][0].c == 0
+        - zbx_schema_file.rc != 0
+      tags: [zabbix, monitoring]
+
+    - name: "[Zabbix] Import schema (this can take a minute)"
+      ansible.builtin.shell: "zcat {{ zbx_schema_file.stdout | trim }} | mysql -uzabbix -p{{ zbx_db_password }} zabbix"
+      no_log: true
+      when: zbx_schema_check.query_result[0][0].c == 0
+      tags: [zabbix, monitoring]
+
+    - name: "[Zabbix] Write /etc/zabbix/zabbix_server.conf DB settings"
+      ansible.builtin.lineinfile:
+        path: /etc/zabbix/zabbix_server.conf
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+        state: present
+      loop:
+        - { regexp: '^#?\s*DBName=.*', line: "DBName=zabbix" }
+        - { regexp: '^#?\s*DBUser=.*', line: "DBUser=zabbix" }
+        - { regexp: '^#?\s*DBPassword=.*', line: "DBPassword={{ zbx_db_password }}" }
+      no_log: true
+      notify: Restart zabbix-server
+      tags: [zabbix, monitoring]
+
+    - name: "[Zabbix] Ensure zabbix-server is running and enabled"
+      ansible.builtin.systemd:
+        name: zabbix-server
+        state: started
+        enabled: true
+      tags: [zabbix, monitoring]
+
+    - name: "[Zabbix] Flush handlers (apply new zabbix_server.conf immediately, if changed)"
+      ansible.builtin.meta: flush_handlers
+      tags: [zabbix, monitoring]
+
+    # Robert, point 8: "I HATE when the database grows to a ridiculous size" -- two real,
+    # distinct mechanisms, both applied, same as zabbixme.sh's own Section 9: tighter
+    # retention than Zabbix's stock defaults, PLUS a weekly OPTIMIZE TABLE timer (MariaDB's
+    # InnoDB engine doesn't return freed space to the OS on its own after the housekeeper's
+    # row-level DELETEs -- native partitioning would avoid this entirely but is real DDL
+    # surgery on live tables, not attempted unattended here either).
+    - name: "[Zabbix] Tighten DB housekeeping retention"
+      community.mysql.mysql_query:
+        login_db: zabbix
+        login_user: zabbix
+        login_password: "{{ zbx_db_password }}"
+        login_unix_socket: /run/mysqld/mysqld.sock
+        query: >-
+          UPDATE config SET
+            hk_history_global = 1, hk_history = '7d',
+            hk_trends_global = 1, hk_trends = '90d',
+            hk_events_mode = 1,
+            hk_events_trigger = '14d',
+            hk_events_internal = '3d',
+            hk_events_discovery = '3d',
+            hk_events_autoreg = '3d',
+            hk_sessions_mode = 1, hk_sessions = '30d',
+            hk_audit_mode = 1, hk_audit = '90d'
+      no_log: true
+      tags: [zabbix, monitoring]
+
+    - name: "[Zabbix] Write weekly DB optimise systemd service"
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/zabbix-db-optimize.service
+        content: |
+          [Unit]
+          Description=Optimize Zabbix MariaDB tables (reclaim InnoDB space the housekeeper's DELETEs leave behind)
+          After=mariadb.service
+
+          [Service]
+          Type=oneshot
+          ExecStart=/usr/bin/mysqlcheck -uzabbix -p{{ zbx_db_password }} --optimize zabbix
+        mode: "0600"
+      no_log: true
+      notify: Reload systemd (zabbix)
+      tags: [zabbix, monitoring]
+
+    - name: "[Zabbix] Write weekly DB optimise systemd timer"
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/zabbix-db-optimize.timer
+        content: |
+          [Unit]
+          Description=Weekly Zabbix MariaDB optimise
+
+          [Timer]
+          OnCalendar=Sun 03:00
+          Persistent=true
+
+          [Install]
+          WantedBy=timers.target
+        mode: "0644"
+      notify: Reload systemd (zabbix)
+      tags: [zabbix, monitoring]
+
+    - name: "[Zabbix] Flush handlers (daemon-reload before enabling the timer, if either unit changed)"
+      ansible.builtin.meta: flush_handlers
+      tags: [zabbix, monitoring]
+
+    - name: "[Zabbix] Enable + start the weekly DB optimise timer"
+      ansible.builtin.systemd:
+        name: zabbix-db-optimize.timer
+        state: started
+        enabled: true
+      tags: [zabbix, monitoring]
+
+    # =========================================================================
+    # Section 10 (bash) — Frontend configuration (zabbix.conf.php, written directly --
+    # skips the browser setup.php wizard, which detects this file and bows out)
+    # =========================================================================
+
+    - name: "[Frontend] Find the real frontend root (dpkg -L, not guessed)"
+      ansible.builtin.shell: "dpkg -L zabbix-frontend-php | grep -m1 '/index\\.php$' | xargs dirname || true"
+      args:
+        executable: /bin/bash
+      register: zbx_frontend_root
+      changed_when: false
+      tags: [zabbix, monitoring]
+
+    - name: "[Frontend] Assert the frontend root was found"
+      ansible.builtin.assert:
+        that:
+          - zbx_frontend_root.stdout | trim != ""
+        fail_msg: "Could not determine the Zabbix frontend's installed path (dpkg -L zabbix-frontend-php had no index.php)."
+      tags: [zabbix, monitoring]
+
+    - name: "[Frontend] Set frontend root/conf path facts"
+      ansible.builtin.set_fact:
+        zbx_frontend_root_path: "{{ zbx_frontend_root.stdout | trim }}"
+      tags: [zabbix, monitoring]
+
+    - name: "[Frontend] Generate a session-key salt (used only to namespace the session cookie name)"
+      ansible.builtin.set_fact:
+        zbx_session_key: "{{ lookup('password', '/dev/null', length=32, chars=['ascii_lowercase', 'digits']) }}"
+      tags: [zabbix, monitoring]
+
+    - name: "[Frontend] Write zabbix.conf.php"
+      ansible.builtin.copy:
+        dest: "{{ zbx_frontend_root_path }}/conf/zabbix.conf.php"
+        content: |
+          <?php
+          // Managed by Ansible (playbooks/zabbix/zabbix_server.yml) -- skips the browser setup wizard.
+          $DB['TYPE']     = 'MYSQL';
+          $DB['SERVER']   = 'localhost';
+          $DB['PORT']     = '0';
+          $DB['DATABASE'] = 'zabbix';
+          $DB['USER']     = 'zabbix';
+          $DB['PASSWORD'] = '{{ zbx_db_password }}';
+          $DB['ENCRYPTION']        = false;
+
+          $ZBX_SERVER      = 'localhost';
+          $ZBX_SERVER_PORT = '10051';
+          $ZBX_SERVER_NAME = '{{ zbx_real_hostname }}';
+
+          $IMAGE_FORMAT_DEFAULT = IMAGE_FORMAT_PNG;
+
+          $ZBX_SESSION_NAME = 'zbx_session_{{ zbx_session_key[:8] }}';
+        owner: www-data
+        group: www-data
+        mode: "0640"
+      no_log: true
+      tags: [zabbix, monitoring]
+
+    # =========================================================================
+    # Section 11 (bash) — Apache vhost: ServerName + "/" -> frontend 301 redirect,
+    # api_jsonrpc.php reachable only from VRK/FRD/site subnets (Robert point 6)
+    # =========================================================================
+
+    - name: "[Apache] Enable mod_rewrite"
+      community.general.apache2_module:
+        name: rewrite
+        state: present
+      tags: [zabbix, monitoring]
+
+    - name: "[Apache] Write zabbix vhost"
+      ansible.builtin.template:
+        src: zabbix.vhost.conf.j2
+        dest: /etc/apache2/sites-available/zabbix.conf
+        mode: "0644"
+      notify: Reload Apache
+      tags: [zabbix, monitoring]
+
+    - name: "[Apache] Disable 000-default"
+      ansible.builtin.command: a2dissite 000-default
+      register: zbx_a2dissite
+      changed_when: "'already disabled' not in zbx_a2dissite.stdout"
+      failed_when: false
+      tags: [zabbix, monitoring]
+
+    - name: "[Apache] Enable the zabbix site"
+      ansible.builtin.command: a2ensite zabbix
+      register: zbx_a2ensite
+      changed_when: "'already enabled' not in zbx_a2ensite.stdout"
+      tags: [zabbix, monitoring]
+
+    - name: "[Apache] Flush handlers (reload Apache if the vhost actually changed)"
+      ansible.builtin.meta: flush_handlers
+      tags: [zabbix, monitoring]
+
+    # =========================================================================
+    # Section 12 (bash) — Wait for frontend/API, rotate Admin off the default password
+    # =========================================================================
+
+    - name: "[API] Wait for the Zabbix API to respond (up to 2 minutes)"
+      ansible.builtin.uri:
+        url: "http://localhost/zabbix/api_jsonrpc.php"
+        method: POST
+        headers:
+          Content-Type: "application/json-rpc"
+        body_format: json
+        body:
+          jsonrpc: "2.0"
+          method: apiinfo.version
+          params: {}
+          id: 1
+        status_code: 200
+      register: zbx_api_ready
+      retries: 24
+      delay: 5
+      until: zbx_api_ready.status == 200
+      failed_when: false
+      tags: [zabbix, monitoring]
+
+    - name: "[API] WARN -- Zabbix API did not respond in time"
+      ansible.builtin.debug:
+        msg: >-
+          Zabbix API did not respond within 2 minutes -- skipping Admin password
+          rotation and auto-registration setup. Re-run once the frontend/API are
+          confirmed reachable: curl -v http://localhost/zabbix/api_jsonrpc.php
+      when: zbx_api_ready.status is not defined or zbx_api_ready.status != 200
+      tags: [zabbix, monitoring]
+
+    # kcs_can_generate: true -- same windows_dc shape as the DB password above. Default
+    # Zabbix credentials are Admin/zabbix; login with those, then immediately rotate to
+    # the KeePass-generated value so the default is never left live. Login failing here
+    # (not the rotation call itself) just means a PREVIOUS run already rotated it --
+    # not treated as an error, same as zabbixme.sh's own framing.
+    - name: "[API] KeePass sync -- Zabbix Admin/API password"
+      include_tasks: ../../tasks/keepass_credential_sync.yml
+      vars:
+        kcs_repo_root: "{{ zbx_kcs_repo_root }}"
+        kcs_keepass_path: "Infrastructure/{{ host_site }}/{{ zbx_real_hostname }}-zabbix-admin"
+        kcs_username: "Admin"
+        kcs_current_value: ""
+        kcs_can_generate: true
+        kcs_generate_length: 24
+        kcs_credentials_json_role: "ZABBIX_ADMIN"
+        kcs_result_var: zbx_admin_password
+      when: zbx_api_ready.status is defined and zbx_api_ready.status == 200
+      tags: [zabbix, monitoring]
+
+    - name: "[API] Attempt login with the Zabbix default (Admin/zabbix)"
+      ansible.builtin.uri:
+        url: "http://localhost/zabbix/api_jsonrpc.php"
+        method: POST
+        headers:
+          Content-Type: "application/json-rpc"
+        body_format: json
+        body:
+          jsonrpc: "2.0"
+          method: user.login
+          params:
+            username: Admin
+            password: zabbix
+          id: 1
+        status_code: 200
+      register: zbx_default_login
+      failed_when: false
+      no_log: true
+      when: zbx_api_ready.status is defined and zbx_api_ready.status == 200
+      tags: [zabbix, monitoring]
+
+    - name: "[API] Rotate Admin password off the default (passwd, not password -- real 7.0 API field name)"
+      ansible.builtin.uri:
+        url: "http://localhost/zabbix/api_jsonrpc.php"
+        method: POST
+        headers:
+          Content-Type: "application/json-rpc"
+        body_format: json
+        body:
+          jsonrpc: "2.0"
+          method: user.update
+          params:
+            userid: "1"
+            passwd: "{{ zbx_admin_password }}"
+            current_passwd: zabbix
+          id: 1
+          auth: "{{ zbx_default_login.json.result }}"
+        status_code: 200
+      register: zbx_rotate_result
+      no_log: true
+      when:
+        - zbx_api_ready.status is defined and zbx_api_ready.status == 200
+        - zbx_default_login.json is defined
+        - zbx_default_login.json.result is defined
+      tags: [zabbix, monitoring]
+
+    - name: "[API] Re-authenticate (new password if just rotated, otherwise the existing KeePass one)"
+      ansible.builtin.uri:
+        url: "http://localhost/zabbix/api_jsonrpc.php"
+        method: POST
+        headers:
+          Content-Type: "application/json-rpc"
+        body_format: json
+        body:
+          jsonrpc: "2.0"
+          method: user.login
+          params:
+            username: Admin
+            password: "{{ zbx_admin_password }}"
+          id: 1
+        status_code: 200
+      register: zbx_auth
+      no_log: true
+      when: zbx_api_ready.status is defined and zbx_api_ready.status == 200
+      tags: [zabbix, monitoring]
+
+    - name: "[API] Assert re-authentication succeeded"
+      ansible.builtin.assert:
+        that:
+          - zbx_auth.json.result is defined
+        fail_msg: >-
+          Could not authenticate to the Zabbix API with the Admin password filed in
+          KeePass (Infrastructure/{{ host_site }}/{{ zbx_real_hostname }}-zabbix-admin).
+          If the live password and the KeePass value have diverged, fix KeePass by hand
+          or reset the Admin password directly in the UI, then re-run.
+      when: zbx_api_ready.status is defined and zbx_api_ready.status == 200
+      tags: [zabbix, monitoring]
+
+    # =========================================================================
+    # Section 13 (bash) — "auto-registration" host group + action (Robert point 5)
+    # =========================================================================
+
+    - name: "[Auto-registration] Get the auto-registration host group"
+      ansible.builtin.uri:
+        url: "http://localhost/zabbix/api_jsonrpc.php"
+        method: POST
+        headers:
+          Content-Type: "application/json-rpc"
+        body_format: json
+        body:
+          jsonrpc: "2.0"
+          method: hostgroup.get
+          params:
+            filter:
+              name: ["auto-registration"]
+          id: 1
+          auth: "{{ zbx_auth.json.result }}"
+        status_code: 200
+      register: zbx_autoreg_group_check
+      when: zbx_api_ready.status is defined and zbx_api_ready.status == 200
+      tags: [zabbix, monitoring]
+
+    - name: "[Auto-registration] Create the host group, if it doesn't exist yet"
+      ansible.builtin.uri:
+        url: "http://localhost/zabbix/api_jsonrpc.php"
+        method: POST
+        headers:
+          Content-Type: "application/json-rpc"
+        body_format: json
+        body:
+          jsonrpc: "2.0"
+          method: hostgroup.create
+          params:
+            name: "auto-registration"
+          id: 1
+          auth: "{{ zbx_auth.json.result }}"
+        status_code: 200
+      register: zbx_autoreg_group_create
+      when:
+        - zbx_api_ready.status is defined and zbx_api_ready.status == 200
+        - zbx_autoreg_group_check.json.result | length == 0
+      tags: [zabbix, monitoring]
+
+    - name: "[Auto-registration] Set the resolved group ID fact"
+      ansible.builtin.set_fact:
+        zbx_autoreg_group_id: >-
+          {{ (zbx_autoreg_group_check.json.result | length > 0)
+             | ternary(zbx_autoreg_group_check.json.result[0].groupid | default(''),
+                        zbx_autoreg_group_create.json.result.groupids[0] | default('')) }}
+      when: zbx_api_ready.status is defined and zbx_api_ready.status == 200
+      tags: [zabbix, monitoring]
+
+    - name: "[Auto-registration] Get the autoregistration action"
+      ansible.builtin.uri:
+        url: "http://localhost/zabbix/api_jsonrpc.php"
+        method: POST
+        headers:
+          Content-Type: "application/json-rpc"
+        body_format: json
+        body:
+          jsonrpc: "2.0"
+          method: action.get
+          params:
+            filter:
+              name: ["Auto-add to auto-registration"]
+          id: 1
+          auth: "{{ zbx_auth.json.result }}"
+        status_code: 200
+      register: zbx_autoreg_action_check
+      when:
+        - zbx_api_ready.status is defined and zbx_api_ready.status == 200
+        - zbx_autoreg_group_id | default('') != ''
+      tags: [zabbix, monitoring]
+
+    # Confirmed live against a real Zabbix 7.0 server (zabbixme.sh's own 2026-09-02
+    # testing): this action.create shape (eventsource=2, empty filter/conditions, a
+    # single "add to host group" operation) is accepted and creates a working
+    # autoregistration action -- not a guess.
+    - name: "[Auto-registration] Create the action, if it doesn't exist yet"
+      ansible.builtin.uri:
+        url: "http://localhost/zabbix/api_jsonrpc.php"
+        method: POST
+        headers:
+          Content-Type: "application/json-rpc"
+        body_format: json
+        body:
+          jsonrpc: "2.0"
+          method: action.create
+          params:
+            name: "Auto-add to auto-registration"
+            eventsource: 2
+            status: 0
+            filter:
+              evaltype: 0
+              conditions: []
+            operations:
+              - operationtype: 4
+                opgroup:
+                  - groupid: "{{ zbx_autoreg_group_id }}"
+          id: 1
+          auth: "{{ zbx_auth.json.result }}"
+        status_code: 200
+      when:
+        - zbx_api_ready.status is defined and zbx_api_ready.status == 200
+        - zbx_autoreg_group_id | default('') != ''
+        - zbx_autoreg_action_check.json.result | length == 0
+      tags: [zabbix, monitoring]
+
+    # =========================================================================
+    # Section 14 (bash) — Dynamic MOTD
+    # =========================================================================
+
+    - name: "[MOTD] Write dynamic MOTD script"
+      ansible.builtin.copy:
+        dest: /etc/update-motd.d/10-examplemusic
+        content: |
+          #!/usr/bin/env bash
+          WH='\033[1;37m'; YL='\033[1;33m'; GR='\033[0;32m'; CY='\033[0;36m'; NC='\033[0m'
+          UPTIME=$(uptime -p)
+          LOAD=$(cut -d' ' -f1-3 /proc/loadavg)
+          MEM_TOTAL=$(awk '/MemTotal/{print int($2/1024)}' /proc/meminfo)
+          MEM_FREE=$(awk '/MemAvailable/{print int($2/1024)}' /proc/meminfo)
+          MEM_USED=$(( MEM_TOTAL - MEM_FREE ))
+          DISK=$(df -h / | awk 'NR==2{print $3" used of "$2" ("$5")"}')
+          ZBX_STATUS=$(systemctl is-active zabbix-server 2>/dev/null || echo "unknown")
+          DB_SIZE=$(mysql -uzabbix -p{{ zbx_db_password }} -N -e "SELECT ROUND(SUM(data_length+index_length)/1024/1024) FROM information_schema.tables WHERE table_schema='zabbix';" 2>/dev/null || echo "?")
+          echo -e "
+          ${WH}╔══════════════════════════════════════════════════════════════╗${NC}
+          ${WH}║     EXAMPLE MUSIC LIMITED: $(printf '%-35s' "${HOSTNAME}")║${NC}
+          ${WH}╚══════════════════════════════════════════════════════════════╝${NC}
+
+            ${YL}Site     :${NC} {{ host_site }}: {{ zbx_site_row.City | default('') }}, {{ zbx_site_row.Country | default('') }}
+            ${YL}Entity   :${NC} {{ zbx_site_row.Entity | default('Example Music') }}
+            ${YL}Role     :${NC} Zabbix monitoring server
+
+            ${WH}── Zabbix ───────────────────────────────────────────────────${NC}
+              ${CY}Server${NC}    : ${GR}${ZBX_STATUS}${NC}
+              ${CY}Web UI${NC}    : ${GR}http://zabbix.{{ zbx_domain }}/${NC}
+              ${CY}DB size${NC}   : ${GR}${DB_SIZE} MB${NC}
+
+            ${WH}── System ───────────────────────────────────────────────────${NC}
+              ${CY}Uptime${NC}    : ${GR}${UPTIME}${NC}
+              ${CY}Load${NC}      : ${GR}${LOAD}${NC}
+              ${CY}Memory${NC}    : ${GR}${MEM_USED}MB${NC} used of ${MEM_TOTAL}MB
+              ${CY}Disk /${NC}    : ${GR}${DISK}${NC}
+
+            ${WH}── Quick reference ──────────────────────────────────────────${NC}
+              ${CY}Logs        :${NC} tail -f /var/log/zabbix/zabbix_server.log
+              ${CY}Restart     :${NC} systemctl restart zabbix-server
+              ${CY}DB/API creds:${NC} KeePass, Infrastructure/{{ host_site }}/{{ zbx_real_hostname }}-zabbix-{db,admin}
+          "
+        mode: "0755"
+      no_log: true
+      tags: [zabbix, monitoring]
+
+    - name: "[MOTD] Ensure PrintMotd yes"
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?PrintMotd'
+        line: "PrintMotd yes"
+        state: present
+      notify: Restart ssh (zabbix)
+      tags: [zabbix, monitoring]
+
+    - name: "[MOTD] Write /etc/profile.d/motd.sh"
+      ansible.builtin.copy:
+        dest: /etc/profile.d/motd.sh
+        content: |
+          [[ -x /etc/update-motd.d/10-examplemusic ]] && /etc/update-motd.d/10-examplemusic
+        mode: "0644"
+      tags: [zabbix, monitoring]
+
+    - name: "[MOTD] Flush handlers"
+      ansible.builtin.meta: flush_handlers
+      tags: [zabbix, monitoring]
+
+    # =========================================================================
+    # Sentinel file
+    # =========================================================================
+
+    - name: "[Sentinel] Write /etc/.i_am_a_zabbix_server"
+      ansible.builtin.copy:
+        dest: /etc/.i_am_a_zabbix_server
+        content: |
+          Configured by Example Music Ansible (playbooks/zabbix/zabbix_server.yml)
+          Site        : {{ host_site }}
+          Hostname    : {{ zbx_real_hostname }}
+          Static IP   : {{ zbx_static_ip }}
+          Zabbix URL  : http://zabbix.{{ zbx_domain }}/
+          Zabbix ver  : 7.0
+        mode: "0444"
+      tags: [zabbix, monitoring]
+
+    - name: "[Zabbix] Show summary"
+      ansible.builtin.debug:
+        msg:
+          - "Site        : {{ host_site }}"
+          - "Hostname    : {{ zbx_real_hostname }}"
+          - "Static IP   : {{ zbx_static_ip }} on {{ zbx_iface }} (activated live: {{ zbx_activate_now }})"
+          - "Zabbix URL  : http://zabbix.{{ zbx_domain }}/ (also http://{{ zbx_static_ip }}/)"
+          - "API ready   : {{ zbx_api_ready.status is defined and zbx_api_ready.status == 200 }}"
+          - "Credentials : KeePass, Infrastructure/{{ host_site }}/{{ zbx_real_hostname }}-zabbix-{db,admin}"
+      tags: [zabbix, monitoring]
+
+  handlers:
+    - name: Reload NetworkManager connections
+      ansible.builtin.command: nmcli connection reload
+      changed_when: true
+
+    - name: Restart zabbix-server
+      ansible.builtin.systemd:
+        name: zabbix-server
+        state: restarted
+
+    - name: Reload systemd (zabbix)
+      ansible.builtin.systemd:
+        daemon_reload: true
+
+    - name: Reload Apache
+      ansible.builtin.shell: apache2ctl configtest && systemctl reload apache2
+      changed_when: true
+
+    - name: Restart ssh (zabbix)
+      ansible.builtin.systemd:
+        name: ssh
+        state: restarted

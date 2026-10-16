@@ -67,6 +67,10 @@
 # the ambiguity entirely rather than gambling on untested path-resolution semantics.
 # =============================================================================
 # Changelog:
+#   2026-10-16  Extracted the zabbix-release install logic into tasks/zabbix_repo_install.yml
+#               -- zabbix_server.yml (new, Ansible port of zabbixme.sh) needs the exact same
+#               arch-aware install, and duplicating it a second time would be the same
+#               "don't hand-roll, share the generator" mistake this whole repo works to avoid.
 #   2026-10-16  Real live finding, EXAZABCLD001's rebuild test (fresh Debian, first contact
 #               via the bare-IP -i "<ip>," pattern every first-run onboarding in this repo
 #               uses): every identity-bearing reference below (PSK path, KeePass entry,
@@ -93,28 +97,8 @@
     zbx_real_hostname: "{{ target_hostname | default(ansible_hostname | default(inventory_hostname)) }}"
   tags: [zabbix, monitoring]
 
-- name: "[Zabbix] Detect repo tree for this architecture (debian/debian-arm64, matches zabbixme.sh)"
-  set_fact:
-    zbx_debian_tree: "{{ (ansible_architecture == 'aarch64') | ternary('debian-arm64', 'debian') }}"
-  tags: [zabbix, monitoring]
-
-- name: "[Zabbix] Check whether zabbix-release is already installed"
-  ansible.builtin.command: dpkg -s zabbix-release
-  register: zbx_release_check
-  changed_when: false
-  failed_when: false
-  tags: [zabbix, monitoring]
-
-- name: "[Zabbix] Download + install zabbix-release (pins the real repo.zabbix.com/zabbix/7.0 tree)"
-  ansible.builtin.apt:
-    deb: "https://repo.zabbix.com/zabbix/7.0/{{ zbx_debian_tree }}/pool/main/z/zabbix-release/zabbix-release_latest_7.0%2Bdebian{{ ansible_distribution_major_version }}_all.deb"
-  when: zbx_release_check.rc != 0
-  tags: [zabbix, monitoring]
-
-- name: "[Zabbix] apt update (zabbix-release repo just added)"
-  ansible.builtin.apt:
-    update_cache: true
-  when: zbx_release_check.rc != 0
+- name: "[Zabbix] Install the real zabbix-release package (shared with zabbix_server.yml)"
+  include_tasks: zabbix_repo_install.yml
   tags: [zabbix, monitoring]
 
 - name: "[Zabbix] Install zabbix-agent (classic agent, NOT agent2)"

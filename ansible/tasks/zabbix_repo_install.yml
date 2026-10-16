@@ -1,0 +1,46 @@
+---
+# =============================================================================
+# tasks/zabbix_repo_install.yml
+# Example Music Limited — Install the real repo.zabbix.com/zabbix/7.0 release package
+# =============================================================================
+# Extracted from tasks/zabbix_agent_onboard.yml (2026-10-16) when playbooks/zabbix/
+# zabbix_server.yml needed the exact same arch-aware zabbix-release install logic --
+# rather than duplicate it a second time, both callers now include this one file.
+#
+# 7.0 uses the classic FLAT URL layout, no "/release/" segment at all (confirmed live
+# 2026-09-01 against the real repo.zabbix.com -- a genuine 404 for 7.0; 8.0 is on a
+# newer, separate "/release/" scheme, do not copy this construction back to 8.0
+# without re-checking). ZBX_DEBIAN_TREE ("debian" vs "debian-arm64") are genuinely
+# separate repo trees, not a path alias -- confirmed live by sha256sum'ing the
+# "_all.deb" zabbix-release package from both (zabbixme.sh's own 2026-09-02 finding).
+#
+# Sets: zbx_debian_tree, zbx_release_check (rc != 0 means this run just installed it --
+# callers use this to gate their own "apt update" rather than running one unconditionally).
+# =============================================================================
+# Changelog:
+#   2026-10-16  Initial file (extracted from zabbix_agent_onboard.yml).
+# =============================================================================
+
+- name: "[Zabbix] Detect repo tree for this architecture (debian/debian-arm64, matches zabbixme.sh)"
+  set_fact:
+    zbx_debian_tree: "{{ (ansible_architecture == 'aarch64') | ternary('debian-arm64', 'debian') }}"
+  tags: [zabbix, monitoring]
+
+- name: "[Zabbix] Check whether zabbix-release is already installed"
+  ansible.builtin.command: dpkg -s zabbix-release
+  register: zbx_release_check
+  changed_when: false
+  failed_when: false
+  tags: [zabbix, monitoring]
+
+- name: "[Zabbix] Download + install zabbix-release (pins the real repo.zabbix.com/zabbix/7.0 tree)"
+  ansible.builtin.apt:
+    deb: "https://repo.zabbix.com/zabbix/7.0/{{ zbx_debian_tree }}/pool/main/z/zabbix-release/zabbix-release_latest_7.0%2Bdebian{{ ansible_distribution_major_version }}_all.deb"
+  when: zbx_release_check.rc != 0
+  tags: [zabbix, monitoring]
+
+- name: "[Zabbix] apt update (zabbix-release repo just added)"
+  ansible.builtin.apt:
+    update_cache: true
+  when: zbx_release_check.rc != 0
+  tags: [zabbix, monitoring]
