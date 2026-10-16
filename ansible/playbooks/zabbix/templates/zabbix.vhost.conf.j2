@@ -25,10 +25,8 @@
         Require local
         Require ip {{ site_services.provisioning_edinburgh.subnet }}
         Require ip {{ site_services.provisioning_fredericia_havn.subnet }}
-{% for subnet in zbx_trapper_subnets %}
-{% if subnet not in [site_services.provisioning_edinburgh.subnet, site_services.provisioning_fredericia_havn.subnet] %}
-        Require ip {{ subnet }}
-{% endif %}
+{% for row in zbx_trapper_site_rows %}
+        Require ip {{ row.Subnet }}
 {% endfor %}
     </Location>
 
