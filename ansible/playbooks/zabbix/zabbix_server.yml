@@ -426,6 +426,12 @@
     # Section 6 (bash) — UFW firewall
     # =========================================================================
 
+    # no_log: true on every ufw: task below -- the community.general.ufw module returns
+    # the FULL "ufw status verbose" output (every rule, not just the one just added) as
+    # its own result message on any change, and the custom callback here prints that in
+    # full. Harmless but genuinely unreadable once this loops 58+ times (one dump per
+    # site+provisioning subnet) -- real live finding, EXAZABCLD001's first run of this
+    # file. One clean status display at the very end (below) replaces all of them.
     - name: "[UFW] Set default policies"
       community.general.ufw:
         direction: "{{ item.direction }}"
@@ -433,6 +439,7 @@
       loop:
         - { direction: incoming, policy: deny }
         - { direction: outgoing, policy: allow }
+      no_log: true
       tags: [zabbix, monitoring]
 
     - name: "[UFW] Allow SSH/web UI ports"
@@ -445,6 +452,7 @@
         - { port: "22", comment: "SSH" }
         - { port: "80", comment: "Zabbix web UI (redirects to HTTPS if configured)" }
         - { port: "443", comment: "Zabbix web UI HTTPS" }
+      no_log: true
       tags: [zabbix, monitoring]
 
     # Every real site subnet (sites.csv's own Subnet column, filtered to genuine dotted-quad
@@ -454,28 +462,61 @@
     # FRD_SUBNET) -- Zabbix itself has no native inbound-IP allowlist for the trapper port
     # agents connect to (10051), same OS-firewall-job reasoning rudder_server.yml's own
     # UFW section already uses for Rudder's agent ports.
-    - name: "[UFW] Build the list of every site subnet + provisioning networks (for the trapper port)"
+    #
+    # Each entry carries its own site label (subnet + comment) -- a flat subnet-string list
+    # lost the per-site label the bash script's own comments had ("Zabbix trapper VRK" vs.
+    # just "Zabbix trapper" for every single rule), real live finding on the same first run.
+    # zbx_sites_raw.list rows already have both Site and Subnet -- no need to reconstruct
+    # anything, just filter the existing rows and keep the two provisioning entries separate
+    # (they aren't sites.csv rows at all).
+    - name: "[UFW] Build the list of every site subnet (for the trapper port)"
       ansible.builtin.set_fact:
-        zbx_trapper_subnets: >-
-          {{
-            (zbx_sites_raw.list | selectattr('Subnet', 'match', '^\d+\.\d+\.\d+\.\d+/\d+$') | map(attribute='Subnet') | list)
-            + [site_services.provisioning_edinburgh.subnet, site_services.provisioning_fredericia_havn.subnet]
-          }}
+        zbx_trapper_site_rows: "{{ zbx_sites_raw.list | selectattr('Subnet', 'match', '^\\d+\\.\\d+\\.\\d+\\.\\d+/\\d+$') | list }}"
       tags: [zabbix, monitoring]
 
-    - name: "[UFW] Allow Zabbix trapper port (10051/tcp) from every site + provisioning subnet"
+    - name: "[UFW] Allow Zabbix trapper port (10051/tcp) from every site subnet"
       community.general.ufw:
         rule: allow
-        src: "{{ item }}"
+        src: "{{ item.Subnet }}"
         port: "10051"
         proto: tcp
-        comment: "Zabbix trapper"
-      loop: "{{ zbx_trapper_subnets }}"
+        comment: "Zabbix trapper {{ item.Site }}"
+      loop: "{{ zbx_trapper_site_rows }}"
+      loop_control:
+        label: "{{ item.Site }} ({{ item.Subnet }})"
+      no_log: true
+      tags: [zabbix, monitoring]
+
+    - name: "[UFW] Allow Zabbix trapper port (10051/tcp) from the two provisioning networks"
+      community.general.ufw:
+        rule: allow
+        src: "{{ item.subnet }}"
+        port: "10051"
+        proto: tcp
+        comment: "Zabbix trapper {{ item.label }}"
+      loop:
+        - { subnet: "{{ site_services.provisioning_edinburgh.subnet }}", label: "VRK" }
+        - { subnet: "{{ site_services.provisioning_fredericia_havn.subnet }}", label: "FRD" }
+      loop_control:
+        label: "{{ item.label }} ({{ item.subnet }})"
+      no_log: true
       tags: [zabbix, monitoring]
 
     - name: "[UFW] Enable"
       community.general.ufw:
         state: enabled
+      no_log: true
+      tags: [zabbix, monitoring]
+
+    - name: "[UFW] Show final ruleset (once, not once per rule)"
+      ansible.builtin.command: ufw status verbose
+      register: zbx_ufw_final_status
+      changed_when: false
+      tags: [zabbix, monitoring]
+
+    - name: "[UFW] Final ruleset"
+      ansible.builtin.debug:
+        msg: "{{ zbx_ufw_final_status.stdout_lines }}"
       tags: [zabbix, monitoring]
 
     # =========================================================================
