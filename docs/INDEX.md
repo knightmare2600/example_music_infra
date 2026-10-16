@@ -297,9 +297,9 @@ standalone bundle — see `zabbix_vms_on_wrong_pool/` for the canonical shape.
 
 ## `zabbix_templates/`
 
-Not indexed above (deployment assets — `.xml`/`.yaml` Zabbix template files, not documentation
-— same carve-out as `proxmox_zabbix_cleanup/`'s script bundles). Real, consumed files, listed
-here for discoverability:
+Not indexed above (deployment assets — `.xml`/`.yaml`/`.json` Zabbix template files, not
+documentation — same carve-out as `proxmox_zabbix_cleanup/`'s script bundles). Real, consumed
+files, listed here for discoverability:
 
 - [`zabbix_templates/README.md`](zabbix_templates/README.md) — directory README, same content as this section
 - `WindowsHygiene.xml` — triggers `ansible/playbooks/windows_hygiene/site.yml --tags pagefile`
@@ -307,6 +307,10 @@ here for discoverability:
 - `zabbix_template_proxmox_nicguard.yaml` — monitors the NIC-guard units deployed by
   `ansible/playbooks/proxmox/playbooks/50-systemd-units.yml` (credentials/script placed by
   `40-scripts.yml`, units deployed by `50-systemd-units.yml`). See `ansible/playbooks/proxmox/README.md`.
+- `zabbix_template_linuxtools.json` — reads `/etc/example-music/zabbix_status/linux_tools.json`,
+  written by `ansible/playbooks/linux/tools.yml` itself at the end of every run. First of
+  Robert's "every playbook gets a companion Zabbix template" initiative (2026-10-16) — see
+  `docs/ansible/zabbix-playbooks-plan.md` and `ansible/playbooks/zabbix/README.md`.
 
 ---
 
