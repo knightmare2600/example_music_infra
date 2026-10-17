@@ -479,6 +479,14 @@
     # ad_target would fail that assert. nodeinfo.json is an observability
     # convenience; it must never block a real AD population run that's
     # already this far through.
+    #
+    # 2026-10-17, Robert's ask: "mirror" firewallme's own nodeinfo_extra, which has
+    # real role-specific fields -- confirmed by audit that windows_adschema never
+    # passed any extras at all. Added the 2 adschema-specific facts already
+    # computed earlier in this exact play (reused, not freshly derived):
+    # ad_computers_total (_computers, set above from ad_computers.json) and
+    # ad_computers_osversion_updates_applied (_osversion_todo, this file's own "C |
+    # Report operatingSystemVersion work needed" task). Both | default()-guarded.
     - name: "Write nodeinfo.json (non-fatal)"
       # Tagged always -- see windows_bootstrap/85-finish.yml's own 2026-10-04
       # changelog/comment for the full empirical writeup of why this has to be on
@@ -491,6 +499,9 @@
           vars:
             nodeinfo_bootstrapped_by: "windows_adschema/site.yml"
             nodeinfo_repo_root: "{{ playbook_dir }}/../../../.."
+            nodeinfo_extra:
+              ad_computers_total: "{{ _computers | default([]) | length }}"
+              ad_computers_osversion_updates_applied: "{{ _osversion_todo | default([]) | length }}"
       rescue:
         - name: "WARNING — nodeinfo.json write failed, continuing anyway"
           debug:

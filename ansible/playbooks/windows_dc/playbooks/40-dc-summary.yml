@@ -10,6 +10,12 @@
 # Tags: dc_summary
 # =============================================================================
 # Changelog:
+#   2026-10-17  Added nodeinfo_extra (dc_is_forest_root/dc_domain_name/dcdiag_fail_count)
+#               to this file's own nodeinfo.json write -- Robert's ask, to mirror
+#               firewallme's own role-specific extras (wg_role/lan_ip/etc). An audit
+#               found windows_dc never passed any extras at all before this, unlike
+#               firewallme. All 3 fields reuse facts already computed earlier in this
+#               exact chain, not freshly derived.
 #   2026-10-10  Real live false positive, EXADCSCLD001's first build summary: "Count dcdiag
 #               failures" used a plain (?i)failed|error substring match, which caught
 #               "Warning: Failed to add the test record dcdiag-test-record in zone
@@ -233,6 +239,15 @@
     # does not protect the included file's own tasks. nodeinfo.json is an
     # observability convenience, never worth failing a real DC-promotion
     # summary over.
+    #
+    # 2026-10-17, Robert's ask: "mirror" firewallme's own nodeinfo_extra, which has
+    # real role-specific fields (wg_role/lan_ip/etc) -- confirmed by audit that
+    # windows_dc never passed any extras at all, unlike firewallme. Added the 3
+    # DC-specific facts already computed earlier in this exact file/chain (reused,
+    # not freshly derived): dc_is_forest_root (00-dc-preflight.yml), dc_domain_name
+    # (same), dcdiag_fail_count (this file's own "Count dcdiag failures" task,
+    # just above). All three | default()-guarded since this play can run on its
+    # own without the earlier stages in the same invocation.
     - name: "Write nodeinfo.json (non-fatal)"
       # Both tags, not just always -- see windows_bootstrap/85-finish.yml's own
       # 2026-10-04 changelog/comment for the full empirical writeup of why
@@ -245,6 +260,10 @@
           vars:
             nodeinfo_bootstrapped_by: "windows_dc/site.yml"
             nodeinfo_repo_root: "{{ playbook_dir }}/../../../.."
+            nodeinfo_extra:
+              dc_is_forest_root: "{{ dc_is_forest_root | default(false) }}"
+              dc_domain_name: "{{ dc_domain_name | default('') }}"
+              dcdiag_fail_count: "{{ dc_dcdiag_fail_count | default(0) }}"
       rescue:
         - name: "WARNING — nodeinfo.json write failed, continuing anyway"
           debug:
