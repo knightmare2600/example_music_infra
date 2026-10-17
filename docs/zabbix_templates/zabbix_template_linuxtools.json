@@ -12,7 +12,7 @@
         "uuid": "6149b3c593754fabbd7d46fa17b9df7f",
         "template": "linuxtools_examplemusic",
         "name": "Linux Tools (Example Music)",
-        "description": "Companion template for ansible/playbooks/linux/tools.yml -- the first of Robert's 'every playbook gets a Zabbix template' initiative (2026-10-16).\n\nHOW IT WORKS\n  One master item reads /etc/example-music/zabbix_status/linux_tools.json via vfs.file.contents every hour -- currently just update_motd_linked, written by linux/tools.yml itself at the end of every run. That file also drives the staleness trigger below. Package presence is a SEPARATE mechanism, see PACKAGE DISCOVERY.\n\nPACKAGE DISCOVERY (one item per package, not an aggregate)\n  A discovery rule reads /etc/example-music/zabbix_status/linux_tools_packages_lld.json, also written by linux/tools.yml -- an LLD-format {\"data\":[{\"{#PACKAGE}\":\"...\"}]} list of every package in common_packages (group_vars/all/main.yml). Ansible owns WHICH packages are in scope (it's the only source of truth for common_packages); it deliberately does NOT re-report whether each one is installed -- that's a genuinely native, independent agent-side check per discovered package: vfs.file.exists[/usr/share/doc/{#PACKAGE}/copyright]. Debian policy requires every binary package to ship a copyright file at that path (real file or a symlink when sharing docs with another binary from the same source) -- a stable, checksum-independent proxy for 'is this package installed', with no custom UserParameter script needed. One item + one trigger per discovered package, not a single missing_packages_count/list pair -- that was v1's mistake, corrected same day once Robert flagged it ('this crap... one package per item').\n  Known limitation: a package whose doc directory was deleted by something outside dpkg (rare, broken state) would false-negative here even though dpkg still lists it installed -- accepted, not solved, since classic zabbix-agent has no native dpkg-aware key and this avoids deploying a custom script just to cover that edge case.\n\nSTALENESS\n  The {$LINUXTOOLS.STATUS.MAXAGE} macro (default 2d) drives a nodata() trigger on the master item itself -- catches linux/tools.yml not having run recently at all, not just config drift the report would otherwise go stale on.\n\nIMPORT INSTRUCTIONS\n  Zabbix API: configuration.import (rules: createMissing for groups/templates/items/triggers/discoveryRules, updateExisting for the rest). Or via the UI: Data collection -> Templates -> Import.\n  Link to each Linux host this playbook manages.",
+        "description": "Companion template for ansible/playbooks/linux/tools.yml. Rebuilt from scratch 2026-10-17 to Robert's own literal spec after two earlier, wrongly-aggregated attempts -- this version is flat, native, one-item-per-thing: every check is an independent agent-side vfs.file.exists/regmatch/regexp item against the real on-disk state tools.yml produces, not a re-derivation of Ansible's own facts.\n\nSECTIONS\n  Packages: one item+trigger per common_packages entry (group_vars/all/main.yml), plain vfs.file.exists against /usr/share/doc/<pkg>/copyright. fastfetch/neofetch are a special pair: two items, one shared trigger that only fires if BOTH are missing (exactly one is expected, distro-conditional).\n  Filesystem: update-motd symlink (type=sym, not the default 'file' type), the /etc/example-music directory and its 10 CSV/JSON files (each file trigger DEPENDS ON the directory's trigger -- one alert, not eleven, if the whole directory is gone), nodeinfo.json's own existence, and server-prompts.zsh/.sh.\n  nodeinfo.json contents: a vfs.file.contents master item ({$NODEINFO.MAXAGE} nodata staleness trigger, depends on the exists trigger) with DEPENDENT items for every field in tasks/nodeinfo.yml's schema, extracted via JSONPATH preprocessing. Plain string fields (hostname/fqdn/role/site/city/country/country_code/entity/office_name/street_address/postal_code/bootstrapped_at/bootstrapped_by/last_ansible_run/last_ansible_play) are visibility-only, no trigger. ansible_managed adds a BOOL_TO_DECIMAL preprocessing step (JSON true/false -> 1/0) with a trigger if false. environment gets a drift trigger (last()<>last(#2)) -- flags a CHANGE since the previous run rather than any single 'wrong' value, since there's no one correct environment to check against.\n  Identity: the ansible user's /etc/passwd line (vfs.file.regexp, TEXT) checked via find(...,\"like\",\"zsh\") for the expected shell.\n  Dotfiles: .gitconfig/.tmux.conf/.vimrc/.vim for /home/ansible only (not every /home/* account).\n  Config: unattended-upgrades' 7 lines across 50unattended-upgrades/20auto-upgrades, vfs.file.regmatch (boolean). unattended-upgrades is mandatory (already in common_packages, so it always gets its own 'Package installed' item/trigger above like any other package) -- each of the 7 config-line triggers depends on that one trigger, same pattern as the /etc/example-music files depending on their directory.\n\nIMPORT: configuration.import, rules: createMissing+updateExisting+deleteMissing on items/triggers, createMissing+updateExisting on template_groups/templates.",
         "groups": [
           {
             "name": "Templates/Example Music"
@@ -20,107 +20,3209 @@
         ],
         "items": [
           {
-            "uuid": "a86b70bb9f594baa94e5bd664915693a",
-            "name": "Linux Tools: status report (master)",
+            "uuid": "4b67b36b011049b9b98b6ed4db304600",
+            "name": "Package installed: aptitude",
             "type": "ZABBIX_ACTIVE",
-            "key": "vfs.file.contents[/etc/example-music/zabbix_status/linux_tools.json]",
+            "key": "vfs.file.exists[/usr/share/doc/aptitude/copyright]",
             "delay": "1h",
-            "history": "7d",
-            "trends": "0",
-            "value_type": "TEXT",
-            "description": "Raw JSON status report written by linux/tools.yml at the end of every run. All other items in this template depend on this one.",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/aptitude/copyright exists, 0 otherwise. Native agent check -- independent of linux/tools.yml's own ansible_facts.packages, Ansible only supplies the package list (common_packages, group_vars/all/main.yml) this template was built from.",
             "tags": [
-              { "tag": "component", "value": "linux-tools" },
-              { "tag": "item-type", "value": "master" }
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "aptitude"
+              }
             ],
             "triggers": [
               {
-                "uuid": "9db2a224669742d38a10aade934e4f9d",
-                "expression": "nodata(/Linux Tools (Example Music)/vfs.file.contents[/etc/example-music/zabbix_status/linux_tools.json],{$LINUXTOOLS.STATUS.MAXAGE})=1",
-                "name": "Linux Tools: no status report for {$LINUXTOOLS.STATUS.MAXAGE} on {HOST.NAME} -- linux/tools.yml may not be running",
-                "priority": "AVERAGE",
-                "description": "linux/tools.yml hasn't written a fresh status report within {$LINUXTOOLS.STATUS.MAXAGE}. Either the playbook hasn't run against this host recently, or the zabbix-agent/file path is broken. Check: ls -la /etc/example-music/zabbix_status/linux_tools.json and re-run linux/tools.yml.",
+                "uuid": "2d76648b4d024bc19e066022d1036c33",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/usr/share/doc/aptitude/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing aptitude package",
+                "priority": "WARNING",
+                "description": "aptitude is in common_packages but not installed (or its copyright doc is gone). Re-run linux/tools.yml.",
                 "tags": [
-                  { "tag": "component", "value": "linux-tools" },
-                  { "tag": "scope", "value": "availability" }
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "aptitude"
+                  }
                 ]
               }
             ]
           },
           {
-            "uuid": "4ef61dd9a113454180f5eaa9137c49c6",
-            "name": "Linux Tools: update-motd symlink healthy",
-            "type": "DEPENDENT",
-            "key": "examplemusic.linuxtools.update_motd_linked",
-            "delay": "0",
+            "uuid": "d7e4e7346ce048a687f45b77a1d34015",
+            "name": "Package installed: bind9-dnsutils",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/bind9-dnsutils/copyright]",
+            "delay": "1h",
             "history": "30d",
             "trends": "90d",
             "value_type": "UNSIGNED",
-            "description": "1 if /etc/update-motd.d/98-update-status is a real symlink to /usr/local/bin/update-motd, 0 otherwise.",
+            "description": "1 if /usr/share/doc/bind9-dnsutils/copyright exists, 0 otherwise. Native agent check -- independent of linux/tools.yml's own ansible_facts.packages, Ansible only supplies the package list (common_packages, group_vars/all/main.yml) this template was built from.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "bind9-dnsutils"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "039a84e59bdd4e9f9461f73919afebc3",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/usr/share/doc/bind9-dnsutils/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing bind9-dnsutils package",
+                "priority": "WARNING",
+                "description": "bind9-dnsutils is in common_packages but not installed (or its copyright doc is gone). Re-run linux/tools.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "bind9-dnsutils"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "40f0a73ececf459abcb4278230034e99",
+            "name": "Package installed: bind9-host",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/bind9-host/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/bind9-host/copyright exists, 0 otherwise. Native agent check -- independent of linux/tools.yml's own ansible_facts.packages, Ansible only supplies the package list (common_packages, group_vars/all/main.yml) this template was built from.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "bind9-host"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "0cac36f5b850484fbc91afd622639fc7",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/usr/share/doc/bind9-host/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing bind9-host package",
+                "priority": "WARNING",
+                "description": "bind9-host is in common_packages but not installed (or its copyright doc is gone). Re-run linux/tools.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "bind9-host"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "44fe5530cd9649048bb4e9f81dd2916d",
+            "name": "Package installed: curl",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/curl/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/curl/copyright exists, 0 otherwise. Native agent check -- independent of linux/tools.yml's own ansible_facts.packages, Ansible only supplies the package list (common_packages, group_vars/all/main.yml) this template was built from.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "curl"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "8746e9bca7434dbab830a2621051dabb",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/usr/share/doc/curl/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing curl package",
+                "priority": "WARNING",
+                "description": "curl is in common_packages but not installed (or its copyright doc is gone). Re-run linux/tools.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "curl"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "744bba941f3f491d90d8572804f9d18b",
+            "name": "Package installed: git",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/git/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/git/copyright exists, 0 otherwise. Native agent check -- independent of linux/tools.yml's own ansible_facts.packages, Ansible only supplies the package list (common_packages, group_vars/all/main.yml) this template was built from.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "git"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "58e215e99d4249aeaa36ddfd97e066d3",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/usr/share/doc/git/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing git package",
+                "priority": "WARNING",
+                "description": "git is in common_packages but not installed (or its copyright doc is gone). Re-run linux/tools.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "git"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "5777d51d9ece491ba972d757c66496f0",
+            "name": "Package installed: git-lfs",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/git-lfs/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/git-lfs/copyright exists, 0 otherwise. Native agent check -- independent of linux/tools.yml's own ansible_facts.packages, Ansible only supplies the package list (common_packages, group_vars/all/main.yml) this template was built from.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "git-lfs"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "23b50dbda46a45ae9f919427c6bd16cc",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/usr/share/doc/git-lfs/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing git-lfs package",
+                "priority": "WARNING",
+                "description": "git-lfs is in common_packages but not installed (or its copyright doc is gone). Re-run linux/tools.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "git-lfs"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "ba318335daa446c382e5c2dfd20a9273",
+            "name": "Package installed: grc",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/grc/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/grc/copyright exists, 0 otherwise. Native agent check -- independent of linux/tools.yml's own ansible_facts.packages, Ansible only supplies the package list (common_packages, group_vars/all/main.yml) this template was built from.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "grc"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "8168165f420e4892aefa7b987e6312e8",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/usr/share/doc/grc/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing grc package",
+                "priority": "WARNING",
+                "description": "grc is in common_packages but not installed (or its copyright doc is gone). Re-run linux/tools.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "grc"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "70d8078dffb44a0687514be099f9dae3",
+            "name": "Package installed: htop",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/htop/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/htop/copyright exists, 0 otherwise. Native agent check -- independent of linux/tools.yml's own ansible_facts.packages, Ansible only supplies the package list (common_packages, group_vars/all/main.yml) this template was built from.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "htop"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "32550dd989d3494aaecaabbed3fa5104",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/usr/share/doc/htop/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing htop package",
+                "priority": "WARNING",
+                "description": "htop is in common_packages but not installed (or its copyright doc is gone). Re-run linux/tools.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "htop"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "dc0092f05e4b4d0f802f4aefbd813251",
+            "name": "Package installed: jq",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/jq/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/jq/copyright exists, 0 otherwise. Native agent check -- independent of linux/tools.yml's own ansible_facts.packages, Ansible only supplies the package list (common_packages, group_vars/all/main.yml) this template was built from.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "jq"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "85dffd4a3a7a4862b1263520c309d062",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/usr/share/doc/jq/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing jq package",
+                "priority": "WARNING",
+                "description": "jq is in common_packages but not installed (or its copyright doc is gone). Re-run linux/tools.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "jq"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "c9949920b2724cc7972672fb85119f65",
+            "name": "Package installed: mc",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/mc/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/mc/copyright exists, 0 otherwise. Native agent check -- independent of linux/tools.yml's own ansible_facts.packages, Ansible only supplies the package list (common_packages, group_vars/all/main.yml) this template was built from.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "mc"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "6229dc58f7d84a3b943b23f0c57c205b",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/usr/share/doc/mc/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing mc package",
+                "priority": "WARNING",
+                "description": "mc is in common_packages but not installed (or its copyright doc is gone). Re-run linux/tools.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "mc"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "fb4ffa5bfb9c479dbd8db3e5b43cf3d7",
+            "name": "Package installed: miller",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/miller/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/miller/copyright exists, 0 otherwise. Native agent check -- independent of linux/tools.yml's own ansible_facts.packages, Ansible only supplies the package list (common_packages, group_vars/all/main.yml) this template was built from.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "miller"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "176f7dc697834a29af5691da2b005771",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/usr/share/doc/miller/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing miller package",
+                "priority": "WARNING",
+                "description": "miller is in common_packages but not installed (or its copyright doc is gone). Re-run linux/tools.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "miller"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "5a3fff93839d4e15b6f786fb7012c8c4",
+            "name": "Package installed: plocate",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/plocate/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/plocate/copyright exists, 0 otherwise. Native agent check -- independent of linux/tools.yml's own ansible_facts.packages, Ansible only supplies the package list (common_packages, group_vars/all/main.yml) this template was built from.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "plocate"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "88ec805c29404030b944956733f5ddb8",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/usr/share/doc/plocate/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing plocate package",
+                "priority": "WARNING",
+                "description": "plocate is in common_packages but not installed (or its copyright doc is gone). Re-run linux/tools.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "plocate"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "dc2d2393df7142639bbe08af6e64b4e3",
+            "name": "Package installed: molly-guard",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/molly-guard/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/molly-guard/copyright exists, 0 otherwise. Native agent check -- independent of linux/tools.yml's own ansible_facts.packages, Ansible only supplies the package list (common_packages, group_vars/all/main.yml) this template was built from.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "molly-guard"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "c9733b4ba6e547b7a63cbfc82b922560",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/usr/share/doc/molly-guard/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing molly-guard package",
+                "priority": "WARNING",
+                "description": "molly-guard is in common_packages but not installed (or its copyright doc is gone). Re-run linux/tools.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "molly-guard"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "4094a8babbab434cbc6b6e71fa2aee73",
+            "name": "Package installed: net-tools",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/net-tools/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/net-tools/copyright exists, 0 otherwise. Native agent check -- independent of linux/tools.yml's own ansible_facts.packages, Ansible only supplies the package list (common_packages, group_vars/all/main.yml) this template was built from.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "net-tools"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "4dcb4270917b47d68e9c0cdf8b6b9497",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/usr/share/doc/net-tools/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing net-tools package",
+                "priority": "WARNING",
+                "description": "net-tools is in common_packages but not installed (or its copyright doc is gone). Re-run linux/tools.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "net-tools"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "00385e1a65ad4b958e4ff616e0eb7513",
+            "name": "Package installed: nmap",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/nmap/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/nmap/copyright exists, 0 otherwise. Native agent check -- independent of linux/tools.yml's own ansible_facts.packages, Ansible only supplies the package list (common_packages, group_vars/all/main.yml) this template was built from.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "nmap"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "a0dbf2447e1b49668dd0e323670d2c18",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/usr/share/doc/nmap/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing nmap package",
+                "priority": "WARNING",
+                "description": "nmap is in common_packages but not installed (or its copyright doc is gone). Re-run linux/tools.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "nmap"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "54908911d1f84b548d989e0e5a73cf33",
+            "name": "Package installed: parted",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/parted/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/parted/copyright exists, 0 otherwise. Native agent check -- independent of linux/tools.yml's own ansible_facts.packages, Ansible only supplies the package list (common_packages, group_vars/all/main.yml) this template was built from.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "parted"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "dce9c67ae6ff4967a530745d1c2c5fd7",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/usr/share/doc/parted/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing parted package",
+                "priority": "WARNING",
+                "description": "parted is in common_packages but not installed (or its copyright doc is gone). Re-run linux/tools.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "parted"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "c38b180ea5ac4dec92dc6eb41a8728a3",
+            "name": "Package installed: telnet",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/telnet/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/telnet/copyright exists, 0 otherwise. Native agent check -- independent of linux/tools.yml's own ansible_facts.packages, Ansible only supplies the package list (common_packages, group_vars/all/main.yml) this template was built from.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "telnet"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "3e5ea1b3ed4e416faaa5c8c3c14a7ebb",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/usr/share/doc/telnet/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing telnet package",
+                "priority": "WARNING",
+                "description": "telnet is in common_packages but not installed (or its copyright doc is gone). Re-run linux/tools.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "telnet"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "ecdb31bb89f14925b672908e939156f5",
+            "name": "Package installed: tmux",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/tmux/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/tmux/copyright exists, 0 otherwise. Native agent check -- independent of linux/tools.yml's own ansible_facts.packages, Ansible only supplies the package list (common_packages, group_vars/all/main.yml) this template was built from.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "tmux"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "b51e77f09da44af7bb340d2d736a1d3c",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/usr/share/doc/tmux/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing tmux package",
+                "priority": "WARNING",
+                "description": "tmux is in common_packages but not installed (or its copyright doc is gone). Re-run linux/tools.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "tmux"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "cb081c3ba66940eeb0533b01981fdd21",
+            "name": "Package installed: tree",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/tree/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/tree/copyright exists, 0 otherwise. Native agent check -- independent of linux/tools.yml's own ansible_facts.packages, Ansible only supplies the package list (common_packages, group_vars/all/main.yml) this template was built from.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "tree"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "daca332aab034b7da1c28546eecf16eb",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/usr/share/doc/tree/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing tree package",
+                "priority": "WARNING",
+                "description": "tree is in common_packages but not installed (or its copyright doc is gone). Re-run linux/tools.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "tree"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "fd8f80e1e8384c8d9354d710e74df86d",
+            "name": "Package installed: unattended-upgrades",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/unattended-upgrades/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/unattended-upgrades/copyright exists, 0 otherwise. Native agent check -- independent of linux/tools.yml's own ansible_facts.packages, Ansible only supplies the package list (common_packages, group_vars/all/main.yml) this template was built from.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "unattended-upgrades"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "11cf5915923145208decbd3aaddf72c7",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/usr/share/doc/unattended-upgrades/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing unattended-upgrades package",
+                "priority": "WARNING",
+                "description": "unattended-upgrades is in common_packages but not installed (or its copyright doc is gone). Re-run linux/tools.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "unattended-upgrades"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "6fb3df0514dc4d8d890afaf1094c5f82",
+            "name": "Package installed: vim",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/vim/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/vim/copyright exists, 0 otherwise. Native agent check -- independent of linux/tools.yml's own ansible_facts.packages, Ansible only supplies the package list (common_packages, group_vars/all/main.yml) this template was built from.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "vim"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "f605bb496e3b4b4aa2721ee22a5ab727",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/usr/share/doc/vim/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing vim package",
+                "priority": "WARNING",
+                "description": "vim is in common_packages but not installed (or its copyright doc is gone). Re-run linux/tools.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "vim"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "387e1356c44a43a99567e11f9870410a",
+            "name": "Package installed: wget",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/wget/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/wget/copyright exists, 0 otherwise. Native agent check -- independent of linux/tools.yml's own ansible_facts.packages, Ansible only supplies the package list (common_packages, group_vars/all/main.yml) this template was built from.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "wget"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "6520f6f4132445b2a567185e8affba87",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/usr/share/doc/wget/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing wget package",
+                "priority": "WARNING",
+                "description": "wget is in common_packages but not installed (or its copyright doc is gone). Re-run linux/tools.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "wget"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "89d9a530eb7345e98ee5d8914bdf93aa",
+            "name": "Package installed: yamllint",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/yamllint/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/yamllint/copyright exists, 0 otherwise. Native agent check -- independent of linux/tools.yml's own ansible_facts.packages, Ansible only supplies the package list (common_packages, group_vars/all/main.yml) this template was built from.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "yamllint"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "af20364558a7471db24b1820129366ea",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/usr/share/doc/yamllint/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing yamllint package",
+                "priority": "WARNING",
+                "description": "yamllint is in common_packages but not installed (or its copyright doc is gone). Re-run linux/tools.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "yamllint"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "188c5a3c42b444dbb05f0cd2d771483b",
+            "name": "Package installed: zsh",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/zsh/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/zsh/copyright exists, 0 otherwise. Native agent check -- independent of linux/tools.yml's own ansible_facts.packages, Ansible only supplies the package list (common_packages, group_vars/all/main.yml) this template was built from.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "zsh"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "7f28d3b1bd9c43a1883e1fa25923e89d",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/usr/share/doc/zsh/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing zsh package",
+                "priority": "WARNING",
+                "description": "zsh is in common_packages but not installed (or its copyright doc is gone). Re-run linux/tools.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "zsh"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "ac3a6e1a44ec459d8e88ad9c84dfcf78",
+            "name": "Package installed: zsh-autosuggestions",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/zsh-autosuggestions/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/zsh-autosuggestions/copyright exists, 0 otherwise. Native agent check -- independent of linux/tools.yml's own ansible_facts.packages, Ansible only supplies the package list (common_packages, group_vars/all/main.yml) this template was built from.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "zsh-autosuggestions"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "68ae4e2b1f9448e58a03abc27b6779b1",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/usr/share/doc/zsh-autosuggestions/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing zsh-autosuggestions package",
+                "priority": "WARNING",
+                "description": "zsh-autosuggestions is in common_packages but not installed (or its copyright doc is gone). Re-run linux/tools.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "zsh-autosuggestions"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "f7ab2681e6a74296a512435c04b87a3c",
+            "name": "Package installed: zsh-common",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/zsh-common/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/zsh-common/copyright exists, 0 otherwise. Native agent check -- independent of linux/tools.yml's own ansible_facts.packages, Ansible only supplies the package list (common_packages, group_vars/all/main.yml) this template was built from.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "zsh-common"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "23d10a4bc6194d1b82dcfcbcbbd8ddc1",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/usr/share/doc/zsh-common/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing zsh-common package",
+                "priority": "WARNING",
+                "description": "zsh-common is in common_packages but not installed (or its copyright doc is gone). Re-run linux/tools.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "zsh-common"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "55cf5526fc584a7d880bf7dde9ee4270",
+            "name": "Package installed: zsh-syntax-highlighting",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/zsh-syntax-highlighting/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/zsh-syntax-highlighting/copyright exists, 0 otherwise. Native agent check -- independent of linux/tools.yml's own ansible_facts.packages, Ansible only supplies the package list (common_packages, group_vars/all/main.yml) this template was built from.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "zsh-syntax-highlighting"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "7fe9afa2e3c949c3901e146f0aec2f98",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/usr/share/doc/zsh-syntax-highlighting/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing zsh-syntax-highlighting package",
+                "priority": "WARNING",
+                "description": "zsh-syntax-highlighting is in common_packages but not installed (or its copyright doc is gone). Re-run linux/tools.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "zsh-syntax-highlighting"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "968617a8f739452f9e63610aa50ad08c",
+            "name": "Package installed: fastfetch",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/fastfetch/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/fastfetch/copyright exists. Debian 13/trixie+ only -- see the combined trigger on the neofetch item.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "fastfetch"
+              }
+            ]
+          },
+          {
+            "uuid": "5a9c319682f646d9bf4b1e51f23a6db0",
+            "name": "Package installed: neofetch",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/neofetch/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/neofetch/copyright exists. Debian 12/bookworm only -- see the combined trigger on this item.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "neofetch"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "7b3b1881249748bf80949ed3f6bfe444",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/usr/share/doc/fastfetch/copyright])=0 and last(/Linux Tools (Example Music)/vfs.file.exists[/usr/share/doc/neofetch/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing neofetch or fastfetch package",
+                "priority": "WARNING",
+                "description": "Neither fastfetch nor neofetch is installed. Exactly one is expected (distro-conditional, see linux/tools.yml's 'Install the right fetch tool for this distro' task). Re-run linux/tools.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "neofetch"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "19a5f7f1a7784b8981b1f20335ff3fed",
+            "name": "Symlink exists: /etc/update-motd.d/98-update-status",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/etc/update-motd.d/98-update-status,sym]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if the update-motd symlink exists (type=sym, not the default 'file' type -- this path is always a symlink to /usr/local/bin/update-motd, never a regular file).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "filesystem"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "5e7325a7d78f426c9597b81ea7c7d6ed",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/etc/update-motd.d/98-update-status,sym])=0",
+                "name": "Hey! {HOST.NAME} is missing /etc/update-motd.d/98-update-status symlink",
+                "priority": "WARNING",
+                "description": "Re-run linux/tools.yml -- see its 'Link update-motd into /etc/update-motd.d' task.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "filesystem"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "18916c9bf55245e18906befc1c94f276",
+            "name": "Directory exists: /etc/example-music",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/etc/example-music,dir]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /etc/example-music exists as a directory (type=dir). Every file item below depends on this item's own trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "filesystem"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "d68c919261764edabd279e4e0b43c32b",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/etc/example-music,dir])=0",
+                "name": "Hey! {HOST.NAME} is missing /etc/example-music directory",
+                "priority": "WARNING",
+                "description": "Re-run linux/tools.yml -- see its 'Ensure /etc/example-music exists' task.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "filesystem"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "d5f52b93a64245a291b5ad07f37675ec",
+            "name": "File exists: /etc/example-music/sites.csv",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/etc/example-music/sites.csv]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /etc/example-music/sites.csv exists. Depends on the /etc/example-music directory trigger -- a missing directory doesn't also fire this one.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "filesystem"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "bfbd2fc244714aa6a5da4b63f1076261",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/etc/example-music/sites.csv])=0",
+                "name": "Hey! {HOST.NAME} is missing /etc/example-music/sites.csv",
+                "priority": "WARNING",
+                "description": "Re-run linux/tools.yml -- see its matching 'Deploy ... to /etc/example-music' task.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "filesystem"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /etc/example-music directory",
+                    "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/etc/example-music,dir])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "c9d88f4abaae4798a02b0cdcb1bc875a",
+            "name": "File exists: /etc/example-music/devices.csv",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/etc/example-music/devices.csv]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /etc/example-music/devices.csv exists. Depends on the /etc/example-music directory trigger -- a missing directory doesn't also fire this one.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "filesystem"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "afad631fdc4244aaa863ce682a886d0d",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/etc/example-music/devices.csv])=0",
+                "name": "Hey! {HOST.NAME} is missing /etc/example-music/devices.csv",
+                "priority": "WARNING",
+                "description": "Re-run linux/tools.yml -- see its matching 'Deploy ... to /etc/example-music' task.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "filesystem"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /etc/example-music directory",
+                    "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/etc/example-music,dir])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "06f22f0b99ed4d3d910377ea474673da",
+            "name": "File exists: /etc/example-music/role_codes.csv",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/etc/example-music/role_codes.csv]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /etc/example-music/role_codes.csv exists. Depends on the /etc/example-music directory trigger -- a missing directory doesn't also fire this one.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "filesystem"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "43dcbdce5df24e88a06673544274b6ae",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/etc/example-music/role_codes.csv])=0",
+                "name": "Hey! {HOST.NAME} is missing /etc/example-music/role_codes.csv",
+                "priority": "WARNING",
+                "description": "Re-run linux/tools.yml -- see its matching 'Deploy ... to /etc/example-music' task.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "filesystem"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /etc/example-music directory",
+                    "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/etc/example-music,dir])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "77a39808814a4a42aa1296584adecb10",
+            "name": "File exists: /etc/example-music/address_policy.csv",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/etc/example-music/address_policy.csv]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /etc/example-music/address_policy.csv exists. Depends on the /etc/example-music directory trigger -- a missing directory doesn't also fire this one.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "filesystem"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "24d522aaca274215afc46698f81cc2ed",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/etc/example-music/address_policy.csv])=0",
+                "name": "Hey! {HOST.NAME} is missing /etc/example-music/address_policy.csv",
+                "priority": "WARNING",
+                "description": "Re-run linux/tools.yml -- see its matching 'Deploy ... to /etc/example-music' task.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "filesystem"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /etc/example-music directory",
+                    "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/etc/example-music,dir])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "20f190aebb644c24b10eed67e0778448",
+            "name": "File exists: /etc/example-music/ad_site_topology.csv",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/etc/example-music/ad_site_topology.csv]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /etc/example-music/ad_site_topology.csv exists. Depends on the /etc/example-music directory trigger -- a missing directory doesn't also fire this one.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "filesystem"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "8802aa585da243048e9dd3745bb6c0fc",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/etc/example-music/ad_site_topology.csv])=0",
+                "name": "Hey! {HOST.NAME} is missing /etc/example-music/ad_site_topology.csv",
+                "priority": "WARNING",
+                "description": "Re-run linux/tools.yml -- see its matching 'Deploy ... to /etc/example-music' task.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "filesystem"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /etc/example-music directory",
+                    "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/etc/example-music,dir])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "b25dae1e09914555842b4d9226544c1e",
+            "name": "File exists: /etc/example-music/ad_hub_links.csv",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/etc/example-music/ad_hub_links.csv]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /etc/example-music/ad_hub_links.csv exists. Depends on the /etc/example-music directory trigger -- a missing directory doesn't also fire this one.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "filesystem"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "ef2ca9f158d94c0699e6a2c99015162c",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/etc/example-music/ad_hub_links.csv])=0",
+                "name": "Hey! {HOST.NAME} is missing /etc/example-music/ad_hub_links.csv",
+                "priority": "WARNING",
+                "description": "Re-run linux/tools.yml -- see its matching 'Deploy ... to /etc/example-music' task.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "filesystem"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /etc/example-music directory",
+                    "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/etc/example-music,dir])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "8d54eec3b3814b199431a8e7a827949a",
+            "name": "File exists: /etc/example-music/ad_forest.json",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/etc/example-music/ad_forest.json]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /etc/example-music/ad_forest.json exists. Depends on the /etc/example-music directory trigger -- a missing directory doesn't also fire this one.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "filesystem"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "f57c578b075b48e0aa5a196660f8ce90",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/etc/example-music/ad_forest.json])=0",
+                "name": "Hey! {HOST.NAME} is missing /etc/example-music/ad_forest.json",
+                "priority": "WARNING",
+                "description": "Re-run linux/tools.yml -- see its matching 'Deploy ... to /etc/example-music' task.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "filesystem"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /etc/example-music directory",
+                    "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/etc/example-music,dir])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "df51c5ea1e1f4b9abd5ac903211dff3d",
+            "name": "File exists: /etc/example-music/ad_groups.json",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/etc/example-music/ad_groups.json]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /etc/example-music/ad_groups.json exists. Depends on the /etc/example-music directory trigger -- a missing directory doesn't also fire this one.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "filesystem"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "5d98cf6a5dcb4d8ba7e4396ee021951e",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/etc/example-music/ad_groups.json])=0",
+                "name": "Hey! {HOST.NAME} is missing /etc/example-music/ad_groups.json",
+                "priority": "WARNING",
+                "description": "Re-run linux/tools.yml -- see its matching 'Deploy ... to /etc/example-music' task.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "filesystem"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /etc/example-music directory",
+                    "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/etc/example-music,dir])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "eea71dd1d58d44bd874854df5c218cd7",
+            "name": "File exists: /etc/example-music/ad_users.json",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/etc/example-music/ad_users.json]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /etc/example-music/ad_users.json exists. Depends on the /etc/example-music directory trigger -- a missing directory doesn't also fire this one.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "filesystem"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "1ddbdce6ccbf4dfea2d4938509bd7402",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/etc/example-music/ad_users.json])=0",
+                "name": "Hey! {HOST.NAME} is missing /etc/example-music/ad_users.json",
+                "priority": "WARNING",
+                "description": "Re-run linux/tools.yml -- see its matching 'Deploy ... to /etc/example-music' task.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "filesystem"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /etc/example-music directory",
+                    "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/etc/example-music,dir])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "ab9da4c8acab48b3ba5350004e7439b1",
+            "name": "File exists: /etc/example-music/ad_computers.json",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/etc/example-music/ad_computers.json]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /etc/example-music/ad_computers.json exists. Depends on the /etc/example-music directory trigger -- a missing directory doesn't also fire this one.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "filesystem"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "2cac7985c1a945aeb3a3583c18bb4dc9",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/etc/example-music/ad_computers.json])=0",
+                "name": "Hey! {HOST.NAME} is missing /etc/example-music/ad_computers.json",
+                "priority": "WARNING",
+                "description": "Re-run linux/tools.yml -- see its matching 'Deploy ... to /etc/example-music' task.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "filesystem"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /etc/example-music directory",
+                    "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/etc/example-music,dir])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "d86c60ef38fc43f39bf289e1c7dd6c90",
+            "name": "File exists: /etc/example-music/nodeinfo.json",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/etc/example-music/nodeinfo.json]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if nodeinfo.json exists. Every properly-built host is EXA[ROLE][SITE][NNN]-conformant, so this should never legitimately be 0.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "filesystem"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "bb5bcbd599094d178b75d738c6576864",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/etc/example-music/nodeinfo.json])=0",
+                "name": "Hey! {HOST.NAME} is missing /etc/example-music/nodeinfo.json",
+                "priority": "WARNING",
+                "description": "Re-run linux/tools.yml. If this fires, something is wrong with the host's own hostname/build, not just a missing file.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "filesystem"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "c0eaee85fd6248f394a383b79b9ccf73",
+            "name": "nodeinfo.json contents (master)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]",
+            "delay": "1h",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Raw nodeinfo.json content -- master item for every examplemusic.nodeinfo.* dependent item below. Staleness (nodata) trigger depends on the exists trigger above -- a missing file would eventually go stale too, same root cause, one alert.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              },
+              {
+                "tag": "item-type",
+                "value": "master"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "698fc337f215460887a71691d0eacd48",
+                "expression": "nodata(/Linux Tools (Example Music)/vfs.file.contents[/etc/example-music/nodeinfo.json],{$NODEINFO.MAXAGE})=1",
+                "name": "Hey! {HOST.NAME} hasn't had linux/tools.yml run in {$NODEINFO.MAXAGE}",
+                "priority": "WARNING",
+                "description": "nodeinfo.json hasn't been rewritten within {$NODEINFO.MAXAGE} -- linux/tools.yml hasn't run against this host recently.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "nodeinfo"
+                  },
+                  {
+                    "tag": "item-type",
+                    "value": "master"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /etc/example-music/nodeinfo.json",
+                    "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/etc/example-music/nodeinfo.json])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "6a8b1da21ed94e999dc5ab0d8c9e1ce6",
+            "name": "nodeinfo: hostname",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.hostname",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's hostname field -- visibility only, no trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
             "master_item": {
-              "key": "vfs.file.contents[/etc/example-music/zabbix_status/linux_tools.json]"
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
             },
             "preprocessing": [
               {
                 "type": "JSONPATH",
-                "parameters": [ "$.update_motd_linked" ],
+                "parameters": [
+                  "$.hostname"
+                ],
                 "error_handler": "DISCARD_VALUE"
               }
-            ],
+            ]
+          },
+          {
+            "uuid": "881e2f0b75e0474a962b9156e4cd473a",
+            "name": "nodeinfo: fqdn",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.fqdn",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's fqdn field -- visibility only, no trigger.",
             "tags": [
-              { "tag": "component", "value": "linux-tools" }
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.fqdn"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "fb43091b02e346f18c5bb07a9bcd3289",
+            "name": "nodeinfo: role",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.role",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's role field -- visibility only, no trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.role"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "657ebf4493e843a1bf8599033edd80cf",
+            "name": "nodeinfo: site",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.site",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's site field -- visibility only, no trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.site"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "03985e1e1cfe424b8c47994f181e9312",
+            "name": "nodeinfo: city",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.city",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's city field -- visibility only, no trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.city"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "c56ba2203a4f4d9f9692c3f48937ab94",
+            "name": "nodeinfo: country",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.country",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's country field -- visibility only, no trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.country"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "5d241091037a43bcab074ba409159ae2",
+            "name": "nodeinfo: country_code",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.country_code",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's country_code field -- visibility only, no trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.country_code"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "89b0c9d277054c8c81e9eb58f3df8ddb",
+            "name": "nodeinfo: entity",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.entity",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's entity field -- visibility only, no trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.entity"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "46b85caa02ac4156aacffde842450f6e",
+            "name": "nodeinfo: office_name",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.office_name",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's office_name field -- visibility only, no trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.office_name"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "8faa1256b30f477dbc4c57783ee15eb0",
+            "name": "nodeinfo: street_address",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.street_address",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's street_address field -- visibility only, no trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.street_address"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "70b6e8add7234feb8e9e843e539db287",
+            "name": "nodeinfo: postal_code",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.postal_code",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's postal_code field -- visibility only, no trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.postal_code"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "04ad17f81d2740ce92bcfbd1435ca82a",
+            "name": "nodeinfo: bootstrapped_at",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.bootstrapped_at",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's bootstrapped_at field -- visibility only, no trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.bootstrapped_at"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "abeb4a40993f440f940a77151e1df8c9",
+            "name": "nodeinfo: bootstrapped_by",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.bootstrapped_by",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's bootstrapped_by field -- visibility only, no trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.bootstrapped_by"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "8febd983617f4f09bfbb7133c93552b8",
+            "name": "nodeinfo: last_ansible_run",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.last_ansible_run",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's last_ansible_run field -- visibility only, no trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.last_ansible_run"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "fa3f5189ef4549d88fd6b79ff055b366",
+            "name": "nodeinfo: last_ansible_play",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.last_ansible_play",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's last_ansible_play field -- visibility only, no trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.last_ansible_play"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "9f301c8998a34652a23e0a3969d38265",
+            "name": "nodeinfo: ansible_managed",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.ansible_managed",
+            "delay": "0",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "JSON boolean -> 0/1 via a second preprocessing step (BOOL_TO_DECIMAL). Should always be 1; a 0 means something wrote nodeinfo.json outside Ansible's own nodeinfo.yml.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
             ],
             "triggers": [
               {
-                "uuid": "f2f0ca0cd75c424dbf1deca148018093",
-                "expression": "last(/Linux Tools (Example Music)/examplemusic.linuxtools.update_motd_linked)=0",
-                "name": "Linux Tools: update-motd not linked on {HOST.NAME}",
+                "uuid": "5cc20157ce124152a28428b3c70f5197",
+                "expression": "last(/Linux Tools (Example Music)/examplemusic.nodeinfo.ansible_managed)=0",
+                "name": "Hey! {HOST.NAME}'s nodeinfo.json says ansible_managed=false",
                 "priority": "WARNING",
-                "description": "The update-motd symlink is missing or broken. Re-run linux/tools.yml -- see its 'Link update-motd into /etc/update-motd.d' task.",
+                "description": "nodeinfo.json's ansible_managed field is false -- something wrote this file outside Ansible.",
                 "tags": [
-                  { "tag": "component", "value": "linux-tools" },
-                  { "tag": "scope", "value": "configuration-drift" }
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "nodeinfo"
+                  }
+                ]
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.ansible_managed"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              },
+              {
+                "type": "BOOL_TO_DECIMAL",
+                "parameters": [],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "3702b8d3ad114d86bde9c262f3bf8aa9",
+            "name": "nodeinfo: environment",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.environment",
+            "delay": "0",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Drift detector -- fires if this host's recorded environment changed since the previous linux/tools.yml run (could be intentional, e.g. a real promotion -- check before treating as a fault).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "849b1932da224f69a5896194f59b7df0",
+                "expression": "last(/Linux Tools (Example Music)/examplemusic.nodeinfo.environment)<>last(/Linux Tools (Example Music)/examplemusic.nodeinfo.environment,#2)",
+                "name": "Hey! {HOST.NAME}'s nodeinfo environment changed ({ITEM.LASTVALUE})",
+                "priority": "WARNING",
+                "description": "environment in nodeinfo.json differs from the previous recorded run.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "nodeinfo"
+                  }
+                ]
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.environment"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "08975772984f42549c0cb3b3577fecca",
+            "name": "ansible user's /etc/passwd line",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.regexp[/etc/passwd,\"^ansible:\"]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "The full matched /etc/passwd line for the ansible user. The trigger checks this text for 'zsh'.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "identity"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "3009e1d40b234b71bf12e47c3f490ff4",
+                "expression": "find(/Linux Tools (Example Music)/vfs.file.regexp[/etc/passwd,\"^ansible:\"],,\"like\",\"zsh\")=0",
+                "name": "Hey! {HOST.NAME} - ansible user's shell isn't zsh",
+                "priority": "WARNING",
+                "description": "Re-run linux/tools.yml -- see its 'Set default shell to zsh for ansible user' task.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "identity"
+                  }
                 ]
               }
             ]
-          }
-        ],
-        "discovery_rules": [
+          },
           {
-            "uuid": "93b735a3a45a45f7a2016e405a3ee546",
-            "name": "Linux Tools: package discovery",
+            "uuid": "c6c835045e5a4907a5a3c3e1dd7286d1",
+            "name": "File exists: /usr/local/bin/server-prompts.zsh",
             "type": "ZABBIX_ACTIVE",
-            "key": "vfs.file.contents[/etc/example-music/zabbix_status/linux_tools_packages_lld.json]",
+            "key": "vfs.file.exists[/usr/local/bin/server-prompts.zsh]",
             "delay": "1h",
-            "lifetime": "7d",
-            "description": "Reads the LLD-format package list written by linux/tools.yml (one {#PACKAGE} entry per common_packages name, group_vars/all/main.yml). lifetime=7d: a package dropped from common_packages has its item/trigger cleaned up within a week rather than lingering forever.",
-            "item_prototypes": [
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/local/bin/server-prompts.zsh exists.",
+            "tags": [
               {
-                "uuid": "11c3f70bf9d04ac88b0923ec24755741",
-                "name": "Package installed: {#PACKAGE}",
-                "type": "ZABBIX_ACTIVE",
-                "key": "vfs.file.exists[/usr/share/doc/{#PACKAGE}/copyright]",
-                "delay": "1h",
-                "history": "30d",
-                "trends": "90d",
-                "value_type": "UNSIGNED",
-                "description": "1 if /usr/share/doc/{#PACKAGE}/copyright exists (real file or symlink -- Debian policy requires every binary package to ship one), 0 otherwise. Native agent check, independent of linux/tools.yml's own ansible_facts.packages -- Ansible only supplies the list of packages to watch, not whether each is installed.",
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "filesystem"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "59151df06e364e43b7f0af0f978d5a7e",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/usr/local/bin/server-prompts.zsh])=0",
+                "name": "Hey! {HOST.NAME} is missing /usr/local/bin/server-prompts.zsh",
+                "priority": "WARNING",
+                "description": "Re-run linux/tools.yml -- see its 'Deploy server-prompts scripts' task.",
                 "tags": [
-                  { "tag": "component", "value": "linux-tools" },
-                  { "tag": "package", "value": "{#PACKAGE}" }
-                ],
-                "triggers": [
                   {
-                    "uuid": "f2824fff36314e1b92ee25de033c0c93",
-                    "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/usr/share/doc/{#PACKAGE}/copyright])=0",
-                    "name": "Linux Tools: package {#PACKAGE} missing on {HOST.NAME}",
-                    "priority": "WARNING",
-                    "description": "{#PACKAGE} is in common_packages (group_vars/all/main.yml) but /usr/share/doc/{#PACKAGE}/copyright doesn't exist -- package is not installed, or was removed outside Ansible. Re-run linux/tools.yml.",
-                    "tags": [
-                      { "tag": "component", "value": "linux-tools" },
-                      { "tag": "scope", "value": "configuration-drift" },
-                      { "tag": "package", "value": "{#PACKAGE}" }
-                    ]
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "filesystem"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "e5fd936235804762858b3f6c6adbc71a",
+            "name": "File exists: /usr/local/bin/server-prompts.sh",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/local/bin/server-prompts.sh]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/local/bin/server-prompts.sh exists.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "filesystem"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "3b5cb08fa42244b58745884d1e1f9bdf",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/usr/local/bin/server-prompts.sh])=0",
+                "name": "Hey! {HOST.NAME} is missing /usr/local/bin/server-prompts.sh",
+                "priority": "WARNING",
+                "description": "Re-run linux/tools.yml -- see its 'Deploy server-prompts scripts' task.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "filesystem"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "8b839e6108a8456585ac8b890e3aaad8",
+            "name": "File exists: /home/ansible/.gitconfig",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/home/ansible/.gitconfig]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /home/ansible/.gitconfig exists for the ansible user.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "dotfiles"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "610c862be4d54886a95d93201f11b521",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/home/ansible/.gitconfig])=0",
+                "name": "Hey! {HOST.NAME} is missing /home/ansible/.gitconfig",
+                "priority": "WARNING",
+                "description": "Re-run linux/tools.yml -- see its dotfile-deploy tasks.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "dotfiles"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "8387819a6179406db8aa1cacdb72ec2b",
+            "name": "File exists: /home/ansible/.tmux.conf",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/home/ansible/.tmux.conf]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /home/ansible/.tmux.conf exists for the ansible user.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "dotfiles"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "86862311d10f428ebe811d3bfa2f413c",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/home/ansible/.tmux.conf])=0",
+                "name": "Hey! {HOST.NAME} is missing /home/ansible/.tmux.conf",
+                "priority": "WARNING",
+                "description": "Re-run linux/tools.yml -- see its dotfile-deploy tasks.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "dotfiles"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "c6373fa91a474e5d8d7437a3c2608d18",
+            "name": "File exists: /home/ansible/.vimrc",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/home/ansible/.vimrc]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /home/ansible/.vimrc exists for the ansible user.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "dotfiles"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "ff96168690864fa8a25d2771725bb487",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/home/ansible/.vimrc])=0",
+                "name": "Hey! {HOST.NAME} is missing /home/ansible/.vimrc",
+                "priority": "WARNING",
+                "description": "Re-run linux/tools.yml -- see its dotfile-deploy tasks.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "dotfiles"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "522b2628f11c476da37fcdd00a584429",
+            "name": "File exists: /home/ansible/.vim",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/home/ansible/.vim,dir]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /home/ansible/.vim exists for the ansible user.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "dotfiles"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "e7661dc1f52e485095631aa24621cce7",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/home/ansible/.vim,dir])=0",
+                "name": "Hey! {HOST.NAME} is missing /home/ansible/.vim",
+                "priority": "WARNING",
+                "description": "Re-run linux/tools.yml -- see its dotfile-deploy tasks.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "dotfiles"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "37797ea9c6124421bb0aafbd088bbcf3",
+            "name": "unattended-upgrades setting: AutoFixInterruptedDpkg (50unattended-upgrades)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.regmatch[/etc/apt/apt.conf.d/50unattended-upgrades,\"^Unattended-Upgrade::AutoFixInterruptedDpkg \\\"true\\\";\"]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if the line matching 'AutoFixInterruptedDpkg' is present and correct in /etc/apt/apt.conf.d/50unattended-upgrades. Depends on the 'Package installed: unattended-upgrades' trigger -- only fires if that item has a real value (the package is actually present), same dependency pattern as the /etc/example-music files depending on their directory.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "config"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "93faf979135d44ae9c09d3c3efa4b46e",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.regmatch[/etc/apt/apt.conf.d/50unattended-upgrades,\"^Unattended-Upgrade::AutoFixInterruptedDpkg \\\"true\\\";\"])=0",
+                "name": "Hey! {HOST.NAME} - unattended-upgrades setting 'AutoFixInterruptedDpkg' wrong/missing in 50unattended-upgrades",
+                "priority": "WARNING",
+                "description": "Re-run linux/tools.yml -- see its 'Configure unattended-upgrades' tasks.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "config"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing unattended-upgrades package",
+                    "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/usr/share/doc/unattended-upgrades/copyright])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "db40caef518d4fd4aecd8b5cf29bfe4d",
+            "name": "unattended-upgrades setting: Remove-Unused-Kernel-Packages (50unattended-upgrades)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.regmatch[/etc/apt/apt.conf.d/50unattended-upgrades,\"^Unattended-Upgrade::Remove-Unused-Kernel-Packages \\\"true\\\";\"]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if the line matching 'Remove-Unused-Kernel-Packages' is present and correct in /etc/apt/apt.conf.d/50unattended-upgrades. Depends on the 'Package installed: unattended-upgrades' trigger -- only fires if that item has a real value (the package is actually present), same dependency pattern as the /etc/example-music files depending on their directory.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "config"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "f7bc6e0bcbbe48e4a07fa5502a2ac4c3",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.regmatch[/etc/apt/apt.conf.d/50unattended-upgrades,\"^Unattended-Upgrade::Remove-Unused-Kernel-Packages \\\"true\\\";\"])=0",
+                "name": "Hey! {HOST.NAME} - unattended-upgrades setting 'Remove-Unused-Kernel-Packages' wrong/missing in 50unattended-upgrades",
+                "priority": "WARNING",
+                "description": "Re-run linux/tools.yml -- see its 'Configure unattended-upgrades' tasks.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "config"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing unattended-upgrades package",
+                    "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/usr/share/doc/unattended-upgrades/copyright])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "cda805b8427d44bd94dd154986b08cad",
+            "name": "unattended-upgrades setting: Remove-New-Unused-Dependencies (50unattended-upgrades)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.regmatch[/etc/apt/apt.conf.d/50unattended-upgrades,\"^Unattended-Upgrade::Remove-New-Unused-Dependencies \\\"true\\\";\"]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if the line matching 'Remove-New-Unused-Dependencies' is present and correct in /etc/apt/apt.conf.d/50unattended-upgrades. Depends on the 'Package installed: unattended-upgrades' trigger -- only fires if that item has a real value (the package is actually present), same dependency pattern as the /etc/example-music files depending on their directory.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "config"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "986ab39e39af4da991d599c5e4c10b41",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.regmatch[/etc/apt/apt.conf.d/50unattended-upgrades,\"^Unattended-Upgrade::Remove-New-Unused-Dependencies \\\"true\\\";\"])=0",
+                "name": "Hey! {HOST.NAME} - unattended-upgrades setting 'Remove-New-Unused-Dependencies' wrong/missing in 50unattended-upgrades",
+                "priority": "WARNING",
+                "description": "Re-run linux/tools.yml -- see its 'Configure unattended-upgrades' tasks.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "config"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing unattended-upgrades package",
+                    "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/usr/share/doc/unattended-upgrades/copyright])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "5e9adb74cf6340cda0b303bd91fabd49",
+            "name": "unattended-upgrades setting: Automatic-Reboot (50unattended-upgrades)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.regmatch[/etc/apt/apt.conf.d/50unattended-upgrades,\"^Unattended-Upgrade::Automatic-Reboot \\\"false\\\";\"]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if the line matching 'Automatic-Reboot' is present and correct in /etc/apt/apt.conf.d/50unattended-upgrades. Depends on the 'Package installed: unattended-upgrades' trigger -- only fires if that item has a real value (the package is actually present), same dependency pattern as the /etc/example-music files depending on their directory.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "config"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "6e180d7fd4124f93a36b131a1c618c9a",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.regmatch[/etc/apt/apt.conf.d/50unattended-upgrades,\"^Unattended-Upgrade::Automatic-Reboot \\\"false\\\";\"])=0",
+                "name": "Hey! {HOST.NAME} - unattended-upgrades setting 'Automatic-Reboot' wrong/missing in 50unattended-upgrades",
+                "priority": "WARNING",
+                "description": "Re-run linux/tools.yml -- see its 'Configure unattended-upgrades' tasks.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "config"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing unattended-upgrades package",
+                    "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/usr/share/doc/unattended-upgrades/copyright])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "cb3403fdb5df4af19f1e88ce51771915",
+            "name": "unattended-upgrades setting: Automatic-Reboot-Time (50unattended-upgrades)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.regmatch[/etc/apt/apt.conf.d/50unattended-upgrades,\"^Unattended-Upgrade::Automatic-Reboot-Time \\\"02:00\\\";\"]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if the line matching 'Automatic-Reboot-Time' is present and correct in /etc/apt/apt.conf.d/50unattended-upgrades. Depends on the 'Package installed: unattended-upgrades' trigger -- only fires if that item has a real value (the package is actually present), same dependency pattern as the /etc/example-music files depending on their directory.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "config"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "693a084f111f45c0891dba4ef26c51c2",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.regmatch[/etc/apt/apt.conf.d/50unattended-upgrades,\"^Unattended-Upgrade::Automatic-Reboot-Time \\\"02:00\\\";\"])=0",
+                "name": "Hey! {HOST.NAME} - unattended-upgrades setting 'Automatic-Reboot-Time' wrong/missing in 50unattended-upgrades",
+                "priority": "WARNING",
+                "description": "Re-run linux/tools.yml -- see its 'Configure unattended-upgrades' tasks.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "config"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing unattended-upgrades package",
+                    "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/usr/share/doc/unattended-upgrades/copyright])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "d32cd42235bc4465af6b80ef0b3bf87f",
+            "name": "unattended-upgrades setting: Update-Package-Lists (20auto-upgrades)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.regmatch[/etc/apt/apt.conf.d/20auto-upgrades,\"^APT::Periodic::Update-Package-Lists \\\"1\\\";\"]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if the line matching 'Update-Package-Lists' is present and correct in /etc/apt/apt.conf.d/20auto-upgrades. Depends on the 'Package installed: unattended-upgrades' trigger -- only fires if that item has a real value (the package is actually present), same dependency pattern as the /etc/example-music files depending on their directory.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "config"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "d9cb05edde12464a89ab830295793c4d",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.regmatch[/etc/apt/apt.conf.d/20auto-upgrades,\"^APT::Periodic::Update-Package-Lists \\\"1\\\";\"])=0",
+                "name": "Hey! {HOST.NAME} - unattended-upgrades setting 'Update-Package-Lists' wrong/missing in 20auto-upgrades",
+                "priority": "WARNING",
+                "description": "Re-run linux/tools.yml -- see its 'Configure unattended-upgrades' tasks.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "config"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing unattended-upgrades package",
+                    "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/usr/share/doc/unattended-upgrades/copyright])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "3aa9216942424b959d82b517a0eb8b6e",
+            "name": "unattended-upgrades setting: Unattended-Upgrade (20auto-upgrades)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.regmatch[/etc/apt/apt.conf.d/20auto-upgrades,\"^APT::Periodic::Unattended-Upgrade \\\"1\\\";\"]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if the line matching 'Unattended-Upgrade' is present and correct in /etc/apt/apt.conf.d/20auto-upgrades. Depends on the 'Package installed: unattended-upgrades' trigger -- only fires if that item has a real value (the package is actually present), same dependency pattern as the /etc/example-music files depending on their directory.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "config"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "30d2110e1c45452fb3f72e6268f11231",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.regmatch[/etc/apt/apt.conf.d/20auto-upgrades,\"^APT::Periodic::Unattended-Upgrade \\\"1\\\";\"])=0",
+                "name": "Hey! {HOST.NAME} - unattended-upgrades setting 'Unattended-Upgrade' wrong/missing in 20auto-upgrades",
+                "priority": "WARNING",
+                "description": "Re-run linux/tools.yml -- see its 'Configure unattended-upgrades' tasks.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "config"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing unattended-upgrades package",
+                    "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/usr/share/doc/unattended-upgrades/copyright])=0"
                   }
                 ]
               }
@@ -129,13 +3231,16 @@
         ],
         "macros": [
           {
-            "macro": "{$LINUXTOOLS.STATUS.MAXAGE}",
+            "macro": "{$NODEINFO.MAXAGE}",
             "value": "2d",
-            "description": "How long the status report can go without a fresh write before the staleness trigger fires. Override per-host if a host is deliberately on a less frequent Ansible run schedule."
+            "description": "How long nodeinfo.json can go without a fresh write before the staleness trigger fires. Override per-host if a host is deliberately on a less frequent Ansible run schedule."
           }
         ],
         "tags": [
-          { "tag": "target", "value": "linux" }
+          {
+            "tag": "target",
+            "value": "linux"
+          }
         ]
       }
     ]
