@@ -22,6 +22,12 @@
 #               (also added to linux/tools.yml's own handlers: block, same reason).
 #   2026-10-16  Initial file. Part of the same work as tasks/zabbix_agent_onboard.yml --
 #               see that file's own header for the full design/verification trail.
+#   2026-10-17  BUG FIX, Robert's ask: nodeinfo_role used host_role | lower despite
+#               host_role itself already being uppercase at its own source
+#               (hostname_facts.yml) -- see zabbix_server.yml's own matching entry the
+#               same day for the full sweep (linux/tools.yml, zabbix_server.yml,
+#               tasks/nodeinfo_windows.yml all had the identical pattern). Changed to
+#               | upper for explicit clarity at the point of use.
 # =============================================================================
 
 - name: Zabbix — Agent onboarding (Linux)
@@ -43,7 +49,7 @@
       tags: always
       include_tasks: ../../tasks/nodeinfo.yml
       vars:
-        nodeinfo_role: "{{ host_role | lower }}"
+        nodeinfo_role: "{{ host_role | upper }}"
         nodeinfo_site: "{{ host_site }}"
         nodeinfo_bootstrapped_by: "zabbix/zabbix_agent.yml"
 
