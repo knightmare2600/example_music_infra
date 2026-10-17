@@ -12,7 +12,7 @@
         "uuid": "327a661a7fe14be386ba9af2a62ab47f",
         "template": "firewall_examplemusic",
         "name": "Firewall-Router (Example Music)",
-        "description": "Companion template for bootstrap/web/provision/firewallme.sh + ansible/playbooks/firewallme -- built by copying zabbix_template_ansible.json's generator and editing it. Same flat, native, one-item-per-thing design.\n\nDELIBERATELY NOT CHECKED (Robert's explicit calls, 2026-10-17)\n  - cockpit-navigator: a one-off GitHub .deb, not an apt package -- no stable copyright path. Revisit next week.\n  - /home/ansible/.zshrc, /root/.zshrc, ansible user's shell=zsh: already covered by linuxtools' template (linked to every Linux node, firewalls included) -- not duplicated here.\n  - /etc/cockpit/cockpit.conf, /etc/cockpit/ws-certs.d/0-self-signed.cert: skipped for now.\n  - /etc/wireguard/{private,public,preshared}.key and wg0.conf: NOT checked. The directory itself is mode 0700 (both firewallme.sh and the Ansible role set this) -- the zabbix-agent user has no search permission into it at all, so this isn't just the usual 'can't read file contents' caveat, nothing inside this directory is even stat-able.\n  - nftables RULESET CONTENT: not checked. Role- and site-conditional (WAN SSH, WireGuard port, CLD-only rules) -- Robert's call: 'too much can go wrong, this is an advanced thing.' Only the file's existence is checked.\n  - wg0.conf peer registration (which spokes are actually registered on their hub) and the whole hub/spoke role-aware design: deferred, backlog.\n  - /etc/resolv.conf: written chattr +i (immutable) by the role -- a plain vfs.file.exists can't see that attribute, and existence alone is nearly always true anyway. Backlogged, not built.\n  - nodeinfo.json's firewall-specific fields (role=firewall; lan_ip/lan_iface/lan_mac/ansible_ip/wg_role/wg_tunnel_ip/wg_port/wg_hub/wan_iface/wan_mac/wan_mode/wan_ip): PARKED -- Robert's call, linuxtools' own template and playbook are getting role-aware changes first; don't add a third divergent-schema extraction here until that lands.\n  - root's shell=zsh on a firewall host: not covered by linuxtools (that template's root-shell check is the ansible-control-node-specific one, a different host) -- backlogged, not built here either.\n\nDESIGN NOTES\n  - Package list is fw_packages minus the 11 packages already in common_packages (computed programmatically, not by hand) -- linuxtools' template already covers those on every Linux node.\n  - /etc/dnsmasq.d/lan.conf and NetworkManager.conf's managed=false check are both INVERTED (trigger fires on the bad state being PRESENT, not absent) -- a legacy file that should be gone, and a line that should have been corrected away.\n  - PasswordAuthentication/ChallengeResponseAuthentication check the directive EXISTS, not which value it has -- fw_ssh_password_auth_enabled is a genuine per-host policy choice (default true), not a single correct value to assert estate-wide.\n  - Service checks use systemctl is-enabled via system.run (AllowKey=system.run[*] already in every deployed agent config) rather than 'is it running' -- several services are legitimately enabled-but-not-started when fw_wan_activate=false (a fresh, not-yet-activated box). Also used for the /etc/network/interfaces ifupdown-stanza check -- the real WAN/LAN interface names are detected per-host at runtime, not a fixed literal a static template item can know, but grep -v on the literal string 'lo' needs no such knowledge.\n\nIMPORT: configuration.import, rules: createMissing+updateExisting+deleteMissing on items/triggers, createMissing+updateExisting on template_groups/templates.",
+        "description": "Companion template for bootstrap/web/provision/firewallme.sh + ansible/playbooks/firewallme -- built by copying zabbix_template_ansible.json's generator and editing it. Same flat, native, one-item-per-thing design.\n\nDELIBERATELY NOT CHECKED (Robert's explicit calls, 2026-10-17)\n  - cockpit-navigator: a one-off GitHub .deb, not an apt package -- no stable copyright path. Revisit next week.\n  - /home/ansible/.zshrc, /root/.zshrc, ansible user's shell=zsh: already covered by linuxtools' template (linked to every Linux node, firewalls included) -- not duplicated here.\n  - /etc/cockpit/cockpit.conf, /etc/cockpit/ws-certs.d/0-self-signed.cert: skipped for now.\n  - /etc/wireguard/{private,public,preshared}.key and wg0.conf: NOT checked. The directory itself is mode 0700 (both firewallme.sh and the Ansible role set this) -- the zabbix-agent user has no search permission into it at all, so this isn't just the usual 'can't read file contents' caveat, nothing inside this directory is even stat-able.\n  - nftables RULESET CONTENT: not checked. Role- and site-conditional (WAN SSH, WireGuard port, CLD-only rules) -- Robert's call: 'too much can go wrong, this is an advanced thing.' Only the file's existence is checked.\n  - wg0.conf peer registration (which spokes are actually registered on their hub) and the whole hub/spoke role-aware design: deferred, backlog.\n  - /etc/resolv.conf: written chattr +i (immutable) by the role -- a plain vfs.file.exists can't see that attribute, and existence alone is nearly always true anyway. Backlogged, not built.\n  - root's shell=zsh on a firewall host: not covered by linuxtools (that template's root-shell check is the ansible-control-node-specific one, a different host) -- backlogged, not built here either.\n\nDESIGN NOTES\n  - Package list is fw_packages minus the 11 packages already in common_packages (computed programmatically, not by hand) -- linuxtools' template already covers those on every Linux node.\n  - /etc/dnsmasq.d/lan.conf and NetworkManager.conf's managed=false check are both INVERTED (trigger fires on the bad state being PRESENT, not absent) -- a legacy file that should be gone, and a line that should have been corrected away.\n  - PasswordAuthentication/ChallengeResponseAuthentication check the directive EXISTS, not which value it has -- fw_ssh_password_auth_enabled is a genuine per-host policy choice (default true), not a single correct value to assert estate-wide.\n  - Service checks use systemctl is-enabled via system.run (AllowKey=system.run[*] already in every deployed agent config) rather than 'is it running' -- several services are legitimately enabled-but-not-started when fw_wan_activate=false (a fresh, not-yet-activated box). Also used for the /etc/network/interfaces ifupdown-stanza check -- the real WAN/LAN interface names are detected per-host at runtime, not a fixed literal a static template item can know, but grep -v on the literal string 'lo' needs no such knowledge.\n  - nodeinfo.json's 9 firewall-specific fields (lan_ip/lan_iface/ansible_ip/wg_role/wg_tunnel_ip/wg_hub/wan_iface/wan_mode/wan_ip, 90-firewall.yml's own nodeinfo_extra) ARE extracted here -- added 2026-10-17 once ansible/tasks/nodeinfo.yml's extras-preservation fix (32e288f) landed, confirming WireGuard/firewall-specific nodeinfo fields belong in THIS template, not linuxtools' generic one (Robert's explicit design call).\n\nIMPORT: configuration.import, rules: createMissing+updateExisting+deleteMissing on items/triggers, createMissing+updateExisting on template_groups/templates.",
         "groups": [
           {
             "name": "Templates/Example Music"
@@ -20,7 +20,7 @@
         ],
         "items": [
           {
-            "uuid": "e6dae40298a144f7baa244863c6d36f5",
+            "uuid": "feadcf70f1984c8389ff875624e85c64",
             "name": "Package installed: network-manager",
             "type": "ZABBIX_ACTIVE",
             "key": "vfs.file.exists[/usr/share/doc/network-manager/copyright]",
@@ -45,7 +45,7 @@
             ],
             "triggers": [
               {
-                "uuid": "ba61caec992b42cabed9f83ce580f4cd",
+                "uuid": "d975d62f73c34ccca10ee56c2e49cae2",
                 "expression": "last(/Firewall-Router (Example Music)/vfs.file.exists[/usr/share/doc/network-manager/copyright])=0",
                 "name": "Hey! {HOST.NAME} is missing network-manager package",
                 "priority": "WARNING",
@@ -68,7 +68,7 @@
             ]
           },
           {
-            "uuid": "7b1fcb936e3048b3a352b4e8311e4b4f",
+            "uuid": "e4ee20cc17b2498885ccb78e9f113b6d",
             "name": "Package installed: nftables",
             "type": "ZABBIX_ACTIVE",
             "key": "vfs.file.exists[/usr/share/doc/nftables/copyright]",
@@ -93,7 +93,7 @@
             ],
             "triggers": [
               {
-                "uuid": "57f96288202544b192f0cd556cebc20c",
+                "uuid": "4f4b751a21714452b2552fda5687a8e5",
                 "expression": "last(/Firewall-Router (Example Music)/vfs.file.exists[/usr/share/doc/nftables/copyright])=0",
                 "name": "Hey! {HOST.NAME} is missing nftables package",
                 "priority": "WARNING",
@@ -116,7 +116,7 @@
             ]
           },
           {
-            "uuid": "6e98974d0eaf4727b3bfe0905f6bffc6",
+            "uuid": "0b8b94d6f4764fee983a5bfbee579af0",
             "name": "Package installed: iproute2",
             "type": "ZABBIX_ACTIVE",
             "key": "vfs.file.exists[/usr/share/doc/iproute2/copyright]",
@@ -141,7 +141,7 @@
             ],
             "triggers": [
               {
-                "uuid": "adf8d73cfc754a27adc2445291dcfa3a",
+                "uuid": "544e98892ced4045bc37820538e02e39",
                 "expression": "last(/Firewall-Router (Example Music)/vfs.file.exists[/usr/share/doc/iproute2/copyright])=0",
                 "name": "Hey! {HOST.NAME} is missing iproute2 package",
                 "priority": "WARNING",
@@ -164,7 +164,7 @@
             ]
           },
           {
-            "uuid": "f747d403a34a4b5b830af85c115c6a40",
+            "uuid": "c920715a59f14a1d81955012f3fce507",
             "name": "Package installed: procps",
             "type": "ZABBIX_ACTIVE",
             "key": "vfs.file.exists[/usr/share/doc/procps/copyright]",
@@ -189,7 +189,7 @@
             ],
             "triggers": [
               {
-                "uuid": "c8d9aa9f5bf34616b87792d527de84ce",
+                "uuid": "32022521952e41e2ae43ea12bb9730f5",
                 "expression": "last(/Firewall-Router (Example Music)/vfs.file.exists[/usr/share/doc/procps/copyright])=0",
                 "name": "Hey! {HOST.NAME} is missing procps package",
                 "priority": "WARNING",
@@ -212,7 +212,7 @@
             ]
           },
           {
-            "uuid": "31e42362bfd24565a1d8d0e4413d0d60",
+            "uuid": "e0734a2fdefd46cf8cfa351713796b3b",
             "name": "Package installed: conntrack",
             "type": "ZABBIX_ACTIVE",
             "key": "vfs.file.exists[/usr/share/doc/conntrack/copyright]",
@@ -237,7 +237,7 @@
             ],
             "triggers": [
               {
-                "uuid": "3c89e29e496044d1bd5b73f2e5997fe2",
+                "uuid": "a9147817e0244dc8be75cc4415dde9f3",
                 "expression": "last(/Firewall-Router (Example Music)/vfs.file.exists[/usr/share/doc/conntrack/copyright])=0",
                 "name": "Hey! {HOST.NAME} is missing conntrack package",
                 "priority": "WARNING",
@@ -260,7 +260,7 @@
             ]
           },
           {
-            "uuid": "cada36196385415cb5a80a32176999ff",
+            "uuid": "9faeefa93195436088429455e71725f3",
             "name": "Package installed: dnsmasq",
             "type": "ZABBIX_ACTIVE",
             "key": "vfs.file.exists[/usr/share/doc/dnsmasq/copyright]",
@@ -285,7 +285,7 @@
             ],
             "triggers": [
               {
-                "uuid": "746cb92f3aa74169b6fb50ff55db3366",
+                "uuid": "422ddf3d347045b99273e566fee03319",
                 "expression": "last(/Firewall-Router (Example Music)/vfs.file.exists[/usr/share/doc/dnsmasq/copyright])=0",
                 "name": "Hey! {HOST.NAME} is missing dnsmasq package",
                 "priority": "WARNING",
@@ -308,7 +308,7 @@
             ]
           },
           {
-            "uuid": "7ef0a308a99d4f29b3f2cbed66a57c9f",
+            "uuid": "c6fa4eb78e57459caf2e1a91954e8d35",
             "name": "Package installed: wireguard",
             "type": "ZABBIX_ACTIVE",
             "key": "vfs.file.exists[/usr/share/doc/wireguard/copyright]",
@@ -333,7 +333,7 @@
             ],
             "triggers": [
               {
-                "uuid": "4a6b10842a2d403285848dd920c7f1aa",
+                "uuid": "e6cad1b6a06849ebb4cfbcf2c9240518",
                 "expression": "last(/Firewall-Router (Example Music)/vfs.file.exists[/usr/share/doc/wireguard/copyright])=0",
                 "name": "Hey! {HOST.NAME} is missing wireguard package",
                 "priority": "WARNING",
@@ -356,7 +356,7 @@
             ]
           },
           {
-            "uuid": "c16c2fdf81ec4b6898f9ee0bd58a8f9a",
+            "uuid": "ef3470899992407b99730750fad2624c",
             "name": "Package installed: gpm",
             "type": "ZABBIX_ACTIVE",
             "key": "vfs.file.exists[/usr/share/doc/gpm/copyright]",
@@ -381,7 +381,7 @@
             ],
             "triggers": [
               {
-                "uuid": "d809edeb256641a398d842d4f45517f5",
+                "uuid": "3a1b68c1284440c2a81759d3044de0bd",
                 "expression": "last(/Firewall-Router (Example Music)/vfs.file.exists[/usr/share/doc/gpm/copyright])=0",
                 "name": "Hey! {HOST.NAME} is missing gpm package",
                 "priority": "WARNING",
@@ -404,7 +404,7 @@
             ]
           },
           {
-            "uuid": "232f4d6d91c646eb893cf9b5191a8b8f",
+            "uuid": "04a7c251a9534fda9b99f60cc43014a4",
             "name": "Package installed: tcpdump",
             "type": "ZABBIX_ACTIVE",
             "key": "vfs.file.exists[/usr/share/doc/tcpdump/copyright]",
@@ -429,7 +429,7 @@
             ],
             "triggers": [
               {
-                "uuid": "39fa6852cd6b4bb990fe8e86e6b6b461",
+                "uuid": "73621403664a4de5a2b476b6f86ee11e",
                 "expression": "last(/Firewall-Router (Example Music)/vfs.file.exists[/usr/share/doc/tcpdump/copyright])=0",
                 "name": "Hey! {HOST.NAME} is missing tcpdump package",
                 "priority": "WARNING",
@@ -452,7 +452,7 @@
             ]
           },
           {
-            "uuid": "4cb7f668a77e4ad8a8f62536b8e14eb1",
+            "uuid": "5b0ec54283334409af6a577388005b2e",
             "name": "Package installed: bc",
             "type": "ZABBIX_ACTIVE",
             "key": "vfs.file.exists[/usr/share/doc/bc/copyright]",
@@ -477,7 +477,7 @@
             ],
             "triggers": [
               {
-                "uuid": "6f6231abe18448d0baffe8ec8c9d769c",
+                "uuid": "1d962f255a6b4963aee32677311b76c6",
                 "expression": "last(/Firewall-Router (Example Music)/vfs.file.exists[/usr/share/doc/bc/copyright])=0",
                 "name": "Hey! {HOST.NAME} is missing bc package",
                 "priority": "WARNING",
@@ -500,7 +500,7 @@
             ]
           },
           {
-            "uuid": "d5f345a5bdc64b3fa787f3df6d0fa983",
+            "uuid": "efa8983e1b964077a068d9c09a8634b9",
             "name": "Package installed: bash-completion",
             "type": "ZABBIX_ACTIVE",
             "key": "vfs.file.exists[/usr/share/doc/bash-completion/copyright]",
@@ -525,7 +525,7 @@
             ],
             "triggers": [
               {
-                "uuid": "eb465641c389468498968b034dd1c97b",
+                "uuid": "d584d45d094c45a8aab90602955e99e7",
                 "expression": "last(/Firewall-Router (Example Music)/vfs.file.exists[/usr/share/doc/bash-completion/copyright])=0",
                 "name": "Hey! {HOST.NAME} is missing bash-completion package",
                 "priority": "WARNING",
@@ -548,7 +548,7 @@
             ]
           },
           {
-            "uuid": "f06f41c1228f46c3b53e2e51212461ff",
+            "uuid": "718c6c641f85487c9a438d7714c84b65",
             "name": "Package installed: localepurge",
             "type": "ZABBIX_ACTIVE",
             "key": "vfs.file.exists[/usr/share/doc/localepurge/copyright]",
@@ -573,7 +573,7 @@
             ],
             "triggers": [
               {
-                "uuid": "c129fce16bb4409f8ec6a518af9e2825",
+                "uuid": "d80af78e12534eb5bef5f69acace7de1",
                 "expression": "last(/Firewall-Router (Example Music)/vfs.file.exists[/usr/share/doc/localepurge/copyright])=0",
                 "name": "Hey! {HOST.NAME} is missing localepurge package",
                 "priority": "WARNING",
@@ -596,7 +596,7 @@
             ]
           },
           {
-            "uuid": "1fffa0a7935d45b68d3fb788adc3bf0b",
+            "uuid": "6166895cee6c4eb19e2926d9986f3bb5",
             "name": "Package installed: cockpit",
             "type": "ZABBIX_ACTIVE",
             "key": "vfs.file.exists[/usr/share/doc/cockpit/copyright]",
@@ -621,7 +621,7 @@
             ],
             "triggers": [
               {
-                "uuid": "ce9bc2b5af584ee39e7a382dd730c384",
+                "uuid": "92be149b54e64f3da2d2fa58e5a88ae3",
                 "expression": "last(/Firewall-Router (Example Music)/vfs.file.exists[/usr/share/doc/cockpit/copyright])=0",
                 "name": "Hey! {HOST.NAME} is missing cockpit package",
                 "priority": "WARNING",
@@ -644,7 +644,7 @@
             ]
           },
           {
-            "uuid": "292f445508f74e7593abaaf4133ed792",
+            "uuid": "fa5f7ff49cd641b7b876f324dbc80cfc",
             "name": "Package installed: cockpit-networkmanager",
             "type": "ZABBIX_ACTIVE",
             "key": "vfs.file.exists[/usr/share/doc/cockpit-networkmanager/copyright]",
@@ -669,7 +669,7 @@
             ],
             "triggers": [
               {
-                "uuid": "0b926f326ea04f3585308076c64a9979",
+                "uuid": "d2d85807384b48c888d537a19aa34d6b",
                 "expression": "last(/Firewall-Router (Example Music)/vfs.file.exists[/usr/share/doc/cockpit-networkmanager/copyright])=0",
                 "name": "Hey! {HOST.NAME} is missing cockpit-networkmanager package",
                 "priority": "WARNING",
@@ -692,7 +692,7 @@
             ]
           },
           {
-            "uuid": "5d9384cda39e490f860b377a0f77defd",
+            "uuid": "b3ccb196dfb443d3b4bea7da0ce44b4c",
             "name": "Package installed: cockpit-storaged",
             "type": "ZABBIX_ACTIVE",
             "key": "vfs.file.exists[/usr/share/doc/cockpit-storaged/copyright]",
@@ -717,7 +717,7 @@
             ],
             "triggers": [
               {
-                "uuid": "afc1f75b79074b1baa817a7733e18839",
+                "uuid": "0d7e6fd4bc7447aab8b9212df5413f6c",
                 "expression": "last(/Firewall-Router (Example Music)/vfs.file.exists[/usr/share/doc/cockpit-storaged/copyright])=0",
                 "name": "Hey! {HOST.NAME} is missing cockpit-storaged package",
                 "priority": "WARNING",
@@ -740,7 +740,7 @@
             ]
           },
           {
-            "uuid": "32b21250dbda47d7a4b6fa8864c9c12f",
+            "uuid": "54a1b96c385f41d7af56d6e43be645a2",
             "name": "Package installed: cockpit-packagekit",
             "type": "ZABBIX_ACTIVE",
             "key": "vfs.file.exists[/usr/share/doc/cockpit-packagekit/copyright]",
@@ -765,7 +765,7 @@
             ],
             "triggers": [
               {
-                "uuid": "92021a12e60543cd8718a6ed5cc500d8",
+                "uuid": "5fcf340bdf394444bf572237a63a1bfb",
                 "expression": "last(/Firewall-Router (Example Music)/vfs.file.exists[/usr/share/doc/cockpit-packagekit/copyright])=0",
                 "name": "Hey! {HOST.NAME} is missing cockpit-packagekit package",
                 "priority": "WARNING",
@@ -788,7 +788,7 @@
             ]
           },
           {
-            "uuid": "04a71402131b4146ab8327f58c36b945",
+            "uuid": "835b8a2b602d42e6ad475191b00228e1",
             "name": "File exists: /etc/systemd/network/10-wan.link",
             "type": "ZABBIX_ACTIVE",
             "key": "vfs.file.exists[/etc/systemd/network/10-wan.link]",
@@ -809,7 +809,7 @@
             ],
             "triggers": [
               {
-                "uuid": "a460beb615c848978500b74fe8b6cef2",
+                "uuid": "45a9d5a6ba8348dd9308ff5a8efdbd2c",
                 "expression": "last(/Firewall-Router (Example Music)/vfs.file.exists[/etc/systemd/network/10-wan.link])=0",
                 "name": "Hey! {HOST.NAME} is missing /etc/systemd/network/10-wan.link",
                 "priority": "WARNING",
@@ -828,7 +828,7 @@
             ]
           },
           {
-            "uuid": "7928b5c4d8344bd8895a467ed24dd541",
+            "uuid": "6fdbf9b829dc45b7b7a5d5fe2f516006",
             "name": "File exists: /etc/systemd/network/10-lan.link",
             "type": "ZABBIX_ACTIVE",
             "key": "vfs.file.exists[/etc/systemd/network/10-lan.link]",
@@ -849,7 +849,7 @@
             ],
             "triggers": [
               {
-                "uuid": "9939889af51f4ac1b066feddb083161f",
+                "uuid": "c709eae2763f479bbea6e2b50dcc30ed",
                 "expression": "last(/Firewall-Router (Example Music)/vfs.file.exists[/etc/systemd/network/10-lan.link])=0",
                 "name": "Hey! {HOST.NAME} is missing /etc/systemd/network/10-lan.link",
                 "priority": "WARNING",
@@ -868,7 +868,7 @@
             ]
           },
           {
-            "uuid": "4d6f74969436492a920b749fee7e485b",
+            "uuid": "5e6fd296de374f25a4747f257b7f5d4f",
             "name": "File exists: /etc/initramfs-tools/conf.d/firewall.conf",
             "type": "ZABBIX_ACTIVE",
             "key": "vfs.file.exists[/etc/initramfs-tools/conf.d/firewall.conf]",
@@ -889,7 +889,7 @@
             ],
             "triggers": [
               {
-                "uuid": "d0af37cc02a141348d2ebd4a4e2a40a4",
+                "uuid": "897cff7d58fd48948267e05a247cbcd8",
                 "expression": "last(/Firewall-Router (Example Music)/vfs.file.exists[/etc/initramfs-tools/conf.d/firewall.conf])=0",
                 "name": "Hey! {HOST.NAME} is missing /etc/initramfs-tools/conf.d/firewall.conf",
                 "priority": "WARNING",
@@ -908,7 +908,7 @@
             ]
           },
           {
-            "uuid": "e221e6bcb7fb49c7ae39f721e46eec81",
+            "uuid": "66b179ffa92949ae87316524736d893a",
             "name": "File exists: /etc/modprobe.d/firewall-blacklist.conf",
             "type": "ZABBIX_ACTIVE",
             "key": "vfs.file.exists[/etc/modprobe.d/firewall-blacklist.conf]",
@@ -929,7 +929,7 @@
             ],
             "triggers": [
               {
-                "uuid": "a00637deb5ea4f61b97e01a872f115e1",
+                "uuid": "ef1588068f12440e8318cb0af06a933a",
                 "expression": "last(/Firewall-Router (Example Music)/vfs.file.exists[/etc/modprobe.d/firewall-blacklist.conf])=0",
                 "name": "Hey! {HOST.NAME} is missing /etc/modprobe.d/firewall-blacklist.conf",
                 "priority": "WARNING",
@@ -948,7 +948,7 @@
             ]
           },
           {
-            "uuid": "ffd1c8f23e504b8489ea3ad1fe385923",
+            "uuid": "6bd3a1ae70aa473a8c41426492568a0e",
             "name": "File exists: /etc/nftables.conf",
             "type": "ZABBIX_ACTIVE",
             "key": "vfs.file.exists[/etc/nftables.conf]",
@@ -969,7 +969,7 @@
             ],
             "triggers": [
               {
-                "uuid": "5fa9fb467735448d9ad28bc2d06359d4",
+                "uuid": "142f087b3818422c93b04f63306c9aa2",
                 "expression": "last(/Firewall-Router (Example Music)/vfs.file.exists[/etc/nftables.conf])=0",
                 "name": "Hey! {HOST.NAME} is missing /etc/nftables.conf",
                 "priority": "WARNING",
@@ -988,7 +988,7 @@
             ]
           },
           {
-            "uuid": "ebb819826f7b413881c24b89fe63c3e1",
+            "uuid": "b17c65828d334b19b1ecc6bd9659ea08",
             "name": "File exists: /etc/dnsmasq.d/exa-firewall.conf",
             "type": "ZABBIX_ACTIVE",
             "key": "vfs.file.exists[/etc/dnsmasq.d/exa-firewall.conf]",
@@ -1009,7 +1009,7 @@
             ],
             "triggers": [
               {
-                "uuid": "217ffede563f4e9491bb94824efa6318",
+                "uuid": "803806abcc434162b2a263e7d34434e9",
                 "expression": "last(/Firewall-Router (Example Music)/vfs.file.exists[/etc/dnsmasq.d/exa-firewall.conf])=0",
                 "name": "Hey! {HOST.NAME} is missing /etc/dnsmasq.d/exa-firewall.conf",
                 "priority": "WARNING",
@@ -1028,7 +1028,7 @@
             ]
           },
           {
-            "uuid": "c8d2c134cf0e4333b93dd6342f5fd6d4",
+            "uuid": "bb74a7b4e58746fea183c3b02e488444",
             "name": "File exists: /etc/systemd/system/dnsmasq.service.d/wait-for-lan.conf",
             "type": "ZABBIX_ACTIVE",
             "key": "vfs.file.exists[/etc/systemd/system/dnsmasq.service.d/wait-for-lan.conf]",
@@ -1049,7 +1049,7 @@
             ],
             "triggers": [
               {
-                "uuid": "d06aa7d1bc334e53b36e330c66e3ea96",
+                "uuid": "7d77e14184134675a243ea701c55662d",
                 "expression": "last(/Firewall-Router (Example Music)/vfs.file.exists[/etc/systemd/system/dnsmasq.service.d/wait-for-lan.conf])=0",
                 "name": "Hey! {HOST.NAME} is missing /etc/systemd/system/dnsmasq.service.d/wait-for-lan.conf",
                 "priority": "WARNING",
@@ -1068,7 +1068,7 @@
             ]
           },
           {
-            "uuid": "d3860b5336d94dcfac3d9bf7d33284f0",
+            "uuid": "79576ece64124763b0e697369f75606e",
             "name": "File exists: /etc/systemd/system/NetworkManager-wait-online.service.d/override.conf",
             "type": "ZABBIX_ACTIVE",
             "key": "vfs.file.exists[/etc/systemd/system/NetworkManager-wait-online.service.d/override.conf]",
@@ -1089,7 +1089,7 @@
             ],
             "triggers": [
               {
-                "uuid": "889ff508c8574bd0bafb42424fe052b5",
+                "uuid": "a01421b92bee4f81899a8b363669c17a",
                 "expression": "last(/Firewall-Router (Example Music)/vfs.file.exists[/etc/systemd/system/NetworkManager-wait-online.service.d/override.conf])=0",
                 "name": "Hey! {HOST.NAME} is missing /etc/systemd/system/NetworkManager-wait-online.service.d/override.conf",
                 "priority": "WARNING",
@@ -1108,7 +1108,7 @@
             ]
           },
           {
-            "uuid": "23260cdec4da422bb51f21058b5acc71",
+            "uuid": "3a582c3c73164a3eb0b9c998ca31f2c6",
             "name": "File exists: /etc/systemd/system/wg-quick@wg0.service.d/wait-online.conf",
             "type": "ZABBIX_ACTIVE",
             "key": "vfs.file.exists[/etc/systemd/system/wg-quick@wg0.service.d/wait-online.conf]",
@@ -1129,7 +1129,7 @@
             ],
             "triggers": [
               {
-                "uuid": "8e2da3917e7b43199586ea027f8ee393",
+                "uuid": "83c03837dfab4ae4a678b431ed001c93",
                 "expression": "last(/Firewall-Router (Example Music)/vfs.file.exists[/etc/systemd/system/wg-quick@wg0.service.d/wait-online.conf])=0",
                 "name": "Hey! {HOST.NAME} is missing /etc/systemd/system/wg-quick@wg0.service.d/wait-online.conf",
                 "priority": "WARNING",
@@ -1148,7 +1148,7 @@
             ]
           },
           {
-            "uuid": "1c40adf9299944908f0da7567dee5d4b",
+            "uuid": "fb0bf1339baa4962895b9f666036d18e",
             "name": "File exists: /etc/systemd/system/cockpit.socket.d/override.conf",
             "type": "ZABBIX_ACTIVE",
             "key": "vfs.file.exists[/etc/systemd/system/cockpit.socket.d/override.conf]",
@@ -1169,7 +1169,7 @@
             ],
             "triggers": [
               {
-                "uuid": "f815c39a527443e8a617ae0ad3bdd145",
+                "uuid": "493f948c9d614a2b816a934ec959fd5f",
                 "expression": "last(/Firewall-Router (Example Music)/vfs.file.exists[/etc/systemd/system/cockpit.socket.d/override.conf])=0",
                 "name": "Hey! {HOST.NAME} is missing /etc/systemd/system/cockpit.socket.d/override.conf",
                 "priority": "WARNING",
@@ -1188,7 +1188,7 @@
             ]
           },
           {
-            "uuid": "eac81eb891a14c089b6c4c5213b6fa27",
+            "uuid": "2712b8183e8e4e368fc16f761a4c71b2",
             "name": "File exists: /etc/systemd/system.conf.d/10-disable-ctrl-alt-del.conf",
             "type": "ZABBIX_ACTIVE",
             "key": "vfs.file.exists[/etc/systemd/system.conf.d/10-disable-ctrl-alt-del.conf]",
@@ -1209,7 +1209,7 @@
             ],
             "triggers": [
               {
-                "uuid": "7d3f75250bb34ad8be820477f330b4fb",
+                "uuid": "9398d40d8a6a4022ab57a4da67f9216f",
                 "expression": "last(/Firewall-Router (Example Music)/vfs.file.exists[/etc/systemd/system.conf.d/10-disable-ctrl-alt-del.conf])=0",
                 "name": "Hey! {HOST.NAME} is missing /etc/systemd/system.conf.d/10-disable-ctrl-alt-del.conf",
                 "priority": "WARNING",
@@ -1228,7 +1228,7 @@
             ]
           },
           {
-            "uuid": "71268ac309cb452187572d80408a0111",
+            "uuid": "3d186cc9127043a3a4329c37f01526e4",
             "name": "File exists: /etc/update-motd.d/10-examplemusic",
             "type": "ZABBIX_ACTIVE",
             "key": "vfs.file.exists[/etc/update-motd.d/10-examplemusic]",
@@ -1249,7 +1249,7 @@
             ],
             "triggers": [
               {
-                "uuid": "15c860f002e04fc6989e8e30ff0aef67",
+                "uuid": "e1c1d57f4db74167bff2996fb9d6f5ea",
                 "expression": "last(/Firewall-Router (Example Music)/vfs.file.exists[/etc/update-motd.d/10-examplemusic])=0",
                 "name": "Hey! {HOST.NAME} is missing /etc/update-motd.d/10-examplemusic",
                 "priority": "WARNING",
@@ -1268,7 +1268,7 @@
             ]
           },
           {
-            "uuid": "62cc0aaa116d43abb91a65c181f18587",
+            "uuid": "1acc556303484ea6a273556370459143",
             "name": "File exists: /etc/profile.d/motd.sh",
             "type": "ZABBIX_ACTIVE",
             "key": "vfs.file.exists[/etc/profile.d/motd.sh]",
@@ -1289,7 +1289,7 @@
             ],
             "triggers": [
               {
-                "uuid": "6ca86c0d6f0549a68c0bd049d811ff1b",
+                "uuid": "f955b5175e5943f19cd8b99693974195",
                 "expression": "last(/Firewall-Router (Example Music)/vfs.file.exists[/etc/profile.d/motd.sh])=0",
                 "name": "Hey! {HOST.NAME} is missing /etc/profile.d/motd.sh",
                 "priority": "WARNING",
@@ -1308,7 +1308,7 @@
             ]
           },
           {
-            "uuid": "d97a56b4542b4088ad526c2f76987cb0",
+            "uuid": "8bee3da1427d46ada6a46c3dcf74c609",
             "name": "File exists: /etc/logrotate.d/dnsmasq",
             "type": "ZABBIX_ACTIVE",
             "key": "vfs.file.exists[/etc/logrotate.d/dnsmasq]",
@@ -1329,7 +1329,7 @@
             ],
             "triggers": [
               {
-                "uuid": "1f054e8ed4944f1b8833165035d2c939",
+                "uuid": "9b32083a8588485189e262be4b4c7c49",
                 "expression": "last(/Firewall-Router (Example Music)/vfs.file.exists[/etc/logrotate.d/dnsmasq])=0",
                 "name": "Hey! {HOST.NAME} is missing /etc/logrotate.d/dnsmasq",
                 "priority": "WARNING",
@@ -1348,7 +1348,7 @@
             ]
           },
           {
-            "uuid": "8a9095a0767a4d908fd8b1b28cdba773",
+            "uuid": "da3da010152d4ba08b030a9c5a8f8c89",
             "name": "File exists: /etc/NetworkManager/system-connections/wan.nmconnection",
             "type": "ZABBIX_ACTIVE",
             "key": "vfs.file.exists[/etc/NetworkManager/system-connections/wan.nmconnection]",
@@ -1369,7 +1369,7 @@
             ],
             "triggers": [
               {
-                "uuid": "d467d9a724084adebe633286d20b6b1f",
+                "uuid": "1f76ae50e656484ca81061775781837c",
                 "expression": "last(/Firewall-Router (Example Music)/vfs.file.exists[/etc/NetworkManager/system-connections/wan.nmconnection])=0",
                 "name": "Hey! {HOST.NAME} is missing /etc/NetworkManager/system-connections/wan.nmconnection",
                 "priority": "WARNING",
@@ -1388,7 +1388,7 @@
             ]
           },
           {
-            "uuid": "060709439e31428e80aff5f19a0d7128",
+            "uuid": "49ebe09d6bdb4bf587a856ee77d7fb4f",
             "name": "File exists: /etc/NetworkManager/system-connections/lan.nmconnection",
             "type": "ZABBIX_ACTIVE",
             "key": "vfs.file.exists[/etc/NetworkManager/system-connections/lan.nmconnection]",
@@ -1409,7 +1409,7 @@
             ],
             "triggers": [
               {
-                "uuid": "826e45ba69cc43c594e24ce2cba84815",
+                "uuid": "55e34967647d470fb30849c0612c3405",
                 "expression": "last(/Firewall-Router (Example Music)/vfs.file.exists[/etc/NetworkManager/system-connections/lan.nmconnection])=0",
                 "name": "Hey! {HOST.NAME} is missing /etc/NetworkManager/system-connections/lan.nmconnection",
                 "priority": "WARNING",
@@ -1428,7 +1428,7 @@
             ]
           },
           {
-            "uuid": "7d61a9c3d865460c8a2cbc59131ebcee",
+            "uuid": "19cb450051c2457188008206dfe2e8a4",
             "name": "Legacy /etc/dnsmasq.d/lan.conf still present",
             "type": "ZABBIX_ACTIVE",
             "key": "vfs.file.exists[/etc/dnsmasq.d/lan.conf]",
@@ -1449,7 +1449,7 @@
             ],
             "triggers": [
               {
-                "uuid": "45cbd6e1b7bb4cd4bb05d8ebf7c8ec01",
+                "uuid": "b3cb632725c54b33afa654c62a4d7728",
                 "expression": "last(/Firewall-Router (Example Music)/vfs.file.exists[/etc/dnsmasq.d/lan.conf])=1",
                 "name": "Hey! {HOST.NAME} still has legacy /etc/dnsmasq.d/lan.conf -- remove it",
                 "priority": "WARNING",
@@ -1468,7 +1468,7 @@
             ]
           },
           {
-            "uuid": "13eaa71dbb2e4c7cb971f423b023d7a9",
+            "uuid": "c223de7864a04058b4b0743349bbc531",
             "name": "Banner text present: /etc/issue",
             "type": "ZABBIX_ACTIVE",
             "key": "vfs.file.regmatch[/etc/issue,\"EXAMPLE MUSIC LIMITED\"]",
@@ -1489,7 +1489,7 @@
             ],
             "triggers": [
               {
-                "uuid": "d5152c5e21bb4ca7ac7b369b90a9796a",
+                "uuid": "9770a82d40214b799c25eb9658a50718",
                 "expression": "last(/Firewall-Router (Example Music)/vfs.file.regmatch[/etc/issue,\"EXAMPLE MUSIC LIMITED\"])=0",
                 "name": "Hey! {HOST.NAME}'s /etc/issue is missing the Example Music banner",
                 "priority": "WARNING",
@@ -1508,7 +1508,7 @@
             ]
           },
           {
-            "uuid": "b822764dfb364b1eb7e7085476fe94c3",
+            "uuid": "11235590010749d8bc2df5d18ff3fe61",
             "name": "Banner text present: /etc/issue.net",
             "type": "ZABBIX_ACTIVE",
             "key": "vfs.file.regmatch[/etc/issue.net,\"EXAMPLE MUSIC LIMITED\"]",
@@ -1529,7 +1529,7 @@
             ],
             "triggers": [
               {
-                "uuid": "9bf5a66ed0f6456f99c1380e34a74b61",
+                "uuid": "b6d409dd168a47db80d81ae3c63c6d8f",
                 "expression": "last(/Firewall-Router (Example Music)/vfs.file.regmatch[/etc/issue.net,\"EXAMPLE MUSIC LIMITED\"])=0",
                 "name": "Hey! {HOST.NAME}'s /etc/issue.net is missing the Example Music banner",
                 "priority": "WARNING",
@@ -1548,7 +1548,7 @@
             ]
           },
           {
-            "uuid": "5083dc3f7cf744ccb5a9a30a51fd9a4a",
+            "uuid": "4cd7f5502e8744618c1cf8968d52250c",
             "name": "NetworkManager.conf has managed=false (bad state)",
             "type": "ZABBIX_ACTIVE",
             "key": "vfs.file.regmatch[/etc/NetworkManager/NetworkManager.conf,\"managed=false\"]",
@@ -1569,7 +1569,7 @@
             ],
             "triggers": [
               {
-                "uuid": "e2103b4ca429491ca9aea1c7c101223b",
+                "uuid": "01d73c08ae4d44cfb900ab0c06fe6641",
                 "expression": "last(/Firewall-Router (Example Music)/vfs.file.regmatch[/etc/NetworkManager/NetworkManager.conf,\"managed=false\"])=1",
                 "name": "Hey! {HOST.NAME}'s NetworkManager.conf still has managed=false",
                 "priority": "WARNING",
@@ -1588,7 +1588,7 @@
             ]
           },
           {
-            "uuid": "dd074e9c65ed40558494bbd67854518b",
+            "uuid": "97db159648594f0c913326328556fb24",
             "name": "sshd_config setting: PermitRootLogin no",
             "type": "ZABBIX_ACTIVE",
             "key": "vfs.file.regmatch[/etc/ssh/sshd_config,\"^PermitRootLogin\\s+no\"]",
@@ -1609,7 +1609,7 @@
             ],
             "triggers": [
               {
-                "uuid": "5d6c09d440484c71af4acc4e23074b23",
+                "uuid": "253eea099d8e4c34b0e9d1d6b34c9797",
                 "expression": "last(/Firewall-Router (Example Music)/vfs.file.regmatch[/etc/ssh/sshd_config,\"^PermitRootLogin\\s+no\"])=0",
                 "name": "Hey! {HOST.NAME}'s sshd_config is missing/wrong: PermitRootLogin no",
                 "priority": "WARNING",
@@ -1628,7 +1628,7 @@
             ]
           },
           {
-            "uuid": "6c2b956d7b2c43cf84d29e05a0cf79d8",
+            "uuid": "a1d0dbf2010f41a7b85a64095a4dd296",
             "name": "sshd_config setting: PubkeyAuthentication yes",
             "type": "ZABBIX_ACTIVE",
             "key": "vfs.file.regmatch[/etc/ssh/sshd_config,\"^PubkeyAuthentication\\s+yes\"]",
@@ -1649,7 +1649,7 @@
             ],
             "triggers": [
               {
-                "uuid": "8a0987b40a934ac98e5f5a8ad4ae308f",
+                "uuid": "c863fd5a384d40beb41f7bdabe906832",
                 "expression": "last(/Firewall-Router (Example Music)/vfs.file.regmatch[/etc/ssh/sshd_config,\"^PubkeyAuthentication\\s+yes\"])=0",
                 "name": "Hey! {HOST.NAME}'s sshd_config is missing/wrong: PubkeyAuthentication yes",
                 "priority": "WARNING",
@@ -1668,7 +1668,7 @@
             ]
           },
           {
-            "uuid": "147e74e5031e48419cafddc5a392a3eb",
+            "uuid": "439a6e520fc946f3aacbec7f3c9ad307",
             "name": "sshd_config setting: Banner /etc/issue.net",
             "type": "ZABBIX_ACTIVE",
             "key": "vfs.file.regmatch[/etc/ssh/sshd_config,\"^Banner\\s+/etc/issue\\.net\"]",
@@ -1689,7 +1689,7 @@
             ],
             "triggers": [
               {
-                "uuid": "73c776682aa44be79154137e9de963dc",
+                "uuid": "28643488f55f497d8f5e62b80ddb5cb9",
                 "expression": "last(/Firewall-Router (Example Music)/vfs.file.regmatch[/etc/ssh/sshd_config,\"^Banner\\s+/etc/issue\\.net\"])=0",
                 "name": "Hey! {HOST.NAME}'s sshd_config is missing/wrong: Banner /etc/issue.net",
                 "priority": "WARNING",
@@ -1708,7 +1708,7 @@
             ]
           },
           {
-            "uuid": "3737c942c4e441d59826aa496319beca",
+            "uuid": "e9cb8328cf3c4ccab9fa2e8a3f77bea4",
             "name": "sshd_config setting: PrintMotd no",
             "type": "ZABBIX_ACTIVE",
             "key": "vfs.file.regmatch[/etc/ssh/sshd_config,\"^PrintMotd\\s+no\"]",
@@ -1729,7 +1729,7 @@
             ],
             "triggers": [
               {
-                "uuid": "c98c4e177e024a8f9e4e04e4a8869150",
+                "uuid": "fdc00c6f596e41558df051c047326bb0",
                 "expression": "last(/Firewall-Router (Example Music)/vfs.file.regmatch[/etc/ssh/sshd_config,\"^PrintMotd\\s+no\"])=0",
                 "name": "Hey! {HOST.NAME}'s sshd_config is missing/wrong: PrintMotd no",
                 "priority": "WARNING",
@@ -1748,7 +1748,7 @@
             ]
           },
           {
-            "uuid": "d726dd94e67a4c068098c86acffa6df7",
+            "uuid": "8bab445c38754d768c6b18388f5b6b4a",
             "name": "sshd_config directive present: PasswordAuthentication",
             "type": "ZABBIX_ACTIVE",
             "key": "vfs.file.regmatch[/etc/ssh/sshd_config,\"^PasswordAuthentication\\s\"]",
@@ -1769,7 +1769,7 @@
             ],
             "triggers": [
               {
-                "uuid": "0d263e195cac4359b34ad8b93ec5c4fc",
+                "uuid": "e779ee95c56c41e79bf1a7dd40e4de38",
                 "expression": "last(/Firewall-Router (Example Music)/vfs.file.regmatch[/etc/ssh/sshd_config,\"^PasswordAuthentication\\s\"])=0",
                 "name": "Hey! {HOST.NAME}'s sshd_config has no PasswordAuthentication directive at all",
                 "priority": "WARNING",
@@ -1788,7 +1788,7 @@
             ]
           },
           {
-            "uuid": "00ff86a72d494c578dac711eaa2df6c0",
+            "uuid": "be06445f9c4c4a738c99255f36c83a85",
             "name": "sshd_config directive present: ChallengeResponseAuthentication",
             "type": "ZABBIX_ACTIVE",
             "key": "vfs.file.regmatch[/etc/ssh/sshd_config,\"^ChallengeResponseAuthentication\\s\"]",
@@ -1809,7 +1809,7 @@
             ],
             "triggers": [
               {
-                "uuid": "1317830264ad4279b171e8fcc566a483",
+                "uuid": "c053905b430c40eab6c12a2686dbb468",
                 "expression": "last(/Firewall-Router (Example Music)/vfs.file.regmatch[/etc/ssh/sshd_config,\"^ChallengeResponseAuthentication\\s\"])=0",
                 "name": "Hey! {HOST.NAME}'s sshd_config has no ChallengeResponseAuthentication directive at all",
                 "priority": "WARNING",
@@ -1828,7 +1828,7 @@
             ]
           },
           {
-            "uuid": "989b3ddb7b8c48a8a65eaa42224aac87",
+            "uuid": "124cf4c38f634601a8214fb532a83671",
             "name": "sysctl setting: ip_forward=1",
             "type": "ZABBIX_ACTIVE",
             "key": "vfs.file.regmatch[/etc/sysctl.d/99-exa-forward.conf,\"^net\\.ipv4\\.ip_forward\\s*=\\s*1\"]",
@@ -1849,7 +1849,7 @@
             ],
             "triggers": [
               {
-                "uuid": "867c66c019d84a8cb039fd8595e527a6",
+                "uuid": "79a8b15018f749a6a6a88d027d77c5a2",
                 "expression": "last(/Firewall-Router (Example Music)/vfs.file.regmatch[/etc/sysctl.d/99-exa-forward.conf,\"^net\\.ipv4\\.ip_forward\\s*=\\s*1\"])=0",
                 "name": "Hey! {HOST.NAME}'s IP forwarding setting is wrong/missing: ip_forward=1",
                 "priority": "WARNING",
@@ -1868,7 +1868,7 @@
             ]
           },
           {
-            "uuid": "c1e8d017b0c54f799cb7a8e448c4f4f2",
+            "uuid": "0cc0e1ddb0e04f96b1e1604d88c0caaa",
             "name": "sysctl setting: ipv6 forwarding=1",
             "type": "ZABBIX_ACTIVE",
             "key": "vfs.file.regmatch[/etc/sysctl.d/99-exa-forward.conf,\"^net\\.ipv6\\.conf\\.all\\.forwarding\\s*=\\s*1\"]",
@@ -1889,7 +1889,7 @@
             ],
             "triggers": [
               {
-                "uuid": "1901212e1d404013834a18437808ce8c",
+                "uuid": "9c9fbad07a1e4173a7aa05b90649d55d",
                 "expression": "last(/Firewall-Router (Example Music)/vfs.file.regmatch[/etc/sysctl.d/99-exa-forward.conf,\"^net\\.ipv6\\.conf\\.all\\.forwarding\\s*=\\s*1\"])=0",
                 "name": "Hey! {HOST.NAME}'s IP forwarding setting is wrong/missing: ipv6 forwarding=1",
                 "priority": "WARNING",
@@ -1908,7 +1908,7 @@
             ]
           },
           {
-            "uuid": "0ceece152b724813a3f0ef3c13c36be4",
+            "uuid": "426538e1d3d54a4ebbaaec1f771bdf9e",
             "name": "/etc/network/interfaces non-lo stanza count",
             "type": "ZABBIX_ACTIVE",
             "key": "system.run[grep -E \"^(auto|iface|allow-hotplug|allow-auto)\\s+\" /etc/network/interfaces 2>/dev/null | grep -vc \"\\blo\\b\",wait]",
@@ -1929,7 +1929,7 @@
             ],
             "triggers": [
               {
-                "uuid": "3b6bd413c2af448da7990536bf8ca66f",
+                "uuid": "8b39f6d38ad24e4c98bae268d7e59275",
                 "expression": "last(/Firewall-Router (Example Music)/system.run[grep -E \"^(auto|iface|allow-hotplug|allow-auto)\\s+\" /etc/network/interfaces 2>/dev/null | grep -vc \"\\blo\\b\",wait])>0",
                 "name": "Hey! {HOST.NAME}'s /etc/network/interfaces still has a non-lo ifupdown stanza",
                 "priority": "WARNING",
@@ -1948,7 +1948,7 @@
             ]
           },
           {
-            "uuid": "36145780113d4072952d81357a7c418d",
+            "uuid": "a98804416328493fbafad585e0fb8ac7",
             "name": "Enabled at boot: NetworkManager.service",
             "type": "ZABBIX_ACTIVE",
             "key": "system.run[systemctl is-enabled NetworkManager.service 2>/dev/null,wait]",
@@ -1969,7 +1969,7 @@
             ],
             "triggers": [
               {
-                "uuid": "322af49f04f14a2dbfefb0e3bed1c17c",
+                "uuid": "7be06305e8af42f282176ec25c85a458",
                 "expression": "find(/Firewall-Router (Example Music)/system.run[systemctl is-enabled NetworkManager.service 2>/dev/null,wait],,\"like\",\"enabled\")=0",
                 "name": "Hey! {HOST.NAME}'s NetworkManager.service is not enabled at boot",
                 "priority": "AVERAGE",
@@ -1988,7 +1988,7 @@
             ]
           },
           {
-            "uuid": "e7db218dc2744a089f67d2905c46fd07",
+            "uuid": "c57a9f07f3d74e619bdc94f2a678495e",
             "name": "Enabled at boot: nftables.service",
             "type": "ZABBIX_ACTIVE",
             "key": "system.run[systemctl is-enabled nftables.service 2>/dev/null,wait]",
@@ -2009,7 +2009,7 @@
             ],
             "triggers": [
               {
-                "uuid": "868d69c2551e4bc886a3c1e7e3d0fb20",
+                "uuid": "253e4763634c4b0b8e00afe7d1d04867",
                 "expression": "find(/Firewall-Router (Example Music)/system.run[systemctl is-enabled nftables.service 2>/dev/null,wait],,\"like\",\"enabled\")=0",
                 "name": "Hey! {HOST.NAME}'s nftables.service is not enabled at boot",
                 "priority": "AVERAGE",
@@ -2028,7 +2028,7 @@
             ]
           },
           {
-            "uuid": "ff688059b19b4b048052dcdff091eb43",
+            "uuid": "ebd15881c3d346d486e2c83c4ef9584e",
             "name": "Enabled at boot: dnsmasq.service",
             "type": "ZABBIX_ACTIVE",
             "key": "system.run[systemctl is-enabled dnsmasq.service 2>/dev/null,wait]",
@@ -2049,7 +2049,7 @@
             ],
             "triggers": [
               {
-                "uuid": "63db3ecd4b42454fbcd79c58010cab76",
+                "uuid": "4fdf0c816ea84564a890ad4e7bf4ce63",
                 "expression": "find(/Firewall-Router (Example Music)/system.run[systemctl is-enabled dnsmasq.service 2>/dev/null,wait],,\"like\",\"enabled\")=0",
                 "name": "Hey! {HOST.NAME}'s dnsmasq.service is not enabled at boot",
                 "priority": "AVERAGE",
@@ -2068,7 +2068,7 @@
             ]
           },
           {
-            "uuid": "52f0f65ac44c4be092aea838d347f468",
+            "uuid": "9e482f0721024affa42c7c6913ad9398",
             "name": "Enabled at boot: wg-quick@wg0.service",
             "type": "ZABBIX_ACTIVE",
             "key": "system.run[systemctl is-enabled wg-quick@wg0.service 2>/dev/null,wait]",
@@ -2089,7 +2089,7 @@
             ],
             "triggers": [
               {
-                "uuid": "f8c39b1010c54939864eaf2b1eba50bc",
+                "uuid": "3e2eb8e19f7f42fab65870d33333f94e",
                 "expression": "find(/Firewall-Router (Example Music)/system.run[systemctl is-enabled wg-quick@wg0.service 2>/dev/null,wait],,\"like\",\"enabled\")=0",
                 "name": "Hey! {HOST.NAME}'s wg-quick@wg0.service is not enabled at boot",
                 "priority": "AVERAGE",
@@ -2108,7 +2108,7 @@
             ]
           },
           {
-            "uuid": "4752a12017f647c0958541f230f92825",
+            "uuid": "33db6e634b054b03ac2941c0a1d9c707",
             "name": "Enabled at boot: cockpit.socket",
             "type": "ZABBIX_ACTIVE",
             "key": "system.run[systemctl is-enabled cockpit.socket 2>/dev/null,wait]",
@@ -2129,7 +2129,7 @@
             ],
             "triggers": [
               {
-                "uuid": "ced5e0fa47f14d9f813672b80633212d",
+                "uuid": "b0b88d35fdbd4ffc9d00f5f7a43c3fbf",
                 "expression": "find(/Firewall-Router (Example Music)/system.run[systemctl is-enabled cockpit.socket 2>/dev/null,wait],,\"like\",\"enabled\")=0",
                 "name": "Hey! {HOST.NAME}'s cockpit.socket is not enabled at boot",
                 "priority": "AVERAGE",
@@ -2148,7 +2148,7 @@
             ]
           },
           {
-            "uuid": "347666743a384df39f54a4b9b33054fd",
+            "uuid": "0bf7b13230934c02a4752bbfca029876",
             "name": "Enabled at boot: ssh.service",
             "type": "ZABBIX_ACTIVE",
             "key": "system.run[systemctl is-enabled ssh.service 2>/dev/null,wait]",
@@ -2169,7 +2169,7 @@
             ],
             "triggers": [
               {
-                "uuid": "73716ee4d41340e28c82abd3fe93c6e2",
+                "uuid": "ace54ca7bfa745d1b694ebc8ed8ba7cf",
                 "expression": "find(/Firewall-Router (Example Music)/system.run[systemctl is-enabled ssh.service 2>/dev/null,wait],,\"like\",\"enabled\")=0",
                 "name": "Hey! {HOST.NAME}'s ssh.service is not enabled at boot",
                 "priority": "AVERAGE",
@@ -2184,6 +2184,328 @@
                     "value": "services"
                   }
                 ]
+              }
+            ]
+          },
+          {
+            "uuid": "9c1554609c1e4a8f930c0e45fa35fe85",
+            "name": "nodeinfo.json firewall-specific fields (master)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.regexp[/etc/example-music/nodeinfo.json,\"\\\"lan_ip\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"lan_iface\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"ansible_ip\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wg_role\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wg_tunnel_ip\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wg_hub\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wan_iface\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wan_mode\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wan_ip\\\": \\\"[^\\\"]*\\\"\",,,,\"{\\0}\"]",
+            "delay": "1h",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "vfs.file.regexp master item -- extracts the 9-field contiguous block 90-firewall.yml's own nodeinfo_extra writes (lan_ip through wan_ip, 90-firewall.yml's 14_finish.yml) and wraps it in { } via the output parameter so it's valid standalone JSON for the dependent items below to JSONPath against. Relies on this exact field order/contiguity -- if 14_finish.yml's own nodeinfo_extra is ever reordered or a field inserted between these 9, this regex breaks. No trigger of its own -- linuxtools' own master item's nodata() staleness trigger already covers this same file going stale.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "firewall"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              },
+              {
+                "tag": "item-type",
+                "value": "master"
+              }
+            ]
+          },
+          {
+            "uuid": "09bfeb433e234f9499d461b2d893d863",
+            "name": "nodeinfo: lan_ip",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.lan_ip",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's lan_ip field (firewall-specific) -- visibility only, no trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "firewall"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.regexp[/etc/example-music/nodeinfo.json,\"\\\"lan_ip\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"lan_iface\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"ansible_ip\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wg_role\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wg_tunnel_ip\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wg_hub\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wan_iface\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wan_mode\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wan_ip\\\": \\\"[^\\\"]*\\\"\",,,,\"{\\0}\"]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.lan_ip"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "efb4ef6335c74887ba846c909a282804",
+            "name": "nodeinfo: lan_iface",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.lan_iface",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's lan_iface field (firewall-specific) -- visibility only, no trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "firewall"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.regexp[/etc/example-music/nodeinfo.json,\"\\\"lan_ip\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"lan_iface\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"ansible_ip\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wg_role\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wg_tunnel_ip\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wg_hub\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wan_iface\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wan_mode\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wan_ip\\\": \\\"[^\\\"]*\\\"\",,,,\"{\\0}\"]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.lan_iface"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "3df45c05ac6b4c168250edac99bbbb9d",
+            "name": "nodeinfo: ansible_ip",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.ansible_ip",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's ansible_ip field (firewall-specific) -- visibility only, no trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "firewall"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.regexp[/etc/example-music/nodeinfo.json,\"\\\"lan_ip\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"lan_iface\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"ansible_ip\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wg_role\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wg_tunnel_ip\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wg_hub\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wan_iface\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wan_mode\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wan_ip\\\": \\\"[^\\\"]*\\\"\",,,,\"{\\0}\"]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.ansible_ip"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "4aa32c8b188a4c599e64eb68a3c8149c",
+            "name": "nodeinfo: wg_role",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.wg_role",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's wg_role field (firewall-specific) -- visibility only, no trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "firewall"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.regexp[/etc/example-music/nodeinfo.json,\"\\\"lan_ip\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"lan_iface\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"ansible_ip\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wg_role\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wg_tunnel_ip\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wg_hub\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wan_iface\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wan_mode\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wan_ip\\\": \\\"[^\\\"]*\\\"\",,,,\"{\\0}\"]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.wg_role"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "c331ad1405e242b48dce686c3b939e4c",
+            "name": "nodeinfo: wg_tunnel_ip",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.wg_tunnel_ip",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's wg_tunnel_ip field (firewall-specific) -- visibility only, no trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "firewall"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.regexp[/etc/example-music/nodeinfo.json,\"\\\"lan_ip\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"lan_iface\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"ansible_ip\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wg_role\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wg_tunnel_ip\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wg_hub\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wan_iface\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wan_mode\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wan_ip\\\": \\\"[^\\\"]*\\\"\",,,,\"{\\0}\"]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.wg_tunnel_ip"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "4abd424cc3ff4ee39e241079af00f745",
+            "name": "nodeinfo: wg_hub",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.wg_hub",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's wg_hub field (firewall-specific) -- visibility only, no trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "firewall"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.regexp[/etc/example-music/nodeinfo.json,\"\\\"lan_ip\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"lan_iface\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"ansible_ip\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wg_role\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wg_tunnel_ip\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wg_hub\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wan_iface\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wan_mode\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wan_ip\\\": \\\"[^\\\"]*\\\"\",,,,\"{\\0}\"]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.wg_hub"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "ec2fcf7231694ab89421fff9c6aa5cc4",
+            "name": "nodeinfo: wan_iface",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.wan_iface",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's wan_iface field (firewall-specific) -- visibility only, no trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "firewall"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.regexp[/etc/example-music/nodeinfo.json,\"\\\"lan_ip\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"lan_iface\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"ansible_ip\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wg_role\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wg_tunnel_ip\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wg_hub\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wan_iface\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wan_mode\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wan_ip\\\": \\\"[^\\\"]*\\\"\",,,,\"{\\0}\"]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.wan_iface"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "920f028b17c2453f84d990d338b1a8b6",
+            "name": "nodeinfo: wan_mode",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.wan_mode",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's wan_mode field (firewall-specific) -- visibility only, no trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "firewall"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.regexp[/etc/example-music/nodeinfo.json,\"\\\"lan_ip\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"lan_iface\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"ansible_ip\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wg_role\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wg_tunnel_ip\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wg_hub\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wan_iface\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wan_mode\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wan_ip\\\": \\\"[^\\\"]*\\\"\",,,,\"{\\0}\"]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.wan_mode"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "5f830ea16f794e45bc3cad6d1effd09d",
+            "name": "nodeinfo: wan_ip",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.wan_ip",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's wan_ip field (firewall-specific) -- visibility only, no trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "firewall"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.regexp[/etc/example-music/nodeinfo.json,\"\\\"lan_ip\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"lan_iface\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"ansible_ip\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wg_role\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wg_tunnel_ip\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wg_hub\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wan_iface\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wan_mode\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"wan_ip\\\": \\\"[^\\\"]*\\\"\",,,,\"{\\0}\"]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.wan_ip"
+                ],
+                "error_handler": "DISCARD_VALUE"
               }
             ]
           }
