@@ -1,0 +1,2673 @@
+{
+  "zabbix_export": {
+    "version": "7.0",
+    "template_groups": [
+      {
+        "uuid": "ccb6f6556776402c84ee18b8b9c87c10",
+        "name": "Templates/Example Music"
+      }
+    ],
+    "templates": [
+      {
+        "uuid": "55b5c47b7e324732a6c3460892392492",
+        "template": "ansible_examplemusic",
+        "name": "Ansible Control Node (Example Music)",
+        "description": "Companion template for bootstrap/web/provision/ansibleme.sh -- the control-node-specific counterpart to zabbix_template_linuxtools.json's generic Linux coverage. Built 2026-10-17 by copying that template's generator and editing it (Robert's own call: '90% of the work... only needs minor edits'), same flat, native, one-item-per-thing design, same verified vfs.file.exists/regmatch/regexp/contents syntax.\n\nWHY A SEPARATE TEMPLATE, NOT MORE linuxtools ITEMS\n  ansibleme.sh is a one-shot bash bootstrap script, not a routinely-re-run Ansible playbook -- it has its own package list, its own file layout (repo clone + symlink, ansible.cfg, SSH keypair, KeePass automation files), and its own config-line conventions, genuinely distinct from what any generic Linux playbook manages. The little nuances below -- which items legitimately show as 'missing' on one OS branch but not the other, which trigger direction is flipped because the BAD state is presence not absence, which checks are deliberately partial -- are exactly why this needs to be its own template rather than folded into linuxtools.\n\nKNOWN NUANCES (not bugs, read before alerting on these)\n  - python3-zombie-telnetlib and the ansible-core '+trixie1' version check both legitimately show as absent/0 on bookworm hosts -- only meaningful on trixie. No Debian-version-conditional trigger dependency built for either.\n  - NetworkManager.conf's check is inverted versus every other item here: it fires on managed=false being PRESENT (=1), not absent -- most hosts never had the line at all, which is a fine default, not a fault.\n  - main.ini's [ansiblehosts] check only confirms SOME ansible_host= entry exists, not specifically this host's own -- no verified way to substitute this host's own IP into an active item's regexp parameter.\n  - KeePass automation files are OPTIONAL (most control nodes skip setup) and chmod 600 -- vfs.file.exists only needs stat/search permission, not read, but this has NOT been live-verified against the zabbix-agent user's real access to /home/ansible/.\n  - ansible user's own shell=zsh is deliberately NOT duplicated here -- linuxtools' template already covers it, and linux/tools.yml runs against this same control node like any other Linux host. Only root's shell and kvm-group membership (genuinely not covered elsewhere) are added here.\n  - nodeinfo.json's ansibleme.sh-written schema diverges from the generic tasks/nodeinfo.yml schema linuxtools already extracts from (backlogged fix, not done here -- see project_ansibleme_nodeinfo_schema_drift_2026_10_17 memory) -- only the 3 fields unique to ansibleme.sh's own write (ansible_dir/inventory/ssh_key) are extracted here, to avoid duplicating what linuxtools' own master item already covers.\n\nIMPORT: configuration.import, rules: createMissing+updateExisting+deleteMissing on items/triggers, createMissing+updateExisting on template_groups/templates.",
+        "groups": [
+          {
+            "name": "Templates/Example Music"
+          }
+        ],
+        "items": [
+          {
+            "uuid": "dc2519bfaed749b7870a02ffc0b4d752",
+            "name": "Package installed: openssh-client",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/openssh-client/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/openssh-client/copyright exists, 0 otherwise. From ansibleme.sh's BOOTSTRAP_PKGS.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "openssh-client"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "84990a140fcf4b2698d1ba3aeb997f2f",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/usr/share/doc/openssh-client/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing openssh-client package",
+                "priority": "WARNING",
+                "description": "openssh-client is one of ansibleme.sh's BOOTSTRAP_PKGS but isn't installed. Re-run ansibleme.sh.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "openssh-client"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "0eb405f6733c462b8168d8d29d5eb444",
+            "name": "Package installed: sshpass",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/sshpass/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/sshpass/copyright exists, 0 otherwise. From ansibleme.sh's BOOTSTRAP_PKGS.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "sshpass"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "d7250243447a4302a6f7ecec65f5f0d5",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/usr/share/doc/sshpass/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing sshpass package",
+                "priority": "WARNING",
+                "description": "sshpass is one of ansibleme.sh's BOOTSTRAP_PKGS but isn't installed. Re-run ansibleme.sh.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "sshpass"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "2612fedd19e44eb380352fadc68e3614",
+            "name": "Package installed: python3",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/python3/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/python3/copyright exists, 0 otherwise. From ansibleme.sh's BOOTSTRAP_PKGS.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "python3"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "c91453ac9b7c4e2382c177c3cae47dfe",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/usr/share/doc/python3/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing python3 package",
+                "priority": "WARNING",
+                "description": "python3 is one of ansibleme.sh's BOOTSTRAP_PKGS but isn't installed. Re-run ansibleme.sh.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "python3"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "826404036ab545cea64007a0a6368d0d",
+            "name": "Package installed: python3-pip",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/python3-pip/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/python3-pip/copyright exists, 0 otherwise. From ansibleme.sh's BOOTSTRAP_PKGS.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "python3-pip"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "b77239df0c7b400484aa1a93691b4e01",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/usr/share/doc/python3-pip/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing python3-pip package",
+                "priority": "WARNING",
+                "description": "python3-pip is one of ansibleme.sh's BOOTSTRAP_PKGS but isn't installed. Re-run ansibleme.sh.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "python3-pip"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "70d2562fc1a04c4bb8f121918cec7512",
+            "name": "Package installed: gpg",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/gpg/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/gpg/copyright exists, 0 otherwise. From ansibleme.sh's BOOTSTRAP_PKGS.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "gpg"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "490f163f7de14e6fb0705b83fc25a4b6",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/usr/share/doc/gpg/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing gpg package",
+                "priority": "WARNING",
+                "description": "gpg is one of ansibleme.sh's BOOTSTRAP_PKGS but isn't installed. Re-run ansibleme.sh.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "gpg"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "7c2f22089ad24b4db28d4b05ac66d4c2",
+            "name": "Package installed: arping",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/arping/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/arping/copyright exists, 0 otherwise. From ansibleme.sh's BOOTSTRAP_PKGS.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "arping"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "5ed27cf41bb14bba99131308cb206596",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/usr/share/doc/arping/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing arping package",
+                "priority": "WARNING",
+                "description": "arping is one of ansibleme.sh's BOOTSTRAP_PKGS but isn't installed. Re-run ansibleme.sh.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "arping"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "654772fbf9ef4985a5eda26a2b46217f",
+            "name": "Package installed: network-manager",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/network-manager/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/network-manager/copyright exists, 0 otherwise. From ansibleme.sh's BOOTSTRAP_PKGS.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "network-manager"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "69b8313c5bd942dd8735ca27f6e3148e",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/usr/share/doc/network-manager/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing network-manager package",
+                "priority": "WARNING",
+                "description": "network-manager is one of ansibleme.sh's BOOTSTRAP_PKGS but isn't installed. Re-run ansibleme.sh.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "network-manager"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "7458bc5f4ba54f5399c77caffe65f3d4",
+            "name": "Package installed: python3-proxmoxer",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/python3-proxmoxer/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/python3-proxmoxer/copyright exists, 0 otherwise. From ansibleme.sh's BOOTSTRAP_PKGS.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "python3-proxmoxer"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "a0961965becb41bd8bffffa53652bf2a",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/usr/share/doc/python3-proxmoxer/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing python3-proxmoxer package",
+                "priority": "WARNING",
+                "description": "python3-proxmoxer is one of ansibleme.sh's BOOTSTRAP_PKGS but isn't installed. Re-run ansibleme.sh.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "python3-proxmoxer"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "1c695de811d54cb2aa02db023c383cff",
+            "name": "Package installed: python3-requests",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/python3-requests/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/python3-requests/copyright exists, 0 otherwise. From ansibleme.sh's BOOTSTRAP_PKGS.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "python3-requests"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "64b56b6faa544bd9a847332f33fa14ee",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/usr/share/doc/python3-requests/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing python3-requests package",
+                "priority": "WARNING",
+                "description": "python3-requests is one of ansibleme.sh's BOOTSTRAP_PKGS but isn't installed. Re-run ansibleme.sh.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "python3-requests"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "89f74f1a4d004fa1b9f4abef4256b982",
+            "name": "Package installed: python3-virtualenv",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/python3-virtualenv/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/python3-virtualenv/copyright exists, 0 otherwise. From ansibleme.sh's BOOTSTRAP_PKGS.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "python3-virtualenv"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "3fe98008e54a4715a3859aac2e189a49",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/usr/share/doc/python3-virtualenv/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing python3-virtualenv package",
+                "priority": "WARNING",
+                "description": "python3-virtualenv is one of ansibleme.sh's BOOTSTRAP_PKGS but isn't installed. Re-run ansibleme.sh.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "python3-virtualenv"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "380674f553fc495d80286a6333391719",
+            "name": "Package installed: python3-ipy",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/python3-ipy/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/python3-ipy/copyright exists, 0 otherwise. From ansibleme.sh's BOOTSTRAP_PKGS.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "python3-ipy"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "2250689ce4b14410b2e3f071e1c90057",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/usr/share/doc/python3-ipy/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing python3-ipy package",
+                "priority": "WARNING",
+                "description": "python3-ipy is one of ansibleme.sh's BOOTSTRAP_PKGS but isn't installed. Re-run ansibleme.sh.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "python3-ipy"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "025910448a574b67a9b305d66b87ec07",
+            "name": "Package installed: python3-zombie-telnetlib",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/python3-zombie-telnetlib/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "Only installed by ansibleme.sh when `python3 -c \"import telnetlib\"` fails -- i.e. Python 3.13+/trixie, where PEP 594 removed telnetlib from the standard library. A bookworm (Python 3.11) host legitimately shows 0 here; that is not a fault. No trigger -- there's no single correct value across both OS branches without a Debian-version-conditional dependency Robert hasn't asked for.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "python3-zombie-telnetlib"
+              }
+            ]
+          },
+          {
+            "uuid": "662140082e74455db2968056fe40c86d",
+            "name": "ansible-core version string (dpkg status)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.regexp[/var/lib/dpkg/status,\"\\+trixie1\"]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Looks for the '+trixie1' version suffix anywhere in /var/lib/dpkg/status -- the known-good local rebuild ansibleme.sh's Section 5c installs and apt-mark holds on trixie, instead of trixie's own broken repo ansible-core (2.19.11, see docs/INCIDENT-LOG.md's INC-2026-09-17-FRD-CONTROL-NODE). Bookworm hosts (Ubuntu jammy PPA version) legitimately show no match -- not a fault, no trigger for that reason.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "ansible-core"
+              }
+            ]
+          },
+          {
+            "uuid": "1c47154de90e497ebad644253966454d",
+            "name": "File exists: /etc/systemd/network/10-ansible-prov.link",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/etc/systemd/network/10-ansible-prov.link]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if the vRACK interface-pin .link file exists.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "filesystem"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "e180792105c741cd875708a3805d2c7d",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/etc/systemd/network/10-ansible-prov.link])=0",
+                "name": "Hey! {HOST.NAME} is missing /etc/systemd/network/10-ansible-prov.link",
+                "priority": "WARNING",
+                "description": "Re-run ansibleme.sh -- see its Section 1b.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "filesystem"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "7801071046254cb58cc289794b4d3022",
+            "name": "File exists: /home/ansible/.zshrc",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/home/ansible/.zshrc]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /home/ansible/.zshrc exists.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "filesystem"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "a75cd2de386c4b749c44791c9ff2ea55",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/home/ansible/.zshrc])=0",
+                "name": "Hey! {HOST.NAME} is missing /home/ansible/.zshrc",
+                "priority": "WARNING",
+                "description": "Re-run ansibleme.sh -- see its Section 2.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "filesystem"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "08fd82128a024b089707cb91cc85be71",
+            "name": "File exists: /root/.zshrc",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/root/.zshrc]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /root/.zshrc exists.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "filesystem"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "bc3be232ac1e42298460e6b08693fc97",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/root/.zshrc])=0",
+                "name": "Hey! {HOST.NAME} is missing /root/.zshrc",
+                "priority": "WARNING",
+                "description": "Re-run ansibleme.sh -- see its Section 2.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "filesystem"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "640f10ffaee745848a7f2308d321a9e0",
+            "name": "File exists: /etc/sudoers.d/ansible",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/etc/sudoers.d/ansible]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if the ansible sudoers drop-in exists (mode 0440).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "filesystem"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "eb1d3323fe594ebfb34c1a4b72f85039",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/etc/sudoers.d/ansible])=0",
+                "name": "Hey! {HOST.NAME} is missing /etc/sudoers.d/ansible",
+                "priority": "AVERAGE",
+                "description": "Re-run ansibleme.sh -- see its Section 4.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "filesystem"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "165e7b52df04465d9635f3fdbfe628de",
+            "name": "Directory exists: /home/ansible/example_music_infra/.git",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/home/ansible/example_music_infra/.git,dir]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if the repo clone's .git directory exists.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "filesystem"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "7cd70dc70f7f42fa86c91ec60cc088ef",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/home/ansible/example_music_infra/.git,dir])=0",
+                "name": "Hey! {HOST.NAME} is missing the repo clone at /home/ansible/example_music_infra",
+                "priority": "AVERAGE",
+                "description": "Re-run ansibleme.sh -- see its Section 5.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "filesystem"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "fa7a74fb3b2f4f50a7e13d41ef1ded3c",
+            "name": "Symlink exists: /home/ansible/ansible",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/home/ansible/ansible,sym]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /home/ansible/ansible exists as a symlink (to /home/ansible/example_music_infra/ansible). Depends on the repo clone's own trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "filesystem"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "ee2a998e04a04344abf472b414b89aa6",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/home/ansible/ansible,sym])=0",
+                "name": "Hey! {HOST.NAME} is missing the /home/ansible/ansible symlink",
+                "priority": "AVERAGE",
+                "description": "Re-run ansibleme.sh -- see its Section 5.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "filesystem"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing the repo clone at /home/ansible/example_music_infra",
+                    "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/home/ansible/example_music_infra/.git,dir])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "fb43d36405a94e829044e3bc720bc155",
+            "name": "Directory exists: /home/ansible/ansible/configs/inventory",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/home/ansible/ansible/configs/inventory,dir]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if configs/inventory exists as a directory. Every group_vars subdir below depends on this item's own trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "filesystem"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "7d624cc1710d40b58db19f65e958de0e",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/home/ansible/ansible/configs/inventory,dir])=0",
+                "name": "Hey! {HOST.NAME} is missing /home/ansible/ansible/configs/inventory directory",
+                "priority": "AVERAGE",
+                "description": "Re-run ansibleme.sh -- see its Section 5 (runtime dirs).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "filesystem"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "2c808afd47354b1493f490504c404a27",
+            "name": "Directory exists: /home/ansible/ansible/configs/inventory/group_vars/all",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/home/ansible/ansible/configs/inventory/group_vars/all,dir]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /home/ansible/ansible/configs/inventory/group_vars/all exists as a directory. Depends on configs/inventory's own trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "filesystem"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "6a3e0d106425476eb0d14e8e16879e3e",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/home/ansible/ansible/configs/inventory/group_vars/all,dir])=0",
+                "name": "Hey! {HOST.NAME} is missing /home/ansible/ansible/configs/inventory/group_vars/all",
+                "priority": "WARNING",
+                "description": "Re-run ansibleme.sh -- see its Section 5 (runtime dirs).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "filesystem"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /home/ansible/ansible/configs/inventory directory",
+                    "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/home/ansible/ansible/configs/inventory,dir])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "2c50c51c6e1f4cf1827191d47c648822",
+            "name": "Directory exists: /home/ansible/ansible/configs/inventory/group_vars/linux",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/home/ansible/ansible/configs/inventory/group_vars/linux,dir]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /home/ansible/ansible/configs/inventory/group_vars/linux exists as a directory. Depends on configs/inventory's own trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "filesystem"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "64c001df224b4d0f99b47c69c86ca653",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/home/ansible/ansible/configs/inventory/group_vars/linux,dir])=0",
+                "name": "Hey! {HOST.NAME} is missing /home/ansible/ansible/configs/inventory/group_vars/linux",
+                "priority": "WARNING",
+                "description": "Re-run ansibleme.sh -- see its Section 5 (runtime dirs).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "filesystem"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /home/ansible/ansible/configs/inventory directory",
+                    "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/home/ansible/ansible/configs/inventory,dir])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "2cf7811465ae4033ad88d3d1293557f7",
+            "name": "Directory exists: /home/ansible/ansible/configs/inventory/group_vars/pvenodes",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/home/ansible/ansible/configs/inventory/group_vars/pvenodes,dir]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /home/ansible/ansible/configs/inventory/group_vars/pvenodes exists as a directory. Depends on configs/inventory's own trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "filesystem"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "92af037a7d434a6fa32faaf67416d814",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/home/ansible/ansible/configs/inventory/group_vars/pvenodes,dir])=0",
+                "name": "Hey! {HOST.NAME} is missing /home/ansible/ansible/configs/inventory/group_vars/pvenodes",
+                "priority": "WARNING",
+                "description": "Re-run ansibleme.sh -- see its Section 5 (runtime dirs).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "filesystem"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /home/ansible/ansible/configs/inventory directory",
+                    "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/home/ansible/ansible/configs/inventory,dir])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "7c7c4cfef58d4dceb13b9eaee103c3c6",
+            "name": "Directory exists: /home/ansible/ansible/configs/inventory/group_vars/firewalls",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/home/ansible/ansible/configs/inventory/group_vars/firewalls,dir]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /home/ansible/ansible/configs/inventory/group_vars/firewalls exists as a directory. Depends on configs/inventory's own trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "filesystem"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "8d726828de144e9680f653fb6c6fb24e",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/home/ansible/ansible/configs/inventory/group_vars/firewalls,dir])=0",
+                "name": "Hey! {HOST.NAME} is missing /home/ansible/ansible/configs/inventory/group_vars/firewalls",
+                "priority": "WARNING",
+                "description": "Re-run ansibleme.sh -- see its Section 5 (runtime dirs).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "filesystem"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /home/ansible/ansible/configs/inventory directory",
+                    "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/home/ansible/ansible/configs/inventory,dir])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "186bb16ec5ae4fe7b68a8ad60f2b6f60",
+            "name": "Directory exists: /home/ansible/ansible/configs/inventory/group_vars/rudder_servers",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/home/ansible/ansible/configs/inventory/group_vars/rudder_servers,dir]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /home/ansible/ansible/configs/inventory/group_vars/rudder_servers exists as a directory. Depends on configs/inventory's own trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "filesystem"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "01584bcfb7834d81957e7ea0677c1b73",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/home/ansible/ansible/configs/inventory/group_vars/rudder_servers,dir])=0",
+                "name": "Hey! {HOST.NAME} is missing /home/ansible/ansible/configs/inventory/group_vars/rudder_servers",
+                "priority": "WARNING",
+                "description": "Re-run ansibleme.sh -- see its Section 5 (runtime dirs).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "filesystem"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /home/ansible/ansible/configs/inventory directory",
+                    "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/home/ansible/ansible/configs/inventory,dir])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "b302289bbf8e417fad44039f583abf93",
+            "name": "Directory exists: /home/ansible/ansible/configs/inventory/group_vars/rudder_relays",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/home/ansible/ansible/configs/inventory/group_vars/rudder_relays,dir]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /home/ansible/ansible/configs/inventory/group_vars/rudder_relays exists as a directory. Depends on configs/inventory's own trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "filesystem"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "8edae39010c0450486517583d0affc73",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/home/ansible/ansible/configs/inventory/group_vars/rudder_relays,dir])=0",
+                "name": "Hey! {HOST.NAME} is missing /home/ansible/ansible/configs/inventory/group_vars/rudder_relays",
+                "priority": "WARNING",
+                "description": "Re-run ansibleme.sh -- see its Section 5 (runtime dirs).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "filesystem"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /home/ansible/ansible/configs/inventory directory",
+                    "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/home/ansible/ansible/configs/inventory,dir])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "e24b3e068b0e46cf8af7041cea700dda",
+            "name": "Directory exists: /home/ansible/ansible/configs/inventory/group_vars/windows_nodes",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/home/ansible/ansible/configs/inventory/group_vars/windows_nodes,dir]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /home/ansible/ansible/configs/inventory/group_vars/windows_nodes exists as a directory. Depends on configs/inventory's own trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "filesystem"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "e772c1c8768642eabc2e605ead6723a6",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/home/ansible/ansible/configs/inventory/group_vars/windows_nodes,dir])=0",
+                "name": "Hey! {HOST.NAME} is missing /home/ansible/ansible/configs/inventory/group_vars/windows_nodes",
+                "priority": "WARNING",
+                "description": "Re-run ansibleme.sh -- see its Section 5 (runtime dirs).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "filesystem"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /home/ansible/ansible/configs/inventory directory",
+                    "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/home/ansible/ansible/configs/inventory,dir])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "054e0f4952154a2d893682409fdc0959",
+            "name": "Directory exists: /home/ansible/ansible/configs/inventory/group_vars/windows",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/home/ansible/ansible/configs/inventory/group_vars/windows,dir]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /home/ansible/ansible/configs/inventory/group_vars/windows exists as a directory. Depends on configs/inventory's own trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "filesystem"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "b4f4002fcb7449e59e3a49310f427abd",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/home/ansible/ansible/configs/inventory/group_vars/windows,dir])=0",
+                "name": "Hey! {HOST.NAME} is missing /home/ansible/ansible/configs/inventory/group_vars/windows",
+                "priority": "WARNING",
+                "description": "Re-run ansibleme.sh -- see its Section 5 (runtime dirs).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "filesystem"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /home/ansible/ansible/configs/inventory directory",
+                    "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/home/ansible/ansible/configs/inventory,dir])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "e06373aef29b43be935869eef6317f1c",
+            "name": "Directory exists: /home/ansible/ansible/configs/inventory/group_vars/windows_server",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/home/ansible/ansible/configs/inventory/group_vars/windows_server,dir]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /home/ansible/ansible/configs/inventory/group_vars/windows_server exists as a directory. Depends on configs/inventory's own trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "filesystem"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "f76600225ee34b1ea0f935a330858fa6",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/home/ansible/ansible/configs/inventory/group_vars/windows_server,dir])=0",
+                "name": "Hey! {HOST.NAME} is missing /home/ansible/ansible/configs/inventory/group_vars/windows_server",
+                "priority": "WARNING",
+                "description": "Re-run ansibleme.sh -- see its Section 5 (runtime dirs).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "filesystem"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /home/ansible/ansible/configs/inventory directory",
+                    "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/home/ansible/ansible/configs/inventory,dir])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "6729b8ccf39b40179c5b174d21884904",
+            "name": "Directory exists: /home/ansible/ansible/configs/inventory/group_vars/windows_desktop",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/home/ansible/ansible/configs/inventory/group_vars/windows_desktop,dir]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /home/ansible/ansible/configs/inventory/group_vars/windows_desktop exists as a directory. Depends on configs/inventory's own trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "filesystem"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "7d29a9ee84bd44e5ba313cfafbae6e12",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/home/ansible/ansible/configs/inventory/group_vars/windows_desktop,dir])=0",
+                "name": "Hey! {HOST.NAME} is missing /home/ansible/ansible/configs/inventory/group_vars/windows_desktop",
+                "priority": "WARNING",
+                "description": "Re-run ansibleme.sh -- see its Section 5 (runtime dirs).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "filesystem"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /home/ansible/ansible/configs/inventory directory",
+                    "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/home/ansible/ansible/configs/inventory,dir])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "3db71df023de47f0abc862bca25fdd04",
+            "name": "Directory exists: /home/ansible/ansible/configs/inventory/group_vars/windows_laptop",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/home/ansible/ansible/configs/inventory/group_vars/windows_laptop,dir]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /home/ansible/ansible/configs/inventory/group_vars/windows_laptop exists as a directory. Depends on configs/inventory's own trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "filesystem"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "1333da103b814dd6881301c6b76a1fd4",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/home/ansible/ansible/configs/inventory/group_vars/windows_laptop,dir])=0",
+                "name": "Hey! {HOST.NAME} is missing /home/ansible/ansible/configs/inventory/group_vars/windows_laptop",
+                "priority": "WARNING",
+                "description": "Re-run ansibleme.sh -- see its Section 5 (runtime dirs).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "filesystem"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /home/ansible/ansible/configs/inventory directory",
+                    "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/home/ansible/ansible/configs/inventory,dir])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "f1ca9bad36384f1883cc84e1c514afdd",
+            "name": "Directory exists: /home/ansible/ansible/configs/inventory/group_vars/windows_dc",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/home/ansible/ansible/configs/inventory/group_vars/windows_dc,dir]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /home/ansible/ansible/configs/inventory/group_vars/windows_dc exists as a directory. Depends on configs/inventory's own trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "filesystem"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "aa9d47cc541c4fe1b04d1d073263154a",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/home/ansible/ansible/configs/inventory/group_vars/windows_dc,dir])=0",
+                "name": "Hey! {HOST.NAME} is missing /home/ansible/ansible/configs/inventory/group_vars/windows_dc",
+                "priority": "WARNING",
+                "description": "Re-run ansibleme.sh -- see its Section 5 (runtime dirs).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "filesystem"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /home/ansible/ansible/configs/inventory directory",
+                    "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/home/ansible/ansible/configs/inventory,dir])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "327fc5f9c7384f8cb74ea30def4936ab",
+            "name": "File exists: /home/ansible/ansible/configs/ansible-id_rsa.pub",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/home/ansible/ansible/configs/ansible-id_rsa.pub]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /home/ansible/ansible/configs/ansible-id_rsa.pub exists.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "filesystem"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "419a43f3742b4a7c90fc1b504de630fb",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/home/ansible/ansible/configs/ansible-id_rsa.pub])=0",
+                "name": "Hey! {HOST.NAME} is missing /home/ansible/ansible/configs/ansible-id_rsa.pub",
+                "priority": "AVERAGE",
+                "description": "Re-run ansibleme.sh -- see its Section 6.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "filesystem"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "d207fcf72ebd4ed3b4fdd6430225d0e7",
+            "name": "File exists: /home/ansible/.ssh/authorized_keys",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/home/ansible/.ssh/authorized_keys]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /home/ansible/.ssh/authorized_keys exists.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "filesystem"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "d68081e976d841d0b5c87eaf41cfce87",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/home/ansible/.ssh/authorized_keys])=0",
+                "name": "Hey! {HOST.NAME} is missing /home/ansible/.ssh/authorized_keys",
+                "priority": "AVERAGE",
+                "description": "Re-run ansibleme.sh -- see its Section 6.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "filesystem"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "be486a72bb2a4126ad8e896accb429df",
+            "name": "File exists: /home/ansible/ansible/files/sudoer_ansible",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/home/ansible/ansible/files/sudoer_ansible]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if the sudoers drop-in's copy inside the repo clone exists.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "filesystem"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "527a52885fb8448abc4a769a8b2e8895",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/home/ansible/ansible/files/sudoer_ansible])=0",
+                "name": "Hey! {HOST.NAME} is missing /home/ansible/ansible/files/sudoer_ansible",
+                "priority": "WARNING",
+                "description": "Re-run ansibleme.sh -- see its Section 6.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "filesystem"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "fe1e498f62ee488ebdb337076a9b5722",
+            "name": "File exists: /home/ansible/ansible/callback_plugins/exa_pretty.py",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/home/ansible/ansible/callback_plugins/exa_pretty.py]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if the exa_pretty callback plugin exists (ships with the repo clone).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "filesystem"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "4494d56bae76471f8b858390e598349f",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/home/ansible/ansible/callback_plugins/exa_pretty.py])=0",
+                "name": "Hey! {HOST.NAME} is missing /home/ansible/ansible/callback_plugins/exa_pretty.py",
+                "priority": "AVERAGE",
+                "description": "git checkout -- ansible/callback_plugins/exa_pretty.py (zero network cost, see ansibleme.sh's own Section 6b).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "filesystem"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "181d3c32eb3a40daaaa7d1c4d9fecee6",
+            "name": "File exists: /home/ansible/example_music_infra/benarbejde/.keepassxc_master_password",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/home/ansible/example_music_infra/benarbejde/.keepassxc_master_password]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /home/ansible/example_music_infra/benarbejde/.keepassxc_master_password exists. OPTIONAL -- most control nodes never set up KeePass automation (ansibleme.sh Section 6c prompts, defaults to skip), so 0 here is often correct, not a fault. Both this file and its master-password sibling are chmod 600; vfs.file.exists only needs stat (search permission on parent dirs), not read permission on the file itself -- NOT live-verified against the zabbix-agent user's real access to /home/ansible/, flagged rather than assumed.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "keepass"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "9b5d5fd8d76f448d8cfe4029f26f8de4",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/home/ansible/example_music_infra/benarbejde/.keepassxc_master_password])=0",
+                "name": "Hey! {HOST.NAME}'s /home/ansible/example_music_infra/benarbejde/.keepassxc_master_password is missing",
+                "priority": "INFO",
+                "description": "Only meaningful if this control node is SUPPOSED to have KeePass automation set up -- check before treating as a fault.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "keepass"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "f9c35142e0f3454793cd3896467496f9",
+            "name": "File exists: /home/ansible/KeePassXC/ExampleMusic.kdbx",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/home/ansible/KeePassXC/ExampleMusic.kdbx]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /home/ansible/KeePassXC/ExampleMusic.kdbx exists. OPTIONAL -- most control nodes never set up KeePass automation (ansibleme.sh Section 6c prompts, defaults to skip), so 0 here is often correct, not a fault. Both this file and its master-password sibling are chmod 600; vfs.file.exists only needs stat (search permission on parent dirs), not read permission on the file itself -- NOT live-verified against the zabbix-agent user's real access to /home/ansible/, flagged rather than assumed.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "keepass"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "0d3b96961a0e41a9b51c1ae77bfc5a0b",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/home/ansible/KeePassXC/ExampleMusic.kdbx])=0",
+                "name": "Hey! {HOST.NAME}'s /home/ansible/KeePassXC/ExampleMusic.kdbx is missing",
+                "priority": "INFO",
+                "description": "Only meaningful if this control node is SUPPOSED to have KeePass automation set up -- check before treating as a fault.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "keepass"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "7217d67b61db4c6ebe4b2731dd4bb073",
+            "name": "ansible.cfg setting: host_key_checking=True",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.regmatch[/home/ansible/ansible/ansible.cfg,\"^host_key_checking\\s*=\\s*True\"]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if ansible.cfg has 'host_key_checking=True'.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "config"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "ff051c3aee824c66a75f30b71912aae8",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.regmatch[/home/ansible/ansible/ansible.cfg,\"^host_key_checking\\s*=\\s*True\"])=0",
+                "name": "Hey! {HOST.NAME}'s ansible.cfg is missing/wrong: host_key_checking=True",
+                "priority": "WARNING",
+                "description": "Check ansible.cfg against ansibleme.sh's own Section 9 heredoc -- was it hand-edited, or never regenerated after a script change?",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "config"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "a23316f1900b45ada53a254b78e9fa56",
+            "name": "ansible.cfg setting: roles_path set",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.regmatch[/home/ansible/ansible/ansible.cfg,\"^roles_path\\s*=\\s*/home/ansible/ansible/playbooks/firewallme/roles\"]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if ansible.cfg has 'roles_path set'.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "config"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "0de2b56e76be416ba14557c6c9aceb44",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.regmatch[/home/ansible/ansible/ansible.cfg,\"^roles_path\\s*=\\s*/home/ansible/ansible/playbooks/firewallme/roles\"])=0",
+                "name": "Hey! {HOST.NAME}'s ansible.cfg is missing/wrong: roles_path set",
+                "priority": "WARNING",
+                "description": "Check ansible.cfg against ansibleme.sh's own Section 9 heredoc -- was it hand-edited, or never regenerated after a script change?",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "config"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "c6cabe2290af41db8c4986632a65a5be",
+            "name": "ansible.cfg setting: inventory=configs/inventory",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.regmatch[/home/ansible/ansible/ansible.cfg,\"^inventory\\s*=\\s*/home/ansible/ansible/configs/inventory\"]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if ansible.cfg has 'inventory=configs/inventory'.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "config"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "4f5359c6844b467c9a9444072d0ed563",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.regmatch[/home/ansible/ansible/ansible.cfg,\"^inventory\\s*=\\s*/home/ansible/ansible/configs/inventory\"])=0",
+                "name": "Hey! {HOST.NAME}'s ansible.cfg is missing/wrong: inventory=configs/inventory",
+                "priority": "WARNING",
+                "description": "Check ansible.cfg against ansibleme.sh's own Section 9 heredoc -- was it hand-edited, or never regenerated after a script change?",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "config"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "7c9b92ae468441809e22fe63a5c18818",
+            "name": "ansible.cfg setting: remote_user=ansible",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.regmatch[/home/ansible/ansible/ansible.cfg,\"^remote_user\\s*=\\s*ansible\"]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if ansible.cfg has 'remote_user=ansible'.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "config"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "ae2429548ec44e56a0a2101dff375e91",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.regmatch[/home/ansible/ansible/ansible.cfg,\"^remote_user\\s*=\\s*ansible\"])=0",
+                "name": "Hey! {HOST.NAME}'s ansible.cfg is missing/wrong: remote_user=ansible",
+                "priority": "WARNING",
+                "description": "Check ansible.cfg against ansibleme.sh's own Section 9 heredoc -- was it hand-edited, or never regenerated after a script change?",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "config"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "5956074ecf9d408296651ef2f54860d4",
+            "name": "ansible.cfg setting: callback_plugins set",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.regmatch[/home/ansible/ansible/ansible.cfg,\"^callback_plugins\\s*=\\s*/home/ansible/ansible/callback_plugins\"]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if ansible.cfg has 'callback_plugins set'.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "config"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "c4b87b8b7d2247f28ebf42eb9ccf1a36",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.regmatch[/home/ansible/ansible/ansible.cfg,\"^callback_plugins\\s*=\\s*/home/ansible/ansible/callback_plugins\"])=0",
+                "name": "Hey! {HOST.NAME}'s ansible.cfg is missing/wrong: callback_plugins set",
+                "priority": "WARNING",
+                "description": "Check ansible.cfg against ansibleme.sh's own Section 9 heredoc -- was it hand-edited, or never regenerated after a script change?",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "config"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "c440772a26b14a64bc00c78977d380c3",
+            "name": "ansible.cfg setting: stdout_callback=exa_pretty",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.regmatch[/home/ansible/ansible/ansible.cfg,\"^stdout_callback\\s*=\\s*exa_pretty\"]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if ansible.cfg has 'stdout_callback=exa_pretty'.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "config"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "ab24068854a240f48fd2cc971ef90583",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.regmatch[/home/ansible/ansible/ansible.cfg,\"^stdout_callback\\s*=\\s*exa_pretty\"])=0",
+                "name": "Hey! {HOST.NAME}'s ansible.cfg is missing/wrong: stdout_callback=exa_pretty",
+                "priority": "WARNING",
+                "description": "Check ansible.cfg against ansibleme.sh's own Section 9 heredoc -- was it hand-edited, or never regenerated after a script change?",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "config"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "9012e77d40184a3e803998ba40c3cee9",
+            "name": "ansible.cfg setting: forks=50",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.regmatch[/home/ansible/ansible/ansible.cfg,\"^forks\\s*=\\s*50\"]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if ansible.cfg has 'forks=50'.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "config"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "7985d3c588024da0ab69dad5998d11de",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.regmatch[/home/ansible/ansible/ansible.cfg,\"^forks\\s*=\\s*50\"])=0",
+                "name": "Hey! {HOST.NAME}'s ansible.cfg is missing/wrong: forks=50",
+                "priority": "WARNING",
+                "description": "Check ansible.cfg against ansibleme.sh's own Section 9 heredoc -- was it hand-edited, or never regenerated after a script change?",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "config"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "2030bb0b1cd847c1a46e70615d5514c7",
+            "name": "ansible.cfg setting: become=False (global)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.regmatch[/home/ansible/ansible/ansible.cfg,\"^become\\s*=\\s*False\"]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if ansible.cfg has 'become=False (global)'.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "config"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "17a88408afcc472ea7c7c34bda7ea1c5",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.regmatch[/home/ansible/ansible/ansible.cfg,\"^become\\s*=\\s*False\"])=0",
+                "name": "Hey! {HOST.NAME}'s ansible.cfg is missing/wrong: become=False (global)",
+                "priority": "WARNING",
+                "description": "Check ansible.cfg against ansibleme.sh's own Section 9 heredoc -- was it hand-edited, or never regenerated after a script change?",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "config"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "6627c46b3f1a4ce28529b6c8d89e26f8",
+            "name": "ansible.cfg setting: pipelining=True",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.regmatch[/home/ansible/ansible/ansible.cfg,\"^pipelining\\s*=\\s*True\"]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if ansible.cfg has 'pipelining=True'.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "config"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "cf4e96f6d7684f86a6a8a3ae1fd8930e",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.regmatch[/home/ansible/ansible/ansible.cfg,\"^pipelining\\s*=\\s*True\"])=0",
+                "name": "Hey! {HOST.NAME}'s ansible.cfg is missing/wrong: pipelining=True",
+                "priority": "WARNING",
+                "description": "Check ansible.cfg against ansibleme.sh's own Section 9 heredoc -- was it hand-edited, or never regenerated after a script change?",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "config"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "1225afc642c1414ba9b9858cfeafa24a",
+            "name": "main.ini [ansiblehosts] has at least one ansible_host= entry",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.regmatch[/home/ansible/ansible/configs/inventory/main.ini,\"ansible_host=\"]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "Confirms SOMETHING is registered under [ansiblehosts] -- does not confirm it's specifically THIS host's own entry (no verified way to substitute this host's own IP into the regexp parameter for an active item). A real but partial check.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "config"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "aa804f7c450b40a38864608a23ac5631",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.regmatch[/home/ansible/ansible/configs/inventory/main.ini,\"ansible_host=\"])=0",
+                "name": "Hey! {HOST.NAME}'s main.ini has no [ansiblehosts] entries at all",
+                "priority": "WARNING",
+                "description": "Re-run ansibleme.sh -- see its Section 10.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "config"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "e74db97c34f24f20b153d029865e4800",
+            "name": "File exists: /etc/update-motd.d/10-examplemusic",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/etc/update-motd.d/10-examplemusic]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /etc/update-motd.d/10-examplemusic exists.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "filesystem"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "c19939354055495d8150aaf05faddff0",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/etc/update-motd.d/10-examplemusic])=0",
+                "name": "Hey! {HOST.NAME} is missing /etc/update-motd.d/10-examplemusic",
+                "priority": "WARNING",
+                "description": "Re-run ansibleme.sh -- see its Section 14.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "filesystem"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "15bf6332f13b453fa1421670496b77ea",
+            "name": "File exists: /etc/profile.d/motd.sh",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/etc/profile.d/motd.sh]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /etc/profile.d/motd.sh exists.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "filesystem"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "0074ecace24346ac8fc188025232971c",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/etc/profile.d/motd.sh])=0",
+                "name": "Hey! {HOST.NAME} is missing /etc/profile.d/motd.sh",
+                "priority": "WARNING",
+                "description": "Re-run ansibleme.sh -- see its Section 14.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "filesystem"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "1795a582d3584a18b582f044a2ec1cba",
+            "name": "NetworkManager.conf has managed=false (bad state)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.regmatch[/etc/NetworkManager/NetworkManager.conf,\"managed=false\"]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if the BAD 'managed=false' line is present -- NOT the usual 'missing=bad' convention. Most hosts never had this line at all (fine, default state); only a real problem if it's explicitly false.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "config"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "bd96e875d73b4732b70bc6749c337b06",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.regmatch[/etc/NetworkManager/NetworkManager.conf,\"managed=false\"])=1",
+                "name": "Hey! {HOST.NAME}'s NetworkManager.conf still has managed=false",
+                "priority": "WARNING",
+                "description": "Re-run ansibleme.sh -- see its Section 1b (NM_CONF fix).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "config"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "b5a48734abf24984b93565b24b41296f",
+            "name": "/etc/hosts has a 127.0.1.1 entry",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.regmatch[/etc/hosts,\"^127\\.0\\.1\\.1\\s\"]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /etc/hosts has the 127.0.1.1 self-hostname line.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "config"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "69444386ed34472bb4c3d407d1cdc857",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.regmatch[/etc/hosts,\"^127\\.0\\.1\\.1\\s\"])=0",
+                "name": "Hey! {HOST.NAME}'s /etc/hosts is missing its 127.0.1.1 entry",
+                "priority": "WARNING",
+                "description": "Re-run ansibleme.sh -- see its Section 1c.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "config"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "a56374e0746b45d6bbcff5528732026a",
+            "name": "sshd_config has PrintMotd yes",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.regmatch[/etc/ssh/sshd_config,\"^PrintMotd yes\"]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if sshd_config has 'PrintMotd yes'.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "config"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "67ce14222ee44e01a09ce17584c8b687",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.regmatch[/etc/ssh/sshd_config,\"^PrintMotd yes\"])=0",
+                "name": "Hey! {HOST.NAME}'s sshd_config doesn't have PrintMotd yes",
+                "priority": "WARNING",
+                "description": "Re-run ansibleme.sh -- see its Section 14.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "config"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "4933ba1cd7aa4202b707b747006044f6",
+            "name": "ansible user is in the kvm group",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.regmatch[/etc/group,\"^kvm:[^:]*:[^:]*:.*\\bansible\\b\"]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /etc/group's kvm line lists ansible as a member. Only added by ansibleme.sh if the kvm group exists at all (Section 4) -- a host with no kvm group (not a PVE node) legitimately shows 0, not a fault.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "identity"
+              }
+            ]
+          },
+          {
+            "uuid": "5c7fa929580345ada515269635980c58",
+            "name": "root's shell is zsh",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.regmatch[/etc/passwd,\"^root:.*:/bin/zsh$\"]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /etc/passwd's root line ends in /bin/zsh.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "identity"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "3f17322944c34705a92bf06463e8a469",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.regmatch[/etc/passwd,\"^root:.*:/bin/zsh$\"])=0",
+                "name": "Hey! {HOST.NAME}'s root shell isn't zsh",
+                "priority": "WARNING",
+                "description": "Re-run ansibleme.sh -- see its Section 2.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "identity"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "a54342189fb343478a08e5c536cd9ecf",
+            "name": "File exists: /usr/local/bin/control-node-freshness-motd",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/local/bin/control-node-freshness-motd]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if the control-node-freshness MOTD script exists.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "freshness-check"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "0130ca94224f460388f59f64803ba56d",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/usr/local/bin/control-node-freshness-motd])=0",
+                "name": "Hey! {HOST.NAME} is missing /usr/local/bin/control-node-freshness-motd",
+                "priority": "WARNING",
+                "description": "Re-run linux/tools.yml --limit against this host (host_role=='ans' gate).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "freshness-check"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "bdf21aa74e9843f2804afe50c5e6fe11",
+            "name": "Symlink exists: /etc/update-motd.d/15-control-node-freshness",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/etc/update-motd.d/15-control-node-freshness,sym]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if the control-node-freshness MOTD symlink exists (type=sym).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "freshness-check"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "a748e1f58a57482b9fa8df202df1b7c8",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/etc/update-motd.d/15-control-node-freshness,sym])=0",
+                "name": "Hey! {HOST.NAME} is missing the control-node-freshness MOTD symlink",
+                "priority": "WARNING",
+                "description": "Re-run linux/tools.yml --limit against this host (host_role=='ans' gate).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "freshness-check"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "aa3e04f9401d45f7b2d3ebcacf424e1b",
+            "name": "File exists: /usr/local/bin/control-node-freshness-check",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/local/bin/control-node-freshness-check]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if the control-node-freshness systemd check script exists.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "freshness-check"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "aef3ce3834174d62979d873c8a3f60c8",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/usr/local/bin/control-node-freshness-check])=0",
+                "name": "Hey! {HOST.NAME} is missing /usr/local/bin/control-node-freshness-check",
+                "priority": "WARNING",
+                "description": "Re-run linux/tools.yml --limit against this host (host_role=='ans' gate).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "freshness-check"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "db5c2a2f7c5b4b62ad067665e1b625b4",
+            "name": "File exists: /etc/systemd/system/control-node-freshness-check.service",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/etc/systemd/system/control-node-freshness-check.service]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /etc/systemd/system/control-node-freshness-check.service exists.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "freshness-check"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "9b6a1cbfa30e4317a68db26438d06abb",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/etc/systemd/system/control-node-freshness-check.service])=0",
+                "name": "Hey! {HOST.NAME} is missing /etc/systemd/system/control-node-freshness-check.service",
+                "priority": "WARNING",
+                "description": "Re-run linux/tools.yml --limit against this host (host_role=='ans' gate).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "freshness-check"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "3b1d512527844cfea6c0a7be1f73fa83",
+            "name": "File exists: /etc/systemd/system/control-node-freshness-check.timer",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/etc/systemd/system/control-node-freshness-check.timer]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /etc/systemd/system/control-node-freshness-check.timer exists.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "freshness-check"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "b741f39a4ebf454fb925f4171c480f7b",
+                "expression": "last(/Ansible Control Node (Example Music)/vfs.file.exists[/etc/systemd/system/control-node-freshness-check.timer])=0",
+                "name": "Hey! {HOST.NAME} is missing /etc/systemd/system/control-node-freshness-check.timer",
+                "priority": "WARNING",
+                "description": "Re-run linux/tools.yml --limit against this host (host_role=='ans' gate).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "ansible-node"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "freshness-check"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "bb90368b226b43bb8feef20cac631689",
+            "name": "nodeinfo.json ansible-specific fields (master)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.regexp[/etc/example-music/nodeinfo.json,\"\\\"ansible_dir\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"inventory\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"ssh_key\\\": \\\"[^\\\"]*\\\"\",,,,\"{\\0}\"]",
+            "delay": "1h",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "vfs.file.regexp master item -- extracts ONLY the ansible_dir/inventory/ssh_key block from nodeinfo.json (not the whole file, unlike linuxtools' own vfs.file.contents master for the same path) and wraps it in { } via the output parameter so it's valid standalone JSON for the 3 dependent items below to JSONPath against. Relies on ansibleme.sh's Section 15 jq call always writing these 3 keys last, in this order, ssh_key with no trailing comma -- if that jq call is ever reordered, this regex breaks. No trigger of its own -- linuxtools' own master item's nodata() staleness trigger already covers this same file going stale.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              },
+              {
+                "tag": "item-type",
+                "value": "master"
+              }
+            ]
+          },
+          {
+            "uuid": "3433501ae63344218f97a9bf30590bad",
+            "name": "nodeinfo: ansible_dir",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.ansible_dir",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's ansible_dir field (ansibleme.sh-specific) -- visibility only, no trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.regexp[/etc/example-music/nodeinfo.json,\"\\\"ansible_dir\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"inventory\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"ssh_key\\\": \\\"[^\\\"]*\\\"\",,,,\"{\\0}\"]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.ansible_dir"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "6c8aba23492d48bd98b8eab699e95501",
+            "name": "nodeinfo: inventory",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.inventory",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's inventory field (ansibleme.sh-specific) -- visibility only, no trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.regexp[/etc/example-music/nodeinfo.json,\"\\\"ansible_dir\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"inventory\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"ssh_key\\\": \\\"[^\\\"]*\\\"\",,,,\"{\\0}\"]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.inventory"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "1f2974032714411e8e6ab243470e8a7d",
+            "name": "nodeinfo: ssh_key",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.ssh_key",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's ssh_key field (ansibleme.sh-specific) -- visibility only, no trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.regexp[/etc/example-music/nodeinfo.json,\"\\\"ansible_dir\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"inventory\\\": \\\"[^\\\"]*\\\",\\n\\s*\\\"ssh_key\\\": \\\"[^\\\"]*\\\"\",,,,\"{\\0}\"]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.ssh_key"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          }
+        ],
+        "tags": [
+          {
+            "tag": "target",
+            "value": "ansible-node"
+          }
+        ]
+      }
+    ]
+  }
+}
