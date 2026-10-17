@@ -1,0 +1,55 @@
+---
+# =============================================================================
+# ansible/playbooks/windows_bootstrap/vars/choco_packages_common.yml
+# Example Music Limited — Chocolatey baseline package list (single source of truth)
+# =============================================================================
+# Extracted 2026-10-17 (Robert's ask) so windows_hygiene/playbooks/30-choco.yml can
+# routinely REASSERT this list on every run -- matching Linux's own common_packages
+# (group_vars/all/main.yml), which linux/tools.yml re-installs unconditionally every
+# time, not just once at first build. Before this, the Windows equivalent
+# (choco_packages_common) only ever got installed ONCE, inside windows_bootstrap --
+# a package manually removed afterward had nothing routine to catch or reinstall it.
+#
+# A literal vars_files: path, not group_vars/windows*/ -- windows_bootstrap's own
+# 40-choco-packages.yml runs against a freshly PXE/WDS-built host on its bare DHCP
+# address, with NO presence in any inventory file yet, so group_vars/windows*/ never
+# resolves for it (see that file's own "DESIGN NOTE" header, and the 2026-06-30
+# regression it already fixes once for exactly this reason). windows_hygiene has no
+# such constraint (always runs against already-inventoried hosts), but loading this
+# same literal file via vars_files: works identically for both, with no duplication.
+#
+# DO NOT hand-copy this list into either caller's own file again -- that exact
+# duplication (05-bootstrap.yml carrying a second, independently-drifted copy) was
+# already found and fixed once, 2026-07-06 (see 40-choco-packages.yml's own
+# changelog). This file is the only copy.
+# =============================================================================
+
+exa_choco_source: "https://community.chocolatey.org/api/v2/"
+
+choco_packages_common:
+  - 7zip.install
+  - notepadplusplus.install
+  - powershell-core
+  - hyper
+  - far
+  - edit
+  - sdelete
+  - putty.install
+  - winscp.install
+  - rustdesk.install
+  - wget
+  - busybox
+  - elinks
+  - fastfetch
+  # Miller (mlr) -- jq's CSV-native equivalent, added 2026-08-29 (Robert;
+  # also added to Linux's common_packages the same day). jq works on
+  # JSON; sites.csv/devices.csv/address_policy.csv are CSV, so mlr is
+  # the actual right tool for one-off inspection of those from a
+  # Windows box without writing a PowerShell one-liner:
+  #   Get-Content sites.csv | mlr --csv cat
+  # (--csv on both input and output; see "mlr --help" or
+  # https://miller.readthedocs.io for the full DSL).
+  - miller
+  - vcredist-all
+  - dotnetfx
+  - windirstat

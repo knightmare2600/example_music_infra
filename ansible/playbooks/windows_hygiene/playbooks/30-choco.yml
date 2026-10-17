@@ -1,14 +1,11 @@
 ---
 # =============================================================================
 # playbooks/30-choco.yml
-# Example Music Limited — Windows hygiene: Chocolatey upgrade + tools
+# Example Music Limited — Windows hygiene: Chocolatey upgrade + baseline reassertion
 # =============================================================================
-# Upgrades all installed Chocolatey packages to latest, and ensures
-# WinDirStat + SDelete are present. Both are also in choco_packages_common
-# (windows_bootstrap/playbooks/40-choco-packages.yml) as of 2026-07-06 — for
-# a host that went through the bootstrap chain this is a no-op re-check,
-# not a gap; kept here so a periodic hygiene run doesn't depend on the host
-# having been bootstrapped via that specific path.
+# Upgrades all installed Chocolatey packages to latest, then re-checks and
+# reinstalls any MISSING package from the full choco_packages_common baseline --
+# not just the two (windirstat/sdelete) this file used to hardcode.
 #
 # Usage:
 #   ansible-playbook -i configs/inventory playbooks/windows_hygiene/playbooks/30-choco.yml
@@ -16,6 +13,21 @@
 # Tags: choco
 # =============================================================================
 # Changelog:
+#   2026-10-17  BUG FIX, Robert's ask: this only ever re-checked windirstat/sdelete
+#               (both also in choco_packages_common, windows_bootstrap/playbooks/
+#               40-choco-packages.yml) -- the other 16 common packages were installed
+#               ONCE during windows_bootstrap and never reasserted again. A package
+#               manually removed afterward had nothing routine to catch or reinstall it,
+#               unlike Linux's common_packages, which linux/tools.yml reinstalls
+#               unconditionally on every run. Now loads the exact same
+#               ../vars/choco_packages_common.yml file windows_bootstrap uses (never a
+#               second hand-copied list -- see that file's own header for the
+#               2026-07-06/2026-06-30 history of what goes wrong when it is), and
+#               reinstalls only what package_facts-equivalent detection (a single local
+#               `choco list`, no network call, same pattern already proven in
+#               40-choco-packages.yml) shows as actually missing. The old hardcoded
+#               WinDirStat/SDelete tasks are removed -- both are already in the full
+#               list this now reasserts, so they were about to become duplicate logic.
 #   2026-10-10  Added the {{ _c }} colour-coded [*]/[+]/[!] convention already used
 #               throughout windows_dc/windows_bootstrap/proxmox -- this whole module had
 #               never adopted it (Robert, sweep across every file in this family).
@@ -25,9 +37,11 @@
 #               windows_dc and windows_bootstrap.
 # =============================================================================
 
-- name: Windows hygiene — Chocolatey upgrade and tools
+- name: Windows hygiene — Chocolatey upgrade and baseline reassertion
   hosts: "{{ target_hosts | default(target | default('all')) }}"
   gather_facts: false
+  vars_files:
+    - ../../windows_bootstrap/vars/choco_packages_common.yml
   tasks:
 
     - name: Include colour fallback
@@ -38,7 +52,7 @@
       debug:
         msg:
           - "{{ _c.C }}── Chocolatey packages ──{{ _c.NC }}"
-          - "{{ _c.C }}[*]{{ _c.NC }} Upgrading all Chocolatey packages and installing WinDirStat and SDelete..."
+          - "{{ _c.C }}[*]{{ _c.NC }} Upgrading all Chocolatey packages, then reasserting the common baseline..."
       tags: choco
 
     - name: Upgrade all Chocolatey packages to latest
@@ -47,14 +61,46 @@
         state: latest
       tags: choco
 
-    - name: Install WinDirStat
-      chocolatey.chocolatey.win_chocolatey:
-        name:  windirstat
-        state: present
+    # ── Reassert the full common baseline, not just windirstat/sdelete ──────────
+    # Same missing-package-detection pattern already proven in
+    # windows_bootstrap/playbooks/40-choco-packages.yml -- one local `choco list`
+    # (no network round-trip) instead of spawning a choco.exe process per package
+    # just to find out it's already there.
+
+    - name: Get currently installed Chocolatey packages (single local, no-network call)
+      ansible.windows.win_shell: |
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+        choco list --limit-output
+      register: choco_installed_raw
+      changed_when: false
       tags: choco
 
-    - name: Install SDelete (Sysinternals)
+    - name: Set installed_choco_packages fact
+      set_fact:
+        installed_choco_packages: >-
+          {{ choco_installed_raw.stdout_lines
+             | map('regex_replace', '\|.*$', '')
+             | map('lower')
+             | list }}
+      tags: choco
+
+    - name: Set missing-common-package fact
+      set_fact:
+        choco_packages_common_missing: "{{ choco_packages_common | reject('in', installed_choco_packages) | list }}"
+      tags: choco
+
+    - name: Show common-baseline reassertion result
+      debug:
+        msg: >-
+          {{ _c.G }}[+]{{ _c.NC }} Common baseline — missing: {{ (choco_packages_common_missing | join(', ')) if choco_packages_common_missing | length > 0 else '(none, all present)' }}
+      tags: choco
+
+    - name: Reinstall missing common Chocolatey packages
       chocolatey.chocolatey.win_chocolatey:
-        name:  sdelete
-        state: present
+        name:   "{{ item }}"
+        state:  present
+        source: "{{ exa_choco_source }}"
+      loop: "{{ choco_packages_common_missing }}"
+      loop_control:
+        label: "{{ item }}"
       tags: choco

@@ -45,6 +45,17 @@
 # Tags: choco_packages
 # =============================================================================
 # Changelog:
+#   2026-10-17  Moved exa_choco_source/choco_packages_common out of this file's own vars:
+#               block to ../vars/choco_packages_common.yml (Robert's ask), so
+#               windows_hygiene/playbooks/30-choco.yml can load the exact same file to
+#               routinely REASSERT this list -- matching Linux's own common_packages,
+#               which linux/tools.yml reinstalls unconditionally every run, not just once.
+#               Before this, a package manually removed after initial bootstrap had
+#               nothing routine to catch or reinstall it. choco_packages_gui stays here,
+#               untouched -- out of scope for this fix. See the shared file's own header
+#               for why this has to be vars_files: (a literal path) rather than
+#               group_vars/windows*/, and the 2026-07-06/2026-06-30 history of what goes
+#               wrong if this list is ever hand-copied into a second place again.
 #   2026-10-04  CORRECTED the PuTTY Default Settings task from a 4-value win_regedit loop to
 #               a full `reg import` of files/putty_default_settings.reg -- found live,
 #               EXADCSGOT001: Default Settings is a complete session record PuTTY's own GUI
@@ -279,41 +290,17 @@
   hosts:         "{{ target_hosts | default(target | default('all')) }}"
   gather_facts: false
 
+  # exa_choco_source + choco_packages_common moved 2026-10-17 to
+  # ../vars/choco_packages_common.yml -- windows_hygiene/playbooks/30-choco.yml now
+  # loads the identical file to routinely REASSERT this list, matching Linux's
+  # common_packages. A literal vars_files: path, not group_vars/windows*/ -- see
+  # that shared file's own header for why (this play runs against a bare DHCP IP
+  # with no inventory presence yet) and the 2026-07-06/2026-06-30 history of what
+  # goes wrong if this list is ever hand-copied into a second place instead.
+  vars_files:
+    - ../vars/choco_packages_common.yml
+
   vars:
-    exa_choco_source: "https://community.chocolatey.org/api/v2/"
-
-    # Installed on every host regardless of role. Self-contained per the
-    # design note above (05-bootstrap.yml, which used to carry a second,
-    # kept-in-sync-by-hand copy of this list, was retired 2026-07-09 — this
-    # is now the only copy).
-    choco_packages_common:
-      - 7zip.install
-      - notepadplusplus.install
-      - powershell-core
-      - hyper
-      - far
-      - edit
-      - sdelete
-      - putty.install
-      - winscp.install
-      - rustdesk.install
-      - wget
-      - busybox
-      - elinks
-      - fastfetch
-      # Miller (mlr) -- jq's CSV-native equivalent, added 2026-08-29 (Robert;
-      # also added to Linux's common_packages the same day). jq works on
-      # JSON; sites.csv/devices.csv/address_policy.csv are CSV, so mlr is
-      # the actual right tool for one-off inspection of those from a
-      # Windows box without writing a PowerShell one-liner:
-      #   Get-Content sites.csv | mlr --csv cat
-      # (--csv on both input and output; see "mlr --help" or
-      # https://miller.readthedocs.io for the full DSL).
-      - miller
-      - vcredist-all
-      - dotnetfx
-      - windirstat
-
     # GUI-dependent (browsers etc.) — installed on Client OS always, and on
     # Server OS only if Desktop Experience is installed (not Server Core).
     # See has_gui fact below.
