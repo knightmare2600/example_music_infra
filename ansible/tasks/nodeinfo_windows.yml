@@ -99,6 +99,12 @@
 #               pass nodeinfo_extra. Brings this file to parity before any Windows-side
 #               caller actually needs role-specific fields, rather than waiting to hit the
 #               identical bug class a second time.
+#   2026-10-17  BUG FIX, Robert's ask, same day as the extras fix above: 'role' used
+#               host_role | lower despite host_role itself already being uppercase at
+#               its own source (hostname_facts.yml) -- swept the whole repo for the same
+#               pattern, also found and fixed in linux/tools.yml, zabbix_server.yml,
+#               zabbix_agent.yml. Changed to | upper for explicit clarity at the point of
+#               use.
 #   2026-09-26  Extracted from windows_hygiene/playbooks/05-example-music-files.yml
 #               (the only prior copy) so windows_bootstrap/windows_dc/
 #               windows_adschema can share it instead of each hand-copying a
@@ -202,7 +208,7 @@
         {
           'hostname':         inventory_hostname,
           'fqdn':             ansible_fqdn | default(inventory_hostname),
-          'role':             host_role | lower,
+          'role':             host_role | upper,
           'site':             host_site,
           'city':             _nodeinfo_win_site_row.City | default(''),
           'country':          _nodeinfo_win_site_row.Country | default(''),

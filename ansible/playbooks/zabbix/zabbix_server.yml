@@ -71,6 +71,13 @@
 #               and file its two credentials into KeePass the same way windows_dc does,
 #               per his own stated sequencing from 2026-09-01 ("we'll backport it to
 #               ansible"). Not yet live-tested.
+#   2026-10-17  BUG FIX, Robert's ask: nodeinfo_role used host_role | lower (e.g. "zab")
+#               despite host_role itself already being uppercase at its own source
+#               (hostname_facts.yml's regex_search runs against an already-.upper()'d
+#               hostname) -- swept the whole repo for the same pattern and fixed every
+#               instance (linux/tools.yml, zabbix_agent.yml, tasks/nodeinfo_windows.yml),
+#               not just this one. Changed to | upper for explicit clarity at the point of
+#               use, rather than relying on host_role's own derivation never changing.
 # =============================================================================
 
 - name: Zabbix — Server (Ansible port of zabbixme.sh)
@@ -126,7 +133,7 @@
       tags: always
       include_tasks: ../../tasks/nodeinfo.yml
       vars:
-        nodeinfo_role: "{{ host_role | lower }}"
+        nodeinfo_role: "{{ host_role | upper }}"
         nodeinfo_site: "{{ host_site }}"
         nodeinfo_city: "{{ zbx_site_row.City | default('') }}"
         nodeinfo_country: "{{ zbx_site_row.Country | default('') }}"
