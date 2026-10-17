@@ -51,6 +51,10 @@
 #
 # Optional vars:
 #   nodeinfo_windows_dir   default: 'C:\ProgramData\ExampleMusic\Config'
+#   nodeinfo_extra         default: {} — role-specific fields, merged in last so
+#                          they can override a base field if a caller ever
+#                          genuinely needs to (should be rare). Matches the
+#                          Linux file's own nodeinfo_extra exactly.
 #
 # Does NOT require gather_facts: true on the caller's own play -- deliberately
 # uses now(utc=true) instead of ansible_date_time.iso8601, since
@@ -79,6 +83,22 @@
 #               alongside last_ansible_run -- intended as a future Zabbix-alertable field so a
 #               problem can be traced to the specific play that caused it, independent of which
 #               play originally built the box.
+#   2026-10-17  Matched to the same-day fix in the Linux equivalent (ansible/tasks/
+#               nodeinfo.yml, commit 32e288f): that file's write was a full-file replace,
+#               and its linux/tools.yml caller never passed nodeinfo_extra, so every
+#               routine re-run silently wiped out a role-specific caller's own extras
+#               (firewallme's wg_role/lan_ip/etc). THIS file was actually a step further
+#               behind -- it never had a nodeinfo_extra parameter or a combine() at all
+#               (confirmed: none of its 6 real callers -- windows_hygiene, windows_dc x2,
+#               windows_bootstrap x2, windows_adschema -- reference nodeinfo_extra today,
+#               so no live data loss has actually happened yet, but the mechanism itself
+#               was missing, not just unprotected). Added the same two things the Linux
+#               file has: a nodeinfo_extra parameter (combined in last, so it can override
+#               a base field if a caller ever needs to), and preservation of any existing
+#               file's own fields outside the known base set across a re-run that doesn't
+#               pass nodeinfo_extra. Brings this file to parity before any Windows-side
+#               caller actually needs role-specific fields, rather than waiting to hit the
+#               identical bug class a second time.
 #   2026-09-26  Extracted from windows_hygiene/playbooks/05-example-music-files.yml
 #               (the only prior copy) so windows_bootstrap/windows_dc/
 #               windows_adschema can share it instead of each hand-copying a
@@ -144,6 +164,33 @@
     _nodeinfo_win_bootstrapped_by: "{{ nodeinfo_bootstrapped_by }}"
   when: not _nodeinfo_win_existing_file.stat.exists
 
+# Preserve any role-specific extra fields a PREVIOUS caller already wrote that THIS run's
+# own nodeinfo_extra doesn't mention -- same reasoning and pattern as the Linux file's
+# 2026-10-17 fix. No current caller passes nodeinfo_extra yet, so this is parity/future-
+# proofing, not fixing an active data loss.
+- name: "[nodeinfo] Preserve role-specific extra fields from the existing file, if any"
+  tags: always
+  ansible.builtin.set_fact:
+    _nodeinfo_win_preserved_extra: >-
+      {{
+        (_nodeinfo_win_existing_content.stdout | from_json)
+        | dict2items
+        | rejectattr('key', 'in', [
+            'hostname', 'fqdn', 'role', 'site', 'city', 'country', 'country_code',
+            'entity', 'office_name', 'street_address', 'postal_code', 'ansible_managed',
+            'bootstrapped_at', 'bootstrapped_by', 'last_ansible_run', 'last_ansible_play',
+            'environment'
+          ])
+        | items2dict
+      }}
+  when: _nodeinfo_win_existing_file.stat.exists
+
+- name: "[nodeinfo] Default preserved extra fields (no existing file -- genuine first write)"
+  tags: always
+  ansible.builtin.set_fact:
+    _nodeinfo_win_preserved_extra: {}
+  when: not _nodeinfo_win_existing_file.stat.exists
+
 - name: "[nodeinfo] Write nodeinfo.json"
   tags: always
   ansible.windows.win_copy:
@@ -170,5 +217,5 @@
           'last_ansible_run':  now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ'),
           'last_ansible_play': nodeinfo_bootstrapped_by,
           'environment':      'production',
-        }
+        } | combine(_nodeinfo_win_preserved_extra) | combine(nodeinfo_extra | default({}))
       }}
