@@ -4,6 +4,14 @@
 #   ansible-playbook playbooks/linux/tools.yml -i configs/inventory
 #
 # Changelog:
+#   2026-10-17  BUG FIX, Robert's ask: nodeinfo_role used host_role | lower (e.g. "fwl")
+#               despite host_role itself already being uppercase at its own source
+#               (hostname_facts.yml's regex_search runs against an already-.upper()'d
+#               hostname) -- swept the whole repo for the same pattern and fixed every
+#               instance (here, zabbix_server.yml, zabbix_agent.yml, tasks/
+#               nodeinfo_windows.yml). Changed to | upper for explicit clarity at the
+#               point of use, rather than relying on host_role's own derivation never
+#               changing.
 #   2026-10-16  Corrected the same day: package presence is now one native agent item per
 #               package (vfs.file.exists against /usr/share/doc/<pkg>/copyright, discovered
 #               via a new linux_tools_packages_lld.json LLD list) instead of the
@@ -572,7 +580,7 @@
           tags: always
           include_tasks: ../../tasks/nodeinfo.yml
           vars:
-            nodeinfo_role: "{{ host_role | lower }}"
+            nodeinfo_role: "{{ host_role | upper }}"
             nodeinfo_site: "{{ host_site }}"
             nodeinfo_city: "{{ _tools_site_row.City | default('') }}"
             nodeinfo_country: "{{ _tools_site_row.Country | default('') }}"
