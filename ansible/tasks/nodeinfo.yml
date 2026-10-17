@@ -100,6 +100,21 @@
 #               happens to survive under a --tags-filtered multi-play run.
 #               `when: ansible_date_time is not defined` keeps it a no-op on
 #               every normal (untagged or fully-tagged) run.
+#   2026-10-17  BUG FIX, Robert's ask (found while building the firewall/ansible-node Zabbix
+#               companion templates): linux/tools.yml is the only caller that never passes
+#               nodeinfo_extra -- every write here is a full file REPLACE (ansible.builtin.copy),
+#               so a role-specific playbook's own extras (firewallme's wg_role/lan_ip/wan_ip etc,
+#               ansibleme.sh-equivalent fields) were silently wiped out the next time
+#               linux/tools.yml ran against that same host (hosts: all, routinely re-run
+#               alongside role-specific plays -- not a rare edge case). Only bootstrapped_at/
+#               bootstrapped_by were ever protected across a re-run before this fix. Now reads
+#               any existing file's fields that AREN'T part of the known base-field set and
+#               preserves them too, the same "read existing file first" pattern already proven
+#               for bootstrapped_at/by just above -- this run's own nodeinfo_extra (if any) still
+#               wins over a preserved stale value for the same key, via combine()'s own
+#               later-dict-wins precedence, so a role-specific caller passing fresh values is
+#               never blocked by this. Fixes this estate-wide, in the one shared file every
+#               caller already goes through, rather than only in linux/tools.yml's own call.
 # =============================================================================
 
 - name: "[nodeinfo] Ensure ansible_date_time/ansible_fqdn are available"
@@ -138,6 +153,35 @@
     _nodeinfo_bootstrapped_by: "{{ nodeinfo_bootstrapped_by }}"
   when: not _nodeinfo_existing_file.stat.exists
 
+# Preserve any role-specific extra fields a PREVIOUS caller already wrote (e.g. firewallme's
+# wg_role/lan_ip/wan_ip, or an ansibleme.sh-equivalent field) that THIS run's own nodeinfo_extra
+# doesn't mention -- without this, a caller that passes no nodeinfo_extra at all (linux/tools.yml
+# is the only one) would silently wipe them out via the full-file replace below. Known base-field
+# names are excluded so they're never accidentally treated as "extra" and re-preserved verbatim
+# (that would fight the real, freshly-computed value for e.g. environment/last_ansible_run).
+- name: "[nodeinfo] Preserve role-specific extra fields from the existing file, if any"
+  tags: always
+  ansible.builtin.set_fact:
+    _nodeinfo_preserved_extra: >-
+      {{
+        (_nodeinfo_existing_content.content | b64decode | from_json)
+        | dict2items
+        | rejectattr('key', 'in', [
+            'hostname', 'fqdn', 'role', 'site', 'city', 'country', 'country_code',
+            'entity', 'office_name', 'street_address', 'postal_code', 'ansible_managed',
+            'bootstrapped_at', 'bootstrapped_by', 'last_ansible_run', 'last_ansible_play',
+            'environment'
+          ])
+        | items2dict
+      }}
+  when: _nodeinfo_existing_file.stat.exists
+
+- name: "[nodeinfo] Default preserved extra fields (no existing file -- genuine first write)"
+  tags: always
+  ansible.builtin.set_fact:
+    _nodeinfo_preserved_extra: {}
+  when: not _nodeinfo_existing_file.stat.exists
+
 - name: "Write /etc/example-music/nodeinfo.json"
   tags: always
   ansible.builtin.copy:
@@ -165,5 +209,5 @@
           'last_ansible_run':  ansible_date_time.iso8601,
           'last_ansible_play': nodeinfo_bootstrapped_by,
           'environment':      nodeinfo_environment | default('production'),
-        } | combine(nodeinfo_extra | default({}))
+        } | combine(_nodeinfo_preserved_extra) | combine(nodeinfo_extra | default({}))
       }}
