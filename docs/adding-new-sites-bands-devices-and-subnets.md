@@ -452,65 +452,63 @@ grouped into:
 (`OU=Bremen,OU=Germany,OU=Europe,OU=Sites`) is built from **`sites.csv` directly** —
 Part A, once run, is enough to get that skeleton created on the next `populate_ad` run,
 *before* any band exists. The band's own leaf OU (`OU=Trio`) is built separately, from
-the generated `ad_users.json`/`ad_groups.json` — so Part A and Part C are independent of
-each other in sequence (you could do C before A, and the band OU creation would simply
-wait until BRE's own city OU exists to nest under), but both still need to happen before
-AD actually reflects a complete new site with a band in it.
+the generated `ad_users.json`/`ad_groups.json`, but as of 2026-10-18 (see C.1 below) it
+is now driven by the SAME `sites.csv` row Part A adds — **Part A must run first**,
+before C.2's regenerate step, or the new users' `ad_ou` comes back blank (no matching
+site to join against yet).
 
-### C.1 Edit `benarbejde/jukebox.example.tdf`
+### C.1 Edit `benarbejde/people.csv` and `benarbejde/groups.csv`
 
-**Read the "LEGACY/DEFUNCT TOOL" warning in `parse_tdf.py`'s own header before touching
-this** — the `.tdf` + `parse_tdf.py` pairing is still the real, live, correct way to
-add/change **users and groups** (confirmed via real git history — D-A-D and Arne
-Lundemann were added exactly this way, 2026-07-11). It is **not** the way to touch
-computer accounts any more (`ad_computers.json` is now reconciled from `devices.csv` by
-`benarbejde/merge_ad_computers.py` instead) — don't let that warning scare you off the
-users/groups half, which is unaffected.
+`benarbejde/archive/jukebox.example.tdf`/`benarbejde/archive/parse_tdf.py` are retired,
+2026-10-18 (Robert: "it's wrong and legacy code... we've
+previously had to fix a lot of stuff based off mistakes it made"). `benarbejde/people.csv`
+and `benarbejde/groups.csv` are the new hand-authored source for users/groups, turned
+into `ad_users.json`/`ad_groups.json` by `benarbejde/merge_ad_users.py` — the same shape
+`devices.csv`/`merge_ad_computers.py` already established for computers.
 
-Find the `$Script:rawUsers=@(` array and add one block per band member, following the
-exact existing convention (one `## ========== BandName (Country/City) ==========`
-comment header, then one hashtable per member):
+Add one row per band member to `people.csv` (append, matching the existing header):
 
-```powershell
-## ========== Trio (Deutschland/Bremen) ==========
-@{ Name='Stephan Remmler' ; SamAccountName='stephan.remmler' ; UserPrincipalName='stephan.remmler@example.net' ; LastLogonDate=(Get-Date).AddDays(-1.4) ; OU=@('Deutschland','Bremen','Trio') ; Groups=@('Trio','Vocalists','Keyboardists') ; Title='Lead Vocalist/Keyboardist' ; Email='stephan.remmler@example.net' ; Country='DE' ; Disabled=$false ; Locked=$false ; MustChangePassword=$false ; Department='Music' ; physicalDeliveryOfficeName='Bremen Office' ; telephoneNumber='+49 421 555 0101' ; mobile='+49 1515 555 0102' ; Street='<real street — confirm>' ; City='Bremen' ; PostalCode='28195' ; Company='Example Music (Deutschland) GmbH' ; Manager='' ; Description='Lead vocalist, keyboardist and co-founder of Trio' ; AuditLog=@(@{ Timestamp=(Get-Date).AddDays(-42).AddHours(9); Action='Created'; Details='User account created'; By='admin' }) },
-@{ Name='Gert Krawinkel' ; SamAccountName='gert.krawinkel' ; UserPrincipalName='gert.krawinkel@example.net' ; LastLogonDate=(Get-Date).AddDays(-2.1) ; OU=@('Deutschland','Bremen','Trio') ; Groups=@('Trio','Guitarists') ; Title='Guitarist' ; Email='gert.krawinkel@example.net' ; Country='DE' ; Disabled=$false ; Locked=$false ; MustChangePassword=$false ; Department='Music' ; physicalDeliveryOfficeName='Bremen Office' ; telephoneNumber='+49 421 555 0103' ; mobile='+49 1515 555 0104' ; Street='<real street — confirm>' ; City='Bremen' ; PostalCode='28195' ; Company='Example Music (Deutschland) GmbH' ; Manager='Stephan Remmler' ; Description='Guitarist and co-founder of Trio, also known as "Kralle"' ; AuditLog=@(@{ Timestamp=(Get-Date).AddDays(-40).AddHours(9); Action='Created'; Details='User account created'; By='admin' }) },
-@{ Name='Peter Behrens' ; SamAccountName='peter.behrens' ; UserPrincipalName='peter.behrens@example.net' ; LastLogonDate=(Get-Date).AddDays(-1.8) ; OU=@('Deutschland','Bremen','Trio') ; Groups=@('Trio','Drummers') ; Title='Drummer' ; Email='peter.behrens@example.net' ; Country='DE' ; Disabled=$false ; Locked=$false ; MustChangePassword=$false ; Department='Music' ; physicalDeliveryOfficeName='Bremen Office' ; telephoneNumber='+49 421 555 0105' ; mobile='+49 1515 555 0106' ; Street='<real street — confirm>' ; City='Bremen' ; PostalCode='28195' ; Company='Example Music (Deutschland) GmbH' ; Manager='Stephan Remmler' ; Description='Drummer and co-founder of Trio' ; AuditLog=@(@{ Timestamp=(Get-Date).AddDays(-40).AddHours(9); Action='Created'; Details='User account created'; By='admin' }) },
+```
+Name,SamAccountName,UserPrincipalName,Email,Site,Band,Title,Department,Company,Description,Manager,Phone,Mobile,Street,City,PostalCode,Office,Country,CountryCode,Disabled,Locked,MustChangePassword,Groups
+Stephan Remmler,stephan.remmler,stephan.remmler@jukebox.internal,stephan.remmler@jukebox.internal,BRE,Trio,Lead Vocalist/Keyboardist,Music,Example Music (Deutschland) GmbH,"Lead vocalist, keyboardist and co-founder of Trio",,+49 421 555 0101,+49 1515 555 0102,<real street -- confirm>,Bremen,28195,Bremen Office,DE,DE,False,False,False,Trio;Vocalists;Keyboardists
+Gert Krawinkel,gert.krawinkel,gert.krawinkel@jukebox.internal,gert.krawinkel@jukebox.internal,BRE,Trio,Guitarist,Music,Example Music (Deutschland) GmbH,"Guitarist and co-founder of Trio, also known as ""Kralle""",Stephan Remmler,+49 421 555 0103,+49 1515 555 0104,<real street -- confirm>,Bremen,28195,Bremen Office,DE,DE,False,False,False,Trio;Guitarists
+Peter Behrens,peter.behrens,peter.behrens@jukebox.internal,peter.behrens@jukebox.internal,BRE,Trio,Drummer,Music,Example Music (Deutschland) GmbH,Drummer and co-founder of Trio,Stephan Remmler,+49 421 555 0105,+49 1515 555 0106,<real street -- confirm>,Bremen,28195,Bremen Office,DE,DE,False,False,False,Trio;Drummers
 ```
 
-Then find `$Script:rawDemoGroups=@(` and add **one** matching group row:
+Then add one matching row to `groups.csv` (`SamAccountName`/`NonMusicGroup` are sparse —
+leave blank unless you know you need them, see `merge_ad_users.py`'s own header):
 
-```powershell
-@{ Name='Trio' ; Description='German new wave band, formed 1980, best known for "Da Da Da"' ; Type='Security' ; Scope='Global' ; ManagedBy='Stephan Remmler' ; Email='trio@example.net' },
+```
+Name,SamAccountName,Description,Type,Scope,ManagedBy,Email,Site,NonMusicGroup
+Trio,,"German new wave band, formed 1980, best known for ""Da Da Da""",Security,Global,Stephan Remmler,trio@jukebox.internal,BRE,
 ```
 
-**Checked, not assumed — why the `OU` array here is only 3 elements**
-(`'Deutschland','Bremen','Trio'`), with no Province token even though `sites.csv` has
-`Province=Bremen` for `BRE`: `parse_tdf.py`'s own `_user_ou_path()` decodes a 3-element
-array as `(Country, City, Band)` and a 4-element one as `(Country, Province, City,
-Band)` — it does **not** read `sites.csv` at all for this, it's a self-contained
-function with its own `COUNTRY_NORM`/`CONTINENT_MAP` tables. Berlin and Bonn (both
-`Province`-blank in `sites.csv`) use the 3-element form; Dresden/Dusseldorf/Munich (which
-have a real distinct `Province`) use 4. Bremen is the one German site where the
-city and the federal state share a name — using the 3-element form here, matching
-Berlin/Bonn, is this document's own judgement call, flagged for a senior to override if
-wrong, not asserted as definitely correct.
+**Simpler than the old `.tdf` workflow in one real way**: `Site=BRE` alone drives the
+whole Continent/Country/Province/City OU placement, via `sites.csv` (already added in
+Part A) — there is no separate `COUNTRY_NORM`/`CONTINENT_MAP` dictionary to check or
+extend any more, even for a genuinely new country or continent. If Part A's `sites.csv`
+row is correct, the OU placement is correct; there's nothing else to maintain. (The old
+`.tdf` workflow's own 3-vs-4-element `OU` array judgement call, and the need to extend
+`parse_tdf.py`'s dictionaries for a new country, no longer apply — this whole paragraph
+in a previous version of this doc described that old mechanism; it's gone, not just
+deprecated.)
 
-**If this were the estate's first site in a genuinely new country or continent** —
-not the case for Bremen, Germany already exists in `COUNTRY_NORM`/`CONTINENT_MAP` — you
-would also need to add entries to those two dictionaries in `parse_tdf.py` itself before
-regenerating. Check this every time; don't assume every country is already covered.
+`UserPrincipalName`/`Email` are authored directly, not derived — some real people and
+bands genuinely need a value that doesn't mechanically follow from `SamAccountName`/
+`Name` (stage names, shared mailboxes); author whatever the real address should be.
 
 ### C.2 Regenerate `ad_users.json` and `ad_groups.json`
 
 ```bash
-python3 benarbejde/parse_tdf.py --section users
-python3 benarbejde/parse_tdf.py --section groups
+python3 benarbejde/merge_ad_users.py
 ```
 
-**Never run `--section computers`** as part of this or any other change — see the
-warning in C.1 and the script's own header. Users/groups are unaffected by that
-restriction.
+This is a full regenerate from `people.csv`/`groups.csv` (not a merge-preserving-extras
+like `merge_ad_computers.py`) — those two CSVs are a complete 1:1 backing for every field
+in the JSON output, verified against all 369/158 real records when they were first
+exported from the pre-2026-10-18 data. It prints a non-zero exit and a problem list to
+stderr if any row's `Site` doesn't match a real `sites.csv` code — fix those before
+proceeding, don't ignore them.
 
 Confirm the new users resolved to a sane OU, by hand, before moving on:
 
@@ -646,10 +644,10 @@ grep -c ",192\.168\.21\.0/24," benarbejde/sites.csv
 python3 at_have_ryggen_fri/check_new_site_boilerplate.py --apply BRE
 bash at_have_ryggen_fri/run.sh                                     # fix anything red
 
-# Part C — the band
-# ... hand-edit benarbejde/jukebox.example.tdf, add Trio's 3 users + 1 group (C.1) ...
-python3 benarbejde/parse_tdf.py --section users
-python3 benarbejde/parse_tdf.py --section groups
+# Part C — the band (Part A above must run first -- Site=BRE must already exist)
+# ... hand-edit benarbejde/people.csv and benarbejde/groups.csv, add Trio's 3
+#     users + 1 group (C.1) ...
+python3 benarbejde/merge_ad_users.py
 bash at_have_ryggen_fri/run.sh                                     # fix anything red
 ansible-playbook playbooks/windows_adschema/site.yml -e populate_ad=yes --ask-vault-pass
 
@@ -661,7 +659,7 @@ git add benarbejde/sites.csv ansible/configs/inventory/bre.ini \
         bootstrap/web/proxmox/devices.csv benarbejde/devices.csv
 git commit -m "Add BRE (Bremen) site + standard boilerplate"
 
-git add benarbejde/jukebox.example.tdf benarbejde/ad_users.json benarbejde/ad_groups.json
+git add benarbejde/people.csv benarbejde/groups.csv benarbejde/ad_users.json benarbejde/ad_groups.json
 git commit -m "Add Trio (Bremen) to AD demo data"
 ```
 
@@ -705,9 +703,9 @@ Print this bit out. Tick each box in order.
 - [ ] Harness green
 - [ ] Any non-boilerplate device added via Part B's own procedure, with its own octet
       confirmed the same way
-- [ ] Band + members added to `jukebox.example.tdf`, following the existing format
+- [ ] Band + members added to `people.csv`/`groups.csv`, following the existing format
       exactly
-- [ ] `parse_tdf.py --section users` and `--section groups` run
+- [ ] `merge_ad_users.py` run
 - [ ] New users' `ad_ou` spot-checked by hand — resolves where expected, not blank
 - [ ] Harness green again
 - [ ] `populate_ad=yes` run against a real DC, once you're actually ready to create

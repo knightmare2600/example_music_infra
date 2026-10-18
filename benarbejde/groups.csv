@@ -1,0 +1,159 @@
+Name,SamAccountName,Description,Type,Scope,ManagedBy,Email,Site,NonMusicGroup
+Simple Minds,,Scottish rock band formed in Glasgow in 1977,Security,Global,Jim Kerr,simpleminds@jukebox.internal,GLA,False
+Marillion,,British rock band formed in Edinburgh in 1979,Security,Global,Steve Hogarth,marillion@jukebox.internal,EDI,False
+Altered Images,,New Wave band formed in Glasgow 1980,Security,Global,Clare Grogan,alteredimages@jukebox.internal,GLA,False
+Eurythmics,,Duo formed in Aberdeen in 1980,Security,Global,Annie Lennox,eurythmics@jukebox.internal,ABD,False
+Ultravox,,"Scottish New Wave band, classic Midge Ure era lineup",Security,Global,Midge Ure,ultravox@jukebox.internal,VIE,False
+Deacon Blue,,Scottish pop rock band formed in Glasgow in 1985,Security,Global,Ricky Ross,deaconblue@jukebox.internal,DUN,False
+Wet Wet Wet,,Scottish pop rock band formed in Clydebank in 1982,Security,Global,Marti Pellow,wetwetwet@jukebox.internal,CLY,False
+The Proclaimers,,Scottish folk rock duo formed in Edinburgh in 1983,Security,Global,Craig Reid,proclaimers@jukebox.internal,EDI,False
+Fiction Factory,,"Scottish synth band formed in Perth, Scotland in 1982",Security,Global,Mike Ogletree,fictionfactory@jukebox.internal,PER,False
+Lowlife,,Scottish post-punk and new wave band formed in Falkirk in 1985,Security,Global,Craig Lorentsen,lowlife@jukebox.internal,FAL,False
+The Pastels,,"Scottish indie pop band associated with the C86 movement, from the early 1980s",Security,Global,Stephen Pastel,thepastels@jukebox.internal,GLA,False
+The Beat,,English ska and new wave band formed in Birmingham in 1978,Security,Global,Dave Wakeling,thebeat@jukebox.internal,BIR,False
+China Crisis,,UK synth-pop band formed in Liverpool,Security,Global,Gary Daly,chinacrisis@jukebox.internal,LIV,False
+A Flock of Seagulls,,English new wave band formed in Liverpool,Security,Global,Mike Score,aflockofseagulls@jukebox.internal,LIV,False
+Depeche Mode,,English electronic music band formed in Basildon in 1980,Security,Global,Dave Gahan,depechemode@jukebox.internal,LND,False
+Pet Shop Boys,,English synth-pop duo formed in London in 1981,Security,Global,Neil Tennant,petshopboys@jukebox.internal,LND,False
+The Specials,,English ska / 2 Tone band formed in Coventry in 1977,Security,Global,Jerry Dammers,thespecials@jukebox.internal,COV,False
+Fun Boy Three,,English new wave band formed in Coventry in 1981,Security,Global,Terry Hall,funboythree@jukebox.internal,COV,False
+Fine Young Cannibals,,English rock and soul band formed in Birmingham in 1984,Security,Global,Roland Gift,fineyoungcannibals@jukebox.internal,BIR,False
+The Beat,,English ska and new wave band formed in Birmingham in 1978,Security,Global,Dave Wakeling,thebeat@jukebox.internal,BIR,False
+Erasure,,English synth-pop duo formed in London in 1985,Security,Global,Andy Bell,erasure@jukebox.internal,LND,False
+Echo And The Bunnymen,,Echo And The Bunnymen Groupr,Security,Global,Ian McCulloch,bunnymen@jukebox.internal,LIV,False
+The Police,,Group Catch-all for The Police,Security,Global,Sting,thepolice@jukebox.internal,NEW,False
+New Order,,English rock band formed in Salford in 1980,Security,Global,Tony Wilson,neworder@jukebox.internal,MCR,False
+Mel And Kim,,Melanie and Kimberly Appleby,Security,Global,Pete Waterman,melandkim@jukebox.internal,LND,False
+UB40,,Band named after the Unemployment Benefit 40 Form in 1978,Security,Global,Margaret Thatcher,ub40@jukebox.internal,BIR,False
+Duran Duran,,English new wave/synth-pop band formed in Birmingham in 1978,Security,Global,Simon Le Bon,duranduran@jukebox.internal,BIR,False
+Human League,,English synth-pop band formed in Sheffield in 1977,Security,Global,Philip Oakey,humanleague@jukebox.internal,SHE,False
+Heaven 17,,English synth-pop band formed in Sheffield in 1980,Security,Global,Glenn Gregory,heaven17@jukebox.internal,SHE,False
+M-People,,"M-People – Dance-pop band from Manchester, UK",Security,Global,Heather Small,m-people@jukebox.internal,MCR,False
+OMD,,Orchestral Manoeuvres in the Dark – Synth-pop band from Liverpool,Security,Global,Andy McCluskey,omd@jukebox.internal,LIV,False
+The Beautiful South,,English pop/rock band formed in Halifax in 1988,Security,Global,Paul Heaton,thebeautifulsouth@jukebox.internal,HUL,False
+Everything But The Girl,,"Everything But The Girl – Jazz/Pop duo from Hull, UK",Security,Global,Tracey Thorn,everythingbutthegirl@jukebox.internal,HUL,False
+Dire Straits,,Classic Dire Straits lineup,Security,Global,Mark Knopfler,direstraits@jukebox.internal,NEW,False
+Wham,,"UK 1980s pop group from London, including backing vocalists",Security,Global,George Michael,wham@jukebox.internal,LND,False
+Bananarama,,"Core Bananarama members from London, UK",Security,Global,Sara Dallin,bananarama@jukebox.internal,LND,False
+Then Jerico,,Then Jerico formed in London in 1983,Security,Global,Mark Shaw,thenjerico@jukebox.internal,LND,False
+The Stone Roses,,The Stone Roses classic lineup from Manchester (formed 1983),Security,Global,Ian Brown,stoneroses@jukebox.internal,MCR,False
+The Style Council,,British soul-pop group formed in 1983 by Paul Weller after The Jam,Security,Global,Paul Weller,stylecouncil@jukebox.internal,LND,False
+The Jam,,"English mod revival band formed 1972, disbanded 1982",Security,Global,Paul Weller,thejam@jukebox.internal,LND,False
+Elmer,,"Danish band Elmer, Copenhagen",Security,Global,Jonas Elmer,elmer@jukebox.internal,CPH,False
+TV-2,,Danish rock band formed in 1981,Security,Global,Steffen Brandt,tv2@jukebox.internal,AAR,False
+Rocazino,,Danish pop band from Køge,Security,Global,Stine Bramsen,alphabeat@jukebox.internal,KGE,False
+Whigfield Solo,,Solo artist Whigfield from Kørsor,Security,Global,Whigfield,whigfield-band@jukebox.internal,KGE,False
+MØ Solo,,Solo artist MØ from Odense,Security,Global,Karen Marie Ørsted,mo@jukebox.internal,ODE,False
+Dodo-and-the-Dodos,,"Danish band Dodo and the Dodos, Copenhagen",Security,Global,Dodo Gad,dodo-and-the-dodos@jukebox.internal,CPH,False
+1000-Keys,,Danish 1980s band 1000 Keys,Security,Global,Lead Vocalist,1000-keys@jukebox.internal,CPH,False
+News,,Danish 1980s band News,Security,Global,Lead Vocalist,news@jukebox.internal,CPH,False
+Ace of Base,,Ace of Base – Swedish pop group formed in Gothenburg in 1990,Security,Global,Jonas Berggren,aceofbase@jukebox.internal,GOT,False
+Roxette,,Roxette – Swedish pop rock duo formed in Halmstad in 1986,Security,Global,Per Gessle,roxette@jukebox.internal,GOT,False
+A-Ha,,a-ha – Norwegian band formed in Oslo in 1982,Security,Global,Morten Harket,aha@jukebox.internal,OSL,False
+Jan Hammer Group,,Jan Hammer solo project and collaborators; founded 1974,Security,Global,Jan Hammer,janhammer@jukebox.internal,VIE,False
+Giorgio Moroder,,Giorgio Moroder production group; founded 1969,Security,Global,Giorgio Moroder,moroder@jukebox.internal,MIL,False
+Kraftwerk,,"German electronic music pioneers from Bonn, formed 1970",Security,Global,Ralf Hutter,kraftwerk@jukebox.internal,BON,False
+Nena,Nena-Grp,"German Neue Deutsche Welle band from West-Berlin, formed 1982",Security,Global,Gabriele Kerner,nena@jukebox.internal,BER,False
+Tangerine Dream,,"German electronic music group from West-Berlin, formed 1967",Security,Global,Christopher Franke,tangerinedream@jukebox.internal,BER,False
+Fancy Solo,,"Solo artist Fancy from Munich, Italo disco performer",Security,Global,Manfred Segieth,fancy@jukebox.internal,MUN,False
+The Jam,,German New Wave band formed in 1984 in Saarbrücken,Security,Global,Sandra Lauder,sandra.band@jukebox.internal,LND,False
+Candy Dulfer,,Candy Dulfer formed in Amsterdam in 1983,Security,Global,Candy Dulfer,candydulfer@jukebox.internal,AMS,False
+Trio,,West German minimalist new wave band,Security,Global,Stephan Remmler,trio@jukebox.internal,DUS,False
+Falco,Falco-Grp,Falco – Austrian solo artist with classic 1980s backing band,Security,Global,falco,falco@jukebox.internal,VIE,False
+Baltimora,,Italian Italo-disco / pop project founded in 1984,Security,Global,maurizio.bassi,baltimora@jukebox.internal,MIL,False
+Vanessa Paradis,,"French singer and actress; active artist. Relocated to Quebec, Canada",Security,Global,Vanessa Paradis,vanessaparadis@jukebox.internal,MTL,False
+Rush,,"Core Rush members from Toronto, Canada",Security,Global,Geddy Lee,rush@jukebox.internal,TOR,False
+SCTV-Guest-Artists,,"Guest artists from SCTV show, Toronto, CA",Security,Global,Rick Moranis,sctv.guests@jukebox.internal,TOR,False
+Great White North,,Canadian satirical rock project associated with Bob and Doug McKenzie in the 1980s,Security,Global,Rick Moranis,greatwhitenorth@jukebox.internal,TOR,False
+Miami Sound Machine,,American Latin pop band formed in Miami in the 1970,Security,Global,Gloria Estefan,miamisoundmachine@jukebox.internal,MIA,False
+REM,,"American alternative rock band formed in Athens, Georgia",Security,Global,Michael Stipe,rem@jukebox.internal,ATL,False
+Blondie,,Blondie – New Wave/Punk band from NYC,Security,Global,Debbie Harry,blondie@jukebox.internal,NYC,False
+E-Street Band,,Bruce Springsteen & E-Street Band – Rock band from New Jersey,Security,Global,Bruce Springsteen,estreetband@jukebox.internal,NJC,False
+KC-Sunshine-Band,,"Core group of KC and the Sunshine Band, Miami, FL",Security,Global,Harry Wayne Casey,kc.sunshine@jukebox.internal,MIA,False
+Herb Alpert & Tijuana Brass,,"Herb Alpert, featured vocalists, and classic Tijuana Brass lineup",Security,Global,Herb Alpert,tijuanabrass@jukebox.internal,LAX,False
+Chris Isaak,,Chris Isaak & Silvertone – formed in San Francisco in 1985,Security,Global,Chris Isaak,chrisisaak@jukebox.internal,SFO,False
+Kenny G Band,,Kenny G and Studio Band formed in Seattle in 1980,Security,Global,Kenny G,kennyg@jukebox.internal,SEA,False
+Tina Turner – Private Dancer,,Tina Turner and the classic Private Dancer era lineup (formed 1984),Security,Global,Tina Turner,tinaprivatedancer@jukebox.internal,LAX,False
+Craig T Cooper,,Craig T. Cooper music project formed in Chicago in 1985,Security,Global,Craig T. Cooper,craig.t.cooper@jukebox.internal,CHI,False
+Fleetwood Mac,,"Fleetwood Mac band members, legacy artists, and approved collaborators (Founded 1967)",Security,Global,Mick Fleetwood,fleetwoodmac@jukebox.internal,LAX,False
+Foreigner,,Foreigner rock band classic lineup; founded 1976 in New York City,Security,Global,Mick Jones,foreigner@jukebox.internal,NYC,False
+Chicago,,"Chicago rock band classic lineup; founded 1967 in Chicago, Illinois",Security,Global,Robert Lamm,chicago@jukebox.internal,CHI,False
+Talking Heads,,Talking Heads classic lineup; founded 1975 in New York City,Security,Global,David Byrne,talkingheads@jukebox.internal,NYC,False
+Hall and Oates,,Hall & Oates classic 1980s lineup; formed in the early 1970s in Philadelphia,Security,Global,Daryl Hall,hallandoates@jukebox.internal,PHI,False
+Boz Scaggs,,Boz Scaggs and touring band; Silk Degrees era (mid-1970s),Security,Global,Boz Scaggs,bozscaggs@jukebox.internal,LAX,False
+Men at Work,,"Men at Work classic lineup; founded 1978 in Melbourne, Australia",Security,Global,Colin Hay,menatwork@jukebox.internal,MEL,False
+Divinyls,,"Divinyls classic lineup; founded 1980 in Sydney, Australia",Security,Global,Mark McEntee,divinyls@jukebox.internal,SYD,False
+Split Enz,,New Zealand art rock / new wave band formed in 1972,Security,Global,Tim Finn,splitenz@jukebox.internal,MEL,False
+INXS,,Classic 1980s INXS lineup,Security,Global,Michael Hutchence,inxs@jukebox.internal,SYD,False
+Icehouse,,Classic 1980s Icehouse lineup,Security,Global,Iva Davies,icehouse@jukebox.internal,SYD,False
+Crowded House,,Classic 1980s Crowded House lineup,Security,Global,Neil Finn,crowdedhouse@jukebox.internal,MEL,False
+Thompson Twins,,Classic 1980s Thompson Twins lineup,Security,Global,Tom Bailey,thompsontwins@jukebox.internal,AKL,False
+OMC,,OMC (Ōtara Millionaires Club) How bizzare,Security,Global,Pauly Fuemana,omc@jukebox.internal,AKL,False
+Vocalists,,Lead singers and vocalists across all bands,Security,Global,,vocalists@jukebox.internal,,False
+Keyboards,,Keyboard And synthesizers,Security,Global,,synths@jukebox.internal,,False
+Musicians,,Instrumentalists,Security,Global,,instruments@jukebox.internal,,False
+Guitarists,,Guitar and bass players,Security,Global,,guitars@jukebox.internal,,False
+Percussionists,,Drummers and percussion specialists,Security,Global,,percussion@jukebox.internal,,False
+Legal,,"Company Lawyer Messers Sue, Grabbit & Runne",Security,Global,Arkell v Pressdram,legal@jukebox.internal,,False
+Marketing,,Marketing and Creattive Group,Security,Global,Helena Christensen,marketing@jukebox.internal,,False
+Journalists,,Journalists,Security,Global,Neil Tennant,lunchtimeobouz@jukebox.internal,BRT,False
+Broadcasters,,Broadcasting staff who want their MTV,Security,Global,Carol Hersee,popup-video@jukebox.internal,,True
+Builders,,"Team from Auf Wiedersehen, Pet",Security,Global,Dennis Pinner,builders@jukebox.internal,DRS,False
+D-A-D,,Danish hard rock band formed in Hørsholm/Copenhagen in 1982,Security,Global,Jesper Binzer,dad@jukebox.internal,CPH,False
+Arne Lundemann,,"Solo artist — actor and opera singer, known for ""OB op i top""",Security,Global,Arne Lundemann,arnelundemann@jukebox.internal,NYB,False
+Roxy Music,,"English art rock band, early-1980s Avalon-era lineup, formed in London in 1970",Security,Global,Bryan Ferry,roxymusic@jukebox.internal,LND,False
+Bryan Adams,,"Solo artist Bryan Adams from Kingston, Ontario",Security,Global,Bryan Adams,bryanadams@jukebox.internal,KNG,False
+Anita Baker,,"Solo artist Anita Baker from Detroit, Michigan",Security,Global,Anita Baker,anitabaker@jukebox.internal,DET,False
+Dionne Warwick,,Solo artist Dionne Warwick,Security,Global,Dionne Warwick,dionnewarwick@jukebox.internal,NJC,False
+Sales,,Remote VPN users and road warriors in sales,Security,Global,IT Admin,sales@jukebox.internal,,False
+Former Staff,,Former band members and staff,Security,Global,,formerstaff@jukebox.internal,,False
+VPN-Users,,"Remote access users (touring staff, laptops and tablets)",Security,Global,IT Operations,vpn-users@jukebox.internal,,False
+2FA Users,,Users with 2FA enabled,Security,Global,IT Operations,mfa-users@jukebox.internal,,True
+Disabled Users,,Administratively disabled user accounts,Security,Global,,,,True
+Artists,,General artists group -- performers not covered by a more specific instrument/role group,Security,Global,,artists@jukebox.internal,,False
+Music,,General music department staff,Security,Global,,music@jukebox.internal,,False
+Drummers,,Drummers and percussionists (kit),Security,Global,,drummers@jukebox.internal,,False
+Bassists,,Bass players,Security,Global,,bassists@jukebox.internal,,False
+Producers,,Record producers,Security,Global,,producers@jukebox.internal,,False
+Songwriters,,Songwriters and composers,Security,Global,,songwriters@jukebox.internal,,False
+Percussion,,Hand percussion and auxiliary percussion players,Security,Global,,percussion@jukebox.internal,,False
+Saxophonists,,Saxophone players,Security,Global,,saxophonists@jukebox.internal,,False
+Session Vocalists,,Session/guest vocalists not on a band's permanent roster,Security,Global,,session-vocalists@jukebox.internal,,False
+Backing Vocalists,,Backing/harmony vocalists,Security,Global,,backing-vocalists@jukebox.internal,,False
+Guest-Artists,,"Guest performers appearing on specific projects, not permanent band members",Security,Global,,guest-artists@jukebox.internal,,False
+Featured Artists,,Artists credited as featured/guest on another act's work,Security,Global,,featured-artists@jukebox.internal,,False
+Legacy-Artists,,Artists from earlier/legacy line-ups retained for historical reference,Security,Global,,legacy-artists@jukebox.internal,LAX,False
+Solo Artists,,Solo performers not part of a permanent band,Security,Global,,solo-artists@jukebox.internal,BON,False
+Programmers,,Synth/sequencer programmers,Security,Global,,programmers@jukebox.internal,DUS,False
+Synth,,Synthesizer specialists,Security,Global,,synth@jukebox.internal,LND,False
+Horn Section,,Brass and horn section players,Security,Global,,horn-section@jukebox.internal,PHI,False
+Founders,,Founding members of their respective bands/projects,Security,Global,,founders@jukebox.internal,DUS,False
+Executives,,Band/project founders acting in an executive/leadership capacity,Security,Global,,executives@jukebox.internal,MIA,False
+Managers,,Artist and production managers,Security,Global,,managers@jukebox.internal,AKL,False
+Management,,Company management,Security,Global,,management@jukebox.internal,MIA,False
+Propaganda,,German new wave band Propaganda,Security,Global,Ralf Dörper,propaganda@jukebox.internal,DUS,False
+The-Passions,,British post-punk band The Passions,Security,Global,,the-passions@jukebox.internal,LND,False
+Pastis-51,,Scottish band Pastis 51,Security,Global,,pastis-51@jukebox.internal,FAL,False
+Sandra,,German singer Sandra and production team,Security,Global,Michael Cretu,sandra@jukebox.internal,BON,False
+Lis Sørensen,,Danish singer Lis Sørensen,Security,Global,,lis-sorensen@jukebox.internal,FRE,False
+Ska,,"Ska genre tag, The Specials' classic lineup",Security,Global,,ska@jukebox.internal,COV,False
+Ancillary Staff,,"Non-band support staff across sites (catering, facilities, legal, medical, transport etc.)",Security,Global,,ancillary-staff@jukebox.internal,,False
+Staff,,General staff group,Security,Global,,staff@jukebox.internal,FRE,False
+Studio Access,,Recording studio physical/system access,Security,Global,,studio-access@jukebox.internal,,False
+Editors,,News editorial staff,Security,Global,,editors@jukebox.internal,,False
+Creative Team,,Creative/art department staff,Security,Global,,creative-team@jukebox.internal,FRE,False
+Esbjerg Office Access,,Physical access to the Esbjerg studio/office,Security,Global,,esbjerg-office@jukebox.internal,FRE,False
+Warehouse Access,,Warehouse physical access,Security,Global,,warehouse-access@jukebox.internal,KGE,False
+Touring,,Touring staff and crew,Security,Global,,touring@jukebox.internal,VIE,False
+Broadcast,,Broadcast/TV continuity staff,Security,Global,,broadcast@jukebox.internal,LND,False
+Ceremonial,,Ceremonial/royal duties,Security,Global,,ceremonial@jukebox.internal,CPH,False
+Medical,,Medical staff,Security,Global,,medical@jukebox.internal,ODE,False
+Costumes,,Costume and wardrobe department,Security,Global,,costumes@jukebox.internal,FRE,False
+Banking,,Banking staff,Security,Global,,banking@jukebox.internal,FRE,False
+Transport,,Company transport staff,Security,Global,,transport@jukebox.internal,CPH,False
+Catering,,Catering staff,Security,Global,,catering@jukebox.internal,CPH,False
+Facilities,,Facilities and janitorial staff,Security,Global,,facilities@jukebox.internal,CPH,False
+Violinists,,Violin players,Security,Global,,violinists@jukebox.internal,,False
+Violists,,Viola players,Security,Global,,violists@jukebox.internal,,False
+Cellists,,Cello players,Security,Global,,cellists@jukebox.internal,,False
+Penguin Cafe Orchestra,,"English chamber-pop and minimalist ensemble founded by Simon Jeffes in London in 1972, known for Perpetuum Mobile from Signs of Life (1987)",Security,Global,Simon Jeffes,penguincafeorchestra@jukebox.internal,,False
