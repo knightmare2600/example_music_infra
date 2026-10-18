@@ -90,7 +90,7 @@ Active Directory configuration, tooling, and DNS management.
 | [active-directory/ExampleMusic_DFS_Procedure.md](active-directory/ExampleMusic_DFS_Procedure.md) | NET-AD-DFS-001 | DFS namespace and replication setup |
 | [active-directory/ExampleMusic_UPN_DNS_dnsmasq_Procedure.md](active-directory/ExampleMusic_UPN_DNS_dnsmasq_Procedure.md) | NET-AD-UPN-001 | UPN suffixes, internal DNS zones, and DHCP dynamic DNS |
 | [active-directory/ExampleMusic_WAPT_Deployment_Procedure_v1.0.md](active-directory/ExampleMusic_WAPT_Deployment_Procedure_v1.0.md) | NET-AD-WAPT-001 | WAPT server and agent deployment |
-| [active-directory/domain-rename-procedure.md](active-directory/domain-rename-procedure.md) | NET-AD-RENAME-001 | Bulk domain name replace after AD forest rebuild |
+| [active-directory/domain-rename-procedure.md](active-directory/domain-rename-procedure.md) | NET-AD-RENAME-001 | Propagating a new AD domain through the estate's data/config once the live forest already exists under the new name — step-by-step, junior-safe with mandatory senior sign-off gates. Legacy bulk find-and-replace kept as a senior-only appendix |
 
 ---
 
