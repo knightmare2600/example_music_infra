@@ -552,6 +552,17 @@
 #                     reporting per-family success/failure without aborting the rest of
 #                     the script on one failure.
 #
+# v1.40.0 2026-10-18  BUG FIX, found during a repo-wide domain-hardcode audit (Robert's
+#                     ask): this script's own NM dns-search and /etc/hosts self-entry
+#                     still had a literal "jukebox.internal" -- missed by the 2026-07-17
+#                     sweep that converted every OTHER break-glass script
+#                     (firewallme.sh/rudderme.sh/bindme.sh/zabbixme.sh) to derive this
+#                     from begyndelse.json's domain_fqdn (benarbejde/ad_forest.json,
+#                     single source of truth). Added the identical EXA_DOMAIN derivation
+#                     right after this script's own existing DNS_IP lookup (same
+#                     resolved begyndelse.json path, no second file search needed), and
+#                     both hardcodes now use it.
+#
 # ==============================================================================
 
 set -euo pipefail
@@ -1080,6 +1091,16 @@ for candidate in "${BEGYNDELSE_JSON:-}" "$(cd "$(dirname "${BASH_SOURCE[0]}")" &
 done
 [[ -z "${DNS_IP}" ]] && die "begyndelse.json not found (looked in \$BEGYNDELSE_JSON, script directory, /etc/example-music/) -- cannot determine DNS IP."
 
+# EXA_DOMAIN -- same begyndelse.json (benarbejde/ad_forest.json's domain_fqdn), same
+# single-source-of-truth reasoning as DNS_IP just above. BUG FIX 2026-10-18: this was
+# missed by the 2026-07-17 sweep that converted every OTHER break-glass script
+# (firewallme.sh/rudderme.sh/bindme.sh/zabbixme.sh) from a hardcoded "jukebox.internal"
+# literal to this same derivation -- this script's own NM dns-search and /etc/hosts
+# self-entry (both further down) still had the literal. ${candidate} still holds the
+# resolved begyndelse.json path from the loop above (the die check above guarantees it
+# exists by this point).
+EXA_DOMAIN=$(jq -r '.domain_fqdn' "${candidate}")
+
 # BUG FIX 2026-09-17: same FRD-test-network problem as VRACK_SERVER above. begyndelse.json's
 # DNS IP (192.168.139.8, EXADNSVRK001 on the real vRACK) is correct for every genuine
 # vRACK-connected site, but is unreachable from FRD's isolated test subnet -- confirmed live,
@@ -1101,7 +1122,7 @@ nmcli con add type ethernet ifname "${PROV_IFACE}" con-name "ansible-static" \
   ipv4.addresses "${NODE_STATIC_IP}/24" \
   ipv4.gateway "${VRACK_GW}" \
   ipv4.dns "${DNS_IP}" \
-  ipv4.dns-search "jukebox.internal" \
+  ipv4.dns-search "${EXA_DOMAIN}" \
   ipv6.method ignore \
   connection.autoconnect yes \
   connection.autoconnect-priority 100 \
@@ -1165,7 +1186,7 @@ THIS_HOSTNAME="${THIS_HOSTNAME^^}"
 info "Setting hostname to ${THIS_HOSTNAME}..."
 hostnamectl set-hostname "${THIS_HOSTNAME}"
 grep -q "${THIS_HOSTNAME,,}" /etc/hosts 2>/dev/null || \
-  echo "127.0.1.1  ${THIS_HOSTNAME,,}.jukebox.internal  ${THIS_HOSTNAME,,}" >> /etc/hosts
+  echo "127.0.1.1  ${THIS_HOSTNAME,,}.${EXA_DOMAIN}  ${THIS_HOSTNAME,,}" >> /etc/hosts
 success "Hostname set to ${THIS_HOSTNAME}."
 
 # ------------------------------------------------------------------------------

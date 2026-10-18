@@ -132,6 +132,13 @@ def check_hostname_ownership_conflict(problems, computers, real_hostnames):
             continue
         if dns in real_hostnames:
             site, dtype = real_hostnames[dns]
+            # Domain suffix reused directly from this record's own real DNSHostName
+            # (already quoted below), not a separate hardcoded literal -- BUG FIX
+            # 2026-10-18, found during a repo-wide domain-hardcode audit: this used to
+            # hardcode ".jukebox.internal" here, the one spot in this message that
+            # didn't already come from real data.
+            own_dns = c.get("DNSHostName") or ""
+            domain_suffix = own_dns.split(".", 1)[1] if "." in own_dns else ""
             problems.append(
                 f"'{dns}' is a real devices.csv hostname ({site}, Type={dtype}), but "
                 f"ad_computers.json's '{own_sam}' record claims it via its own DNSHostName "
@@ -139,7 +146,7 @@ def check_hostname_ownership_conflict(problems, computers, real_hostnames):
                 f"disagree about which real device '{dns}' actually is. This needs a human "
                 f"decision, not an automated fix: is '{own_sam}' the same physical device as "
                 f"'{dns}' (in which case DNSHostName is simply wrong and should say "
-                f"'{own_sam}.jukebox.internal'), or are they genuinely two different real "
+                f"'{own_sam}.{domain_suffix}'), or are they genuinely two different real "
                 f"devices (in which case '{own_sam}'s DNSHostName needs its OWN real "
                 f"hostname, not '{dns}''s)?"
             )
