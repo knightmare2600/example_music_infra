@@ -27,8 +27,8 @@ paths = [
 
   # Fictional AD export data for this repo's teaching-lab estate (jukebox.internal)
   # -- MSLAPS-Password/similar fields are synthetic per-device fake values, not
-  # real credentials. See benarbejde/parse_tdf.py's own header for what these are.
-  '''benarbejde/jukebox\.example\.tdf''',
+  # real credentials. See benarbejde/archive/parse_tdf.py's own header for what these are.
+  '''benarbejde/archive/jukebox\.example\.tdf''',
   '''benarbejde/ad_users\.json''',
   '''benarbejde/ad_groups\.json''',
   '''benarbejde/ad_computers\.json''',

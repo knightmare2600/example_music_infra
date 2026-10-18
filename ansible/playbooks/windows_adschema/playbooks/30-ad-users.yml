@@ -3,7 +3,7 @@
 # playbooks/30-ad-users.yml
 # Example Music Limited — Active Directory Users Playbook
 # =============================================================================
-# Creates AD user accounts from jukebox.example.tdf ($Script:rawUsers).
+# Creates AD user accounts from benarbejde/people.csv (via merge_ad_users.py).
 #
 # ⚠  ADDITIVE ONLY — state: present throughout. Never removes accounts.
 #     Passwords are only set on account creation (update_password: on_create).
@@ -16,7 +16,8 @@
 #   2. 20-ad-groups.yml  — groups must exist before group assignments
 #
 # This playbook also creates band sub-OUs under each city's Users OU.
-# These are derived from the TDF OU paths and are NOT in 10-ad-schema.yml.
+# These are derived from people.csv's Site+Band columns and are NOT in
+# 10-ad-schema.yml.
 #
 # Usage:
 #   # Normal path — run via site.yml, prompted once by 00-ad-preflight.yml:
@@ -38,12 +39,15 @@
 #   ad_domain       AD domain FQDN       (default: jukebox.internal)
 #   ad_users_json   Path to JSON file    (default: /etc/example-music/ad_users.json)
 #
-# This playbook only ever reads ad_users_json above -- it never touches the
-# TDF directly. ad_users.json is generated offline from jukebox.example.tdf
-# by benarbejde/parse_tdf.py (a standalone tool, not run by Ansible; see its
-# own header) and deployed to /etc/example-music manually. (tdf_path/
-# sites_csv used to be documented here as if this playbook read them
-# directly -- it never did; removed 2026-07-09 as misleading.)
+# This playbook only ever reads ad_users_json above -- it never touches
+# benarbejde/people.csv directly. ad_users.json is generated offline from
+# people.csv by benarbejde/merge_ad_users.py (a standalone tool, not run by
+# Ansible) and deployed to /etc/example-music manually. (tdf_path/sites_csv
+# used to be documented here as if this playbook read the old
+# jukebox.example.tdf/sites.csv directly -- it never did; removed 2026-07-09
+# as misleading. parse_tdf.py/jukebox.example.tdf themselves retired
+# 2026-10-18, archived at benarbejde/archive/, superseded by
+# people.csv/merge_ad_users.py.)
 #
 # Notes:
 #   • Users with Disabled=true are created disabled (enabled: false).

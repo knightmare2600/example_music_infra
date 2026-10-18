@@ -2,34 +2,40 @@
 """
 parse_tdf.py — Convert jukebox.example.tdf sections to JSON for Ansible.
 
-*** LEGACY / DEFUNCT TOOL — READ BEFORE USING ***
-This is old code kept around because the demo data it produces (ad_users.json,
-ad_groups.json) is still genuinely useful, not because this is the current,
-actively-developed approach to anything. It is a manual, offline, run-by-hand
-tool ONLY:
+*** FULLY RETIRED, ARCHIVED 2026-10-18 — READ BEFORE USING ***
+Moved here from benarbejde/ (jukebox.example.tdf moved alongside it, same move, so the
+--tdf default below still resolves correctly) -- Robert's own words: "it's wrong and
+legacy code, we've previously had to fix a lot of stuff based off mistakes it made."
+Kept, not deleted, only because the demo data it ONCE produced is still genuinely
+useful as a historical record of how ad_users.json/ad_groups.json/ad_computers.json got
+to their current state. Every section is now superseded by a real replacement -- there
+is no remaining reason to run this script:
 
-    *** DO NOT run `--section computers` and overwrite ad_computers.json with
-    it any more. *** 2026-09-26: ad_computers.json's computer entries are now
-    reconciled against benarbejde/devices.csv (the real, live per-site
-    equipment inventory) by benarbejde/merge_ad_computers.py, not sourced from
-    this script's frozen $Script:rawComputers data alone -- see that script's
-    own header for the full reconciliation (89 real devices this data never
-    had, 11 legacy-only entries relocated to dedicated OUs, 12 placement
-    fixes). Re-running `parse_tdf.py --section computers` would silently
-    discard all of that. users/groups are unaffected -- devices.csv has no
-    people/band data to reconcile against, so those two sections are still
-    this script's own, unchanged.
-    - No Ansible playbook or task invokes this script, or reads
-      jukebox.example.tdf, at any point, directly or indirectly. Only the
-      JSON files this script produces are ever read by Ansible (by
-      windows_adschema/playbooks/{20-ad-groups,30-ad-users,40-ad-computers}.yml).
-    - jukebox.example.tdf and this script must stay that way: offline inputs
-      to a manual regeneration step, never a live Ansible dependency. If you
-      find yourself wiring either into a playbook, stop and reconsider.
-Both files live in benarbejde/ alongside sites.csv/devices.csv, but unlike
-those, neither is synced to bootstrap/web/proxmox/ or deployed to
-/etc/example-music/ by anything — there's deliberately no live path for
-either.
+    - `--section computers`: defunct since 2026-09-26, superseded by
+      benarbejde/merge_ad_computers.py's reconciliation against benarbejde/devices.csv
+      (the real, live per-site equipment inventory), not this script's frozen
+      $Script:rawComputers data. Re-running this would silently discard that
+      reconciliation (89 real devices, 11 relocations, 12 placement fixes).
+    - `--section users`/`--section groups`: defunct since 2026-10-18, superseded by
+      benarbejde/merge_ad_users.py, reading benarbejde/people.csv/groups.csv instead of
+      this file's own $Script:rawUsers/$Script:rawDemoGroups data. The replacement was
+      verified to losslessly round-trip all 369 users / 158 groups of the real,
+      already-correct ad_users.json/ad_groups.json (the ONLY source used for that
+      verification -- this .tdf file and this script were deliberately NOT consulted,
+      per Robert's explicit instruction, since both were already known to have
+      genuinely diverged from the live JSON -- see the old UPN/dual-band notes below,
+      kept for historical context).
+    - No Ansible playbook or task ever invoked this script, or read jukebox.example.tdf,
+      at any point, directly or indirectly -- only the JSON files it once produced were
+      ever read by Ansible (by
+      windows_adschema/playbooks/{20-ad-groups,30-ad-users,40-ad-computers}.yml, which
+      now read JSON produced by merge_ad_computers.py/merge_ad_users.py instead).
+
+If you are reading this because you think you need to run this script again: you
+almost certainly don't -- use merge_ad_computers.py (computers) or merge_ad_users.py
+(users/groups) instead. The only legitimate reason to come back here is historical
+archaeology (how did a given record originally get its values before 2026-09-26/
+2026-10-18), not live regeneration.
 
 Usage:
     python3 parse_tdf.py --section {users|groups|computers}
@@ -123,6 +129,14 @@ Notes on demo-data quirks handled:
       native account_locked: no for everyone else.
 
 Changelog:
+    2026-10-18  Retired and archived -- moved from benarbejde/ to benarbejde/archive/
+                (jukebox.example.tdf moved alongside it). --section users/--section
+                groups' own replacement (merge_ad_users.py + people.csv/groups.csv)
+                went live the same day, making every section of this script defunct,
+                not just --section computers. See the module docstring's own header
+                for the full reasoning. No code below this changed as part of the
+                move -- --tdf/--sites-csv's defaults still co-locate correctly since
+                both moved together.
     2026-07-17  --domain's default was a hardcoded 'jukebox.internal' literal,
                 independent of benarbejde/ad_forest.json (the repo's single
                 source of truth for this since 2026-07-09) -- meaning this

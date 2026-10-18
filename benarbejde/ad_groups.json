@@ -487,13 +487,13 @@
   },
   {
     "Name": "Nena",
-    "SamAccountName": "Nena-Grp",
     "Description": "German Neue Deutsche Welle band from West-Berlin, formed 1982",
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "Gabriele Kerner",
     "Email": "nena@jukebox.internal",
-    "Site": "BER"
+    "Site": "BER",
+    "SamAccountName": "Nena-Grp"
   },
   {
     "Name": "Tangerine Dream",
@@ -542,13 +542,13 @@
   },
   {
     "Name": "Falco",
-    "SamAccountName": "Falco-Grp",
     "Description": "Falco – Austrian solo artist with classic 1980s backing band",
     "Type": "Security",
     "Scope": "Global",
     "ManagedBy": "falco",
     "Email": "falco@jukebox.internal",
-    "Site": "VIE"
+    "Site": "VIE",
+    "SamAccountName": "Falco-Grp"
   },
   {
     "Name": "Baltimora",

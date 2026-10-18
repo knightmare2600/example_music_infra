@@ -115,19 +115,24 @@ rather than deriving it. (One thing that *isn't* the reason: on a real control n
 — confirmed empirically that this doesn't break `{{ playbook_dir }}`-relative resolution,
 Ansible resolves the real path transparently. The symlink is a non-issue either way.)
 
-### A worked example: `jukebox.example.tdf`
+### A worked example: `people.csv`/`devices.csv` + their merge scripts
 
-`benarbejde/jukebox.example.tdf` and `benarbejde/parse_tdf.py` are worth knowing about
-specifically because they show where the "single source of truth" boundary is drawn. The
-TDF file is old demo data (users, groups, computers, in a legacy PowerShell-literal format);
-`parse_tdf.py` is a hand-run, offline script that turns it into `ad_users.json`/
-`ad_groups.json`/`ad_computers.json`. **No playbook or task reads the TDF file or invokes
-this script, at any point.** Only the JSON it produces — deployed to `/etc/example-music/`
-— is a real Ansible dependency (read by `windows_adschema/playbooks/{20,30,40}-*.yml`). The
-script's own header calls itself out as a "LEGACY / DEFUNCT TOOL" for exactly this reason:
-it's useful for regenerating the demo data by hand, but it is deliberately *not* wired into
-anything Ansible runs, so a change to that old PowerShell-literal format can never silently
-break a live playbook run.
+`benarbejde/people.csv`/`groups.csv`/`devices.csv` and their respective
+`merge_ad_users.py`/`merge_ad_computers.py` scripts are worth knowing about specifically
+because they show where the "single source of truth" boundary is drawn. Each CSV is
+hand-authored data (people/bands, real per-site equipment); each script is a hand-run,
+offline tool that turns its CSV into `ad_users.json`/`ad_groups.json`/`ad_computers.json`.
+**No playbook or task reads either CSV or invokes either script, at any point.** Only the
+JSON they produce — deployed to `/etc/example-music/` — is a real Ansible dependency
+(read by `windows_adschema/playbooks/{20,30,40}-*.yml`). This is deliberate: a change to
+either CSV's format can never silently break a live playbook run, because nothing live
+ever touches the CSV directly.
+
+(This replaced an older pairing, `benarbejde/jukebox.example.tdf` + `parse_tdf.py` — a
+legacy PowerShell-literal format retired 2026-10-18 and archived at
+`benarbejde/archive/`, once its own data had been confirmed re-derivable losslessly from
+the already-correct, already-live `ad_users.json`/`ad_groups.json`. Same boundary,
+same lesson — only the concrete tool names changed.)
 
 **Correct invocation to actually redeploy a `benarbejde/` fix to the control node itself**,
 confirmed live 2026-09-23 fixing a bad `ad_users.json` record:
