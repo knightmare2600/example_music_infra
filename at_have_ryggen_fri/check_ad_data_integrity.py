@@ -775,12 +775,20 @@ def check_duplicate_dns_hostname(problems, computers):
             continue
         sams = [(c.get("SamAccountName") or "").rstrip("$") for c in members]
         self_owner = [s for s in sams if s.lower() == dns_lower.split(".")[0]]
+        # Domain suffix reused directly from the real DNSHostName already being quoted
+        # above, not a separate hardcoded literal or file read -- BUG FIX 2026-10-18,
+        # found during a repo-wide domain-hardcode audit: this used to hardcode
+        # ".jukebox.internal" here, the one spot in this message that didn't already
+        # come from real data. Guaranteed correct for whatever the actual domain in
+        # ad_computers.json is, since it's the exact same string dns_lower was built
+        # from two lines up.
+        domain_suffix = dns_lower.split(".", 1)[1] if "." in dns_lower else ""
         problems.append(
             f"ad_computers.json: {', '.join(sams)} all have DNSHostName "
             f"'{members[0].get('DNSHostName')}' -- only "
             f"{self_owner[0] if self_owner else 'none of them'} actually owns that "
             f"identity; the other(s) need their own real DNSHostName "
-            f"({', '.join(s for s in sams if s not in self_owner)}.jukebox.internal, "
+            f"({', '.join(s for s in sams if s not in self_owner)}.{domain_suffix}, "
             f"unless they're a genuinely different device that needs a different "
             f"hostname entirely)"
         )
