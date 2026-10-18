@@ -54,6 +54,13 @@
 #                     and SSH-session wording as firewallme.sh's WAN
 #                     interface detection/activation prompt, rather than just
 #                     pointing the operator at a command to run elsewhere.
+# v1.0.3  2026-10-18  BUG FIX, found during a repo-wide domain-hardcode audit (Robert's
+#                     ask): ROOT_DOMAIN was a literal "jukebox.internal" -- this file
+#                     didn't exist yet when the 2026-07-17 sweep converted every other
+#                     break-glass script to derive this from begyndelse.json's
+#                     domain_fqdn (benarbejde/ad_forest.json, single source of truth).
+#                     Added the same 3-location search + defensive jq install those
+#                     scripts already use.
 # -------------------------------------------------------------------------------------------------
 
 set -euo pipefail
@@ -79,7 +86,24 @@ section() { echo; echo -e "${WHITE}── $* ──${NC}"; echo; }
 # ------------------------------------------------------------------------------
 EXPECTED_HOSTNAME="EXARMMCLD001"
 EXPECTED_IP="192.168.69.14"
-ROOT_DOMAIN="jukebox.internal"
+
+# ROOT_DOMAIN -- derived from begyndelse.json's domain_fqdn (benarbejde/ad_forest.json,
+# single source of truth), not hardcoded. BUG FIX 2026-10-18, found during a repo-wide
+# domain-hardcode audit: this was still a literal "jukebox.internal" -- missed by the
+# 2026-07-17 sweep that converted every OTHER break-glass script to this same
+# derivation, since this file didn't exist yet until 2026-08-05. Same 3-location search
+# ansibleme.sh/firewallme.sh/rudderme.sh/bindme.sh already use.
+#
+# jq isn't guaranteed installed yet at this point (Section 2's own MISSING_PKGS check,
+# further down, doesn't include it either) -- same defensive install ansibleme.sh/
+# bindme.sh already do before their own first jq use, not assumed present.
+command -v jq &>/dev/null || { info "Installing jq..."; apt-get install -y -qq jq >/dev/null; }
+ROOT_DOMAIN=""
+for _candidate in "${BEGYNDELSE_JSON:-}" "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/begyndelse.json" "/etc/example-music/begyndelse.json"; do
+  [[ -n "${_candidate}" && -f "${_candidate}" ]] && { ROOT_DOMAIN=$(jq -r '.domain_fqdn' "${_candidate}"); break; }
+done
+[[ -z "${ROOT_DOMAIN}" ]] && die "begyndelse.json not found (looked in \$BEGYNDELSE_JSON, script directory, /etc/example-music/) -- cannot determine ROOT_DOMAIN."
+
 SUBDOMAINS=(rmm api mesh)
 MIN_RAM_MB=4096
 RMM_INSTALL_DIR="/rmm"

@@ -61,6 +61,15 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 BENARBEJDE = REPO_ROOT / "benarbejde"
+
+# DOMAIN_FQDN -- single source of truth, benarbejde/ad_forest.json. BUG FIX 2026-10-18,
+# found during a repo-wide domain-hardcode audit: DNSHostName below used to hardcode
+# ".jukebox.internal" directly, unlike parse_tdf.py's own --domain default (which
+# already derives this correctly, with a logged fallback). REPO_ROOT/BENARBEJDE above
+# already guarantee this script's own location deterministically (unlike a break-glass
+# bash script that could run from anywhere), so a direct read is enough here -- no
+# multi-candidate search needed.
+DOMAIN_FQDN = json.loads((BENARBEJDE / "ad_forest.json").read_text())["domain_fqdn"]
 SITES_CSV = BENARBEJDE / "sites.csv"
 DEVICES_CSV = BENARBEJDE / "devices.csv"
 ROLE_CODES_CSV = BENARBEJDE / "role_codes.csv"
@@ -239,7 +248,7 @@ def main():
             "Site": site_code,
             "Description": description,
             "Enabled": enabled,
-            "DNSHostName": f"{hostname}.jukebox.internal",
+            "DNSHostName": f"{hostname}.{DOMAIN_FQDN}",
             "OS": (row.get("OS") or "").strip(),
             "OperatingSystemVersion": "",
             "IPv4Address": compute_ip(row, sites),
