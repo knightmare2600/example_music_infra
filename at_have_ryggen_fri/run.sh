@@ -1829,6 +1829,20 @@ else
 fi
 
 # ------------------------------------------------------------------------------
+# 48. Domain consistency — check_domain_consistency.py
+# ------------------------------------------------------------------------------
+section "48. Domain consistency — check_domain_consistency.py"
+
+if out=$(python3 "${HERE}/check_domain_consistency.py"); then
+  echo "$out"
+  success "ad_computers.json/ad_users.json/ad_groups.json/extracted_credentials.json and every enumerated PXE/install-time artifact agree with ad_forest.json's current domain_fqdn."
+else
+  echo "$out"
+  fail "Domain inconsistency found -- see above. A repo-wide audit (2026-10-18) found most of the repo already derives the AD domain correctly from ad_forest.json; this check covers the genuinely static data/artifact files that can't be Jinja-templated, where drift would otherwise go unnoticed."
+  FAILED_CHECKS+=("check_domain_consistency.py")
+fi
+
+# ------------------------------------------------------------------------------
 # Summary
 # ------------------------------------------------------------------------------
 section "Summary"
