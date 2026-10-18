@@ -25,7 +25,10 @@ Robert's explicit instruction, 2026-10-18: "stop using parse_tdf.py because it's
 and legacy code... the harness needs to do it WITHOUT consulting parse_tdf.py OR the
 actual tdf file." Every check below reads the real, CURRENT file content directly --
 the same data Ansible/other consumers actually use -- not a freshly-regenerated
-comparison. parse_tdf.py is slated for retirement once this check is confirmed working.
+comparison. parse_tdf.py was retired and archived 2026-10-18 (benarbejde/archive/),
+superseded for users/groups by merge_ad_users.py + people.csv/groups.csv -- this check
+still does not consult any of them, old or new, by design (see Checks A-C below, which
+read ad_users.json/ad_groups.json/ad_computers.json directly).
 
 Read-only. Never writes, never suggests a specific replacement value beyond naming
 what was found vs. what ad_forest.json currently says -- the actual rewrite (if any

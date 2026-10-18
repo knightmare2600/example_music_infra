@@ -25,10 +25,19 @@ all — it is the single source of truth for `domain_fqdn`, `netbios_name`, `for
      `bindme.sh` bakes the value into a handful of generated files (`bind-aliases.sh`,
      `regen-zone.sh`, the dynamic MOTD) at write time — re-run `bindme.sh` itself to refresh
      those, rather than editing them by hand.
-   - `benarbejde/parse_tdf.py` — `--domain`'s default now reads `ad_forest.json` directly
-     (co-located in `benarbejde/`); re-run it to regenerate `ad_users.json`/`ad_groups.json`/
-     `ad_computers.json` with the new domain baked into every record (those are generated
-     data dumps — the old per-record values do not update themselves).
+   - `benarbejde/merge_ad_users.py` — reads `ad_forest.json`'s `domain_fqdn` directly
+     (via `people.csv`/`groups.csv`); re-run it to regenerate `ad_users.json`/
+     `ad_groups.json` with the new domain baked into every record (those are generated
+     data dumps — the old per-record values do not update themselves). **Never**
+     `benarbejde/archive/parse_tdf.py` for this — retired 2026-10-18, and even before
+     that its `--section computers` was already
+     defunct for `ad_computers.json` specifically (superseded by
+     `merge_ad_computers.py`'s reconciliation against `devices.csv` — re-running the old
+     tool against that file would have silently discarded it). `ad_computers.json`
+     itself doesn't need regenerating for a domain rename at all — its `DNSHostName`
+     suffix is derived live from `ad_forest.json` by `merge_ad_computers.py`
+     (2026-10-18 fix), so only re-run that script if you also need to pick up some other
+     `devices.csv` change at the same time.
    - `bootstrap/web/proxmox/site-inventory-audit.py` — reads the pre-commit-synced copy of
      `ad_forest.json` alongside itself; re-run `--generate-hosts`/`--generate-inventory` to
      regenerate.
