@@ -30,12 +30,20 @@
 # its own MySQL/MariaDB master account during the cloudpanel package install
 # (20-database.yml), a second real credential this service produces that
 # Robert didn't explicitly ask about but is the same category of gap.
-# *** The exact output format of db:show:master-credentials is NOT
-# independently confirmed here *** -- docs confirm it shows Host/User Name/
-# Password/Port/a Connect Command, but not the precise text layout. The
-# parsing regex below is a reasonable first attempt, clearly flagged, not
-# presented as verified -- needs a real run against a real box to confirm,
-# same as the font-naming work earlier this week.
+#
+# CONFIRMED LIVE 2026-10-19 (EXACLPCLD001, MYSQL_8.0): db:show:master-credentials
+# returns nothing at all until at least one CloudPanel user exists -- its
+# "active database server" record is created automatically (and the MySQL
+# root@127.0.0.1 password rotated to a fresh random value) the first time
+# ANY clpctl command or web request runs after user:add succeeds
+# (src/EventListener/InitializeListener.php's setDatabaseServer(), a Symfony
+# event subscriber, not anything this playbook or install.sh itself triggers
+# directly). This playbook's own ordering -- create the admin user, THEN
+# read master credentials -- already does the right thing by construction,
+# confirmed, not just lucky. The real output format (a box-drawn ASCII
+# table, Host/User Name/Password/Port rows, a trailing Connect Command line)
+# and the parsing regex below were both confirmed against this real run --
+# see the regex's own comment.
 #
 # Usage:
 #   ansible-playbook -i configs/inventory playbooks/cloudpanel/playbooks/40-admin-user.yml --limit <host>
@@ -43,6 +51,16 @@
 # Tags: admin-user
 # =============================================================================
 # Changelog:
+#   2026-10-19  Confirmed live (EXACLPCLD001, MYSQL_8.0) what was previously flagged
+#               as unverified: db:show:master-credentials' real output format, the
+#               parsing regex against it, and the self-healing mechanism that
+#               populates it (CloudPanel auto-registers its database server + rotates
+#               the MySQL root password the first time any clpctl command/web request
+#               runs after the first user exists -- InitializeListener.php's
+#               setDatabaseServer(), not anything install.sh or this playbook
+#               triggers directly). This playbook's create-user-then-read-credentials
+#               ordering already does the right thing by construction. No code
+#               change needed -- see each comment's own update for detail.
 #   2026-10-07  Initial file. Robert's ask.
 # =============================================================================
 
@@ -122,16 +140,18 @@
       no_log: true
       tags: admin-user
 
-    # *** UNVERIFIED output format -- see this file's own header *** --
-    # reasonable-attempt regex, not confirmed against a real box. Excludes "|"
-    # from the captured value deliberately -- tested locally against a plain
-    # "Password: x" format, a padded "Password       : x" format, and a
-    # box-drawn ASCII table format (a plausible CLI output style this hasn't
-    # been confirmed to use or not use) -- an earlier, simpler version of this
-    # regex silently captured a bare "|" instead of failing against that last
-    # one, which would have filed garbage into KeePass rather than failing
-    # loudly. Still needs confirming against the REAL output, this only proves
-    # the regex behaves sanely against several plausible guesses at it.
+    # CONFIRMED 2026-10-19 -- see this file's own header. Real output looks like:
+    #   +-----------+------------------+
+    #   | Name      | Value            |
+    #   +-----------+------------------+
+    #   | Host      | 127.0.0.1        |
+    #   | User Name | root             |
+    #   | Password  | 9b3wy0ztohfqdCma |
+    #   | Port      | 3306             |
+    #   +-----------+------------------+
+    # Tested this exact regex against that real text (not just plausible
+    # guesses at the format) -- correctly extracts the password, stopping at
+    # the trailing "|" thanks to excluding it from the captured class.
     - name: "[Admin] Parse the master password out of clpctl's output"
       set_fact:
         clp_db_master_password: "{{ clp_db_master_raw.stdout | regex_search('Password\\s*[:|]?\\s*([^\\s|]+)', '\\1') | first | default('') }}"
