@@ -681,6 +681,7 @@ fi
 #   3. /etc/example-music/sites.csv (system-wide install)
 # ------------------------------------------------------------------------------
 declare -A SITE_OCTET SITE_CITY SITE_COUNTRY SITE_ENTITY SITE_DC SITE_FW
+declare -A SITE_CC SITE_OFFICENAME SITE_STREET SITE_POSTALCODE
 
 load_sites_csv() {
   local csv_path=""
@@ -732,6 +733,10 @@ load_sites_csv() {
     SITE_ENTITY["${site}"]="${entity}"
     SITE_DC["${site}"]="${dc}"
     SITE_FW["${site}"]="${fw}"
+    SITE_CC["${site}"]="${cc}"
+    SITE_OFFICENAME["${site}"]="${officename}"
+    SITE_STREET["${site}"]="${street}"
+    SITE_POSTALCODE["${site}"]="${postalcode}"
   done < "${csv_path}"
 }
 
@@ -1297,6 +1302,10 @@ while true; do
     SITE_DISPLAY_CITY="${SITE_CITY[$SITE_CODE]:-${SITE_CODE}}"
     SITE_DISPLAY_COUNTRY="${SITE_COUNTRY[$SITE_CODE]:-Unknown}"
     SITE_DISPLAY_ENTITY="${SITE_ENTITY[$SITE_CODE]:-Example Music}"
+    SITE_DISPLAY_COUNTRY_CODE="${SITE_CC[$SITE_CODE]:-}"
+    SITE_DISPLAY_OFFICE_NAME="${SITE_OFFICENAME[$SITE_CODE]:-}"
+    SITE_DISPLAY_STREET="${SITE_STREET[$SITE_CODE]:-}"
+    SITE_DISPLAY_POSTAL_CODE="${SITE_POSTALCODE[$SITE_CODE]:-}"
     echo -e "  ${GREEN}→ ${SITE_CODE}: ${SITE_DISPLAY_CITY}, ${SITE_DISPLAY_COUNTRY} — ${SITE_DISPLAY_ENTITY}${NC}"
     echo -e "  ${GREEN}→ site LAN subnet ${SUBNET}.0/24${NC}"
     break
@@ -2412,42 +2421,69 @@ success "Dynamic MOTD configured."
 # that ansible/tasks/nodeinfo.yml legitimately set on a later, genuine Ansible run.
 mkdir -p /etc/example-music
 
+# SCHEMA ALIGNMENT, 2026-10-19 (backlog item from 2026-10-17): this write used to lack
+# fqdn/country_code/office_name/street_address/postal_code/last_ansible_play entirely --
+# a genuinely different field set from ansible/tasks/nodeinfo.yml's real schema (the one
+# every Ansible-managed Linux host gets via linux/tools.yml etc). last_ansible_play is
+# preserved the same way last_ansible_run already was -- this script is bash, not
+# Ansible, so it never sets either itself, on a first run OR a re-run; it only ever
+# keeps whatever value a later, genuine Ansible run legitimately wrote.
 NODEINFO_BOOTSTRAPPED_AT=""
 NODEINFO_BOOTSTRAPPED_BY=""
 NODEINFO_LAST_ANSIBLE_RUN=""
+NODEINFO_LAST_ANSIBLE_PLAY=""
 if [[ -s "$NODEINFO" ]]; then
   NODEINFO_BOOTSTRAPPED_AT="$(jq -r '.bootstrapped_at // empty' "$NODEINFO" 2>/dev/null)"
   NODEINFO_BOOTSTRAPPED_BY="$(jq -r '.bootstrapped_by // empty' "$NODEINFO" 2>/dev/null)"
   NODEINFO_LAST_ANSIBLE_RUN="$(jq -r '.last_ansible_run // empty' "$NODEINFO" 2>/dev/null)"
+  NODEINFO_LAST_ANSIBLE_PLAY="$(jq -r '.last_ansible_play // empty' "$NODEINFO" 2>/dev/null)"
 fi
 NODEINFO_BOOTSTRAPPED_AT="${NODEINFO_BOOTSTRAPPED_AT:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
 NODEINFO_BOOTSTRAPPED_BY="${NODEINFO_BOOTSTRAPPED_BY:-ansibleme.sh}"
 
+# fqdn -- same ${THIS_HOSTNAME,,}.${EXA_DOMAIN} convention already used for the
+# /etc/hosts self-entry (Section 3 above), not `hostname -f` -- that depends on
+# DNS/resolv.conf already being correctly live, which isn't guaranteed this early.
+NODEINFO_FQDN="$(hostname -s)"
+NODEINFO_FQDN="${NODEINFO_FQDN,,}.${EXA_DOMAIN}"
+
 jq -n \
   --arg hostname       "$(hostname -s)" \
+  --arg fqdn           "${NODEINFO_FQDN}" \
   --arg role           "ansible" \
   --arg site           "${SITE_CODE}" \
   --arg city           "${SITE_DISPLAY_CITY}" \
   --arg country        "${SITE_DISPLAY_COUNTRY}" \
+  --arg country_code   "${SITE_DISPLAY_COUNTRY_CODE}" \
   --arg entity         "${SITE_DISPLAY_ENTITY}" \
+  --arg office_name    "${SITE_DISPLAY_OFFICE_NAME}" \
+  --arg street_address "${SITE_DISPLAY_STREET}" \
+  --arg postal_code    "${SITE_DISPLAY_POSTAL_CODE}" \
   --arg bootstrapped_at "${NODEINFO_BOOTSTRAPPED_AT}" \
   --arg bootstrapped_by "${NODEINFO_BOOTSTRAPPED_BY}" \
   --arg last_ansible_run "${NODEINFO_LAST_ANSIBLE_RUN}" \
+  --arg last_ansible_play "${NODEINFO_LAST_ANSIBLE_PLAY}" \
   --arg environment    "${ENV_LONG}" \
   --arg ansible_dir    "${ANSIBLE_DIR}" \
   --arg inventory      "${CONFIGS_DIR}/inventory" \
   --arg ssh_key        "${KEY_FILE}" \
   '{
     hostname:        $hostname,
+    fqdn:            $fqdn,
     role:            $role,
     site:            $site,
     city:            $city,
     country:         $country,
+    country_code:    $country_code,
     entity:          $entity,
+    office_name:     $office_name,
+    street_address:  $street_address,
+    postal_code:     $postal_code,
     ansible_managed: false,
     bootstrapped_at: $bootstrapped_at,
     bootstrapped_by: $bootstrapped_by,
     last_ansible_run: (if $last_ansible_run == "" then null else $last_ansible_run end),
+    last_ansible_play: (if $last_ansible_play == "" then null else $last_ansible_play end),
     environment:     $environment,
     ansible_dir:     $ansible_dir,
     inventory:       $inventory,
