@@ -69,6 +69,13 @@
 # until a password fact (if needed) is already in hand.
 # =============================================================================
 # Changelog:
+#   2026-10-19  Real live bug, found bootstrapping EXACLPCLD001 against a bare-IP target:
+#               the key-connectivity test's {{ ansible_host | default(inventory_hostname) }}
+#               resolved to "localhost" (the delegate's own value, since delegate_to
+#               re-scopes connection variables), not the real target -- silently masked
+#               until now because a human always just types the fallback password anyway.
+#               Fixed via explicit hostvars[inventory_hostname] lookups. See the task's
+#               own comment for the full detail.
 #   2026-07-26  Real live bug (Robert, mid-run against EXAFWLAMS001): hosts: was hardcoded
 #               to `all`, ignoring firewallme's own -e target= scoping convention entirely
 #               -- looped the password prompt through every host in inventory
@@ -103,11 +110,31 @@
 
     - name: "[Preflight] Test SSH connectivity with the current key"
       # Delegated plain ssh, not ansible.builtin.ping -- see header comment above.
+      #
+      # BUG FIX 2026-10-19 (found live bootstrapping EXACLPCLD001 against a bare-IP
+      # target, -i "<ip>,"): delegate_to: localhost re-scopes CONNECTION variables
+      # (ansible_host/ansible_port/ansible_user/etc) to the DELEGATE's own hostvars,
+      # not the original target's -- documented Ansible behaviour, confirmed via an
+      # isolated debug playbook. A plain {{ ansible_host | default(...) }} here
+      # therefore resolves to localhost's OWN ansible_host ("localhost" itself),
+      # not the real target -- for any host where ansible_host is explicitly set
+      # (every bare-IP target, since Ansible's inventory parser auto-sets
+      # ansible_host = the IP for a bare entry), this tested connectivity to
+      # ansible@localhost instead of the real box, always "failing" and falling
+      # through to the interactive password prompt. Silently masked until now: a
+      # human always just types the password anyway when prompted, so the wrong
+      # test target never looked wrong from the outside -- only matters for a key
+      # that genuinely IS valid, which a human-driven run never needed to notice.
+      # Real named hosts without an explicit ansible_host override (DNS-resolvable
+      # hostname only) were never affected -- inventory_hostname (NOT a connection
+      # var, stays correctly scoped under delegation) was already the right value.
+      # Fixed via an explicit hostvars[inventory_hostname] lookup, which bypasses
+      # delegate_to's connection-variable re-scoping entirely.
       ansible.builtin.command: >
         ssh -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=no
-            -o Port={{ ansible_port | default(22) }}
+            -o Port={{ hostvars[inventory_hostname].ansible_port | default(22) }}
             -i {{ _preflight_key }}
-            {{ ansible_user | default('ansible') }}@{{ ansible_host | default(inventory_hostname) }}
+            {{ hostvars[inventory_hostname].ansible_user | default('ansible') }}@{{ hostvars[inventory_hostname].ansible_host | default(inventory_hostname) }}
             true
       register: _ssh_preflight
       delegate_to: localhost
