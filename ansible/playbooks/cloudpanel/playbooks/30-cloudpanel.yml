@@ -22,6 +22,15 @@
 # Tags: install
 # =============================================================================
 # Changelog:
+#   2026-10-19  Real live bug, found testing the db:show:master-credentials gap
+#               (project_cloudpanel_static_ip): DB_ENGINE was never passed to the
+#               package install, so cloudpanel's own postinst silently no-op'd every
+#               engine-specific setup step (config.sql, datadir relocation) for
+#               EVERY engine, not just MYSQL_8.4 as originally suspected. Confirmed
+#               directly from /var/log/apt/term.log on a real install: "Database
+#               Engine  not supported." (empty $DB_ENGINE). Fixed by adding
+#               DB_ENGINE: "{{ cloudpanel_db_engine }}" to the install task's
+#               environment. See the task's own comment for the full detail.
 #   2026-10-07  Initial file. Converted from CloudPanel's own install.sh,
 #               Robert's ask.
 # =============================================================================
@@ -33,6 +42,21 @@
 
   tasks:
 
+    # BUG FIX 2026-10-19 (found live on a fresh EXACLPCLD001 rebuild, testing the
+    # MYSQL_8.4 db:show:master-credentials gap from project_cloudpanel_static_ip):
+    # DB_ENGINE was never passed to the package install at all. cloudpanel's own
+    # postinst maintainer script reads $DB_ENGINE from its environment with no
+    # default (`case $DB_ENGINE in ... *) echo "Database Engine $DB_ENGINE not
+    # supported." ;; esac`) -- confirmed directly from /var/log/apt/term.log on
+    # the real install: "Database Engine  not supported." (note the double
+    # space -- $DB_ENGINE was genuinely empty). This silently skipped EVERY
+    # engine-specific setup step (config.sql's root@127.0.0.1 creation, the
+    # datadir relocation to /home/mysql/, mysqld.cnf) regardless of
+    # cloudpanel_db_engine's value -- MySQL was left on its stock default
+    # (datadir /var/lib/mysql/, root@localhost via auth_socket only), which is
+    # why db:show:master-credentials found nothing to show for EVERY engine
+    # tested so far, not just MYSQL_8.4/percona_release_deb as originally
+    # suspected. The real gap was here, not in CloudPanel's own 8.4 support.
     - name: "[Install] Install CloudPanel"
       ansible.builtin.apt:
         name: cloudpanel
@@ -40,6 +64,7 @@
         dpkg_options: "force-overwrite"
       environment:
         DEBIAN_FRONTEND: noninteractive
+        DB_ENGINE: "{{ cloudpanel_db_engine }}"
       tags: install
 
     - name: "[Install] Assert CloudPanel is actually listening on 8443"
