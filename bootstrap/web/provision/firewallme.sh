@@ -278,6 +278,7 @@ fi
 #   3. /etc/example-music/sites.csv (system-wide install)
 # -------------------------------------------------------------------------------------------------
 declare -A SITE_OCTET SITE_CITY SITE_COUNTRY SITE_ENTITY SITE_DEFAULT_ROLE
+declare -A SITE_CC SITE_OFFICENAME SITE_STREET SITE_POSTALCODE
 
 load_sites_csv() {
   local csv_path=""
@@ -340,6 +341,10 @@ load_sites_csv() {
     SITE_CITY["${site}"]="${city}"
     SITE_COUNTRY["${site}"]="${country}"
     SITE_ENTITY["${site}"]="${entity}"
+    SITE_CC["${site}"]="${cc}"
+    SITE_OFFICENAME["${site}"]="${officename}"
+    SITE_STREET["${site}"]="${street}"
+    SITE_POSTALCODE["${site}"]="${postalcode}"
   done < "${csv_path}"
 
 
@@ -946,6 +951,10 @@ WG_OCTET=""
 SITE_DISPLAY_ENTITY="Example Music"
 SITE_DISPLAY_CITY=""
 SITE_DISPLAY_COUNTRY="Unknown"
+SITE_DISPLAY_COUNTRY_CODE=""
+SITE_DISPLAY_OFFICE_NAME=""
+SITE_DISPLAY_STREET=""
+SITE_DISPLAY_POSTAL_CODE=""
 
 while true; do
   read -rp "Enter site code (e.g. CPH, FAL) or 'manual' to enter subnet manually: " SITE_INPUT
@@ -961,6 +970,10 @@ while true; do
     SITE_DISPLAY_ENTITY="${SITE_ENTITY[$SITE_CODE]:-Example Music}"
     SITE_DISPLAY_CITY="${SITE_CODE}"
     SITE_DISPLAY_COUNTRY="Unknown"
+    SITE_DISPLAY_COUNTRY_CODE=""
+    SITE_DISPLAY_OFFICE_NAME=""
+    SITE_DISPLAY_STREET=""
+    SITE_DISPLAY_POSTAL_CODE=""
     break
   elif [[ -v SITE_OCTET[$SITE_CODE] ]]; then
     WG_OCTET="${SITE_OCTET[$SITE_CODE]}"
@@ -969,6 +982,10 @@ while true; do
     SITE_DISPLAY_ENTITY="${SITE_ENTITY[$SITE_CODE]:-Example Music}"
     SITE_DISPLAY_CITY="${SITE_CITY[$SITE_CODE]:-${SITE_CODE}}"
     SITE_DISPLAY_COUNTRY="${SITE_COUNTRY[$SITE_CODE]:-Unknown}"
+    SITE_DISPLAY_COUNTRY_CODE="${SITE_CC[$SITE_CODE]:-}"
+    SITE_DISPLAY_OFFICE_NAME="${SITE_OFFICENAME[$SITE_CODE]:-}"
+    SITE_DISPLAY_STREET="${SITE_STREET[$SITE_CODE]:-}"
+    SITE_DISPLAY_POSTAL_CODE="${SITE_POSTALCODE[$SITE_CODE]:-}"
     echo -e "  ${GREEN}→ ${SITE_CODE}: ${SITE_DISPLAY_CITY}, ${SITE_DISPLAY_COUNTRY} — ${SITE_DISPLAY_ENTITY}${NC}"
     echo -e "  ${GREEN}→ subnet ${SUBNET}.0/24, WG tunnel 10.0.${WG_OCTET}.0/24${NC}"
     break
@@ -2320,16 +2337,54 @@ success "Dynamic MOTD configured."
 # -------------------------------------------------------------------------------------------------
 # 13. Sentinel file
 # -------------------------------------------------------------------------------------------------
+# SCHEMA ALIGNMENT, 2026-10-19 (backlog item from 2026-10-17, same fix applied to
+# ansibleme.sh): this write used to lack fqdn/country_code/office_name/street_address/
+# postal_code/last_ansible_run/last_ansible_play entirely, AND unconditionally wrote
+# bootstrapped_at/bootstrapped_by fresh on every single run -- the exact same destructive
+# idempotency bug ansibleme.sh's own equivalent write already fixed 2026-09-24. Now reads
+# the existing file first, if present, and preserves bootstrapped_at/bootstrapped_by/
+# last_ansible_run/last_ansible_play -- only a genuine first-ever run (no existing
+# nodeinfo.json) sets bootstrapped_at/by fresh. last_ansible_run/last_ansible_play are
+# never set by this script itself (it's bash, not an Ansible run) -- only ever preserved,
+# so a re-run never blanks out a real timestamp/play name a later Ansible run set.
 mkdir -p /etc/example-music
+
+NODEINFO_FILE="/etc/example-music/nodeinfo.json"
+NODEINFO_BOOTSTRAPPED_AT=""
+NODEINFO_BOOTSTRAPPED_BY=""
+NODEINFO_LAST_ANSIBLE_RUN=""
+NODEINFO_LAST_ANSIBLE_PLAY=""
+if [[ -s "$NODEINFO_FILE" ]]; then
+  NODEINFO_BOOTSTRAPPED_AT="$(jq -r '.bootstrapped_at // empty' "$NODEINFO_FILE" 2>/dev/null)"
+  NODEINFO_BOOTSTRAPPED_BY="$(jq -r '.bootstrapped_by // empty' "$NODEINFO_FILE" 2>/dev/null)"
+  NODEINFO_LAST_ANSIBLE_RUN="$(jq -r '.last_ansible_run // empty' "$NODEINFO_FILE" 2>/dev/null)"
+  NODEINFO_LAST_ANSIBLE_PLAY="$(jq -r '.last_ansible_play // empty' "$NODEINFO_FILE" 2>/dev/null)"
+fi
+NODEINFO_BOOTSTRAPPED_AT="${NODEINFO_BOOTSTRAPPED_AT:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
+NODEINFO_BOOTSTRAPPED_BY="${NODEINFO_BOOTSTRAPPED_BY:-firewallme.sh}"
+
+# fqdn -- same ${SITE,,}.${EXA_DOMAIN}-style convention the dnsmasq config (Section 9)
+# already uses for this host's own DNS name, not `hostname -f` -- that depends on
+# DNS/resolv.conf already being correctly live, which isn't guaranteed this early.
+NODEINFO_FQDN="$(hostname -s)"
+NODEINFO_FQDN="${NODEINFO_FQDN,,}.${EXA_DOMAIN}"
+
 jq -n \
   --arg hostname    "$(hostname -s)" \
+  --arg fqdn        "${NODEINFO_FQDN}" \
   --arg role        "firewall" \
   --arg site        "${SITE}" \
   --arg city        "${SITE_DISPLAY_CITY}" \
   --arg country     "${SITE_DISPLAY_COUNTRY}" \
+  --arg country_code   "${SITE_DISPLAY_COUNTRY_CODE}" \
   --arg entity      "${SITE_DISPLAY_ENTITY}" \
-  --arg bootstrapped_at  "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-  --arg bootstrapped_by  "firewallme.sh" \
+  --arg office_name    "${SITE_DISPLAY_OFFICE_NAME}" \
+  --arg street_address "${SITE_DISPLAY_STREET}" \
+  --arg postal_code    "${SITE_DISPLAY_POSTAL_CODE}" \
+  --arg bootstrapped_at  "${NODEINFO_BOOTSTRAPPED_AT}" \
+  --arg bootstrapped_by  "${NODEINFO_BOOTSTRAPPED_BY}" \
+  --arg last_ansible_run  "${NODEINFO_LAST_ANSIBLE_RUN}" \
+  --arg last_ansible_play "${NODEINFO_LAST_ANSIBLE_PLAY}" \
   --arg environment "${ENV_LONG}" \
   --arg lan_ip      "${LAN_IP}" \
   --arg lan_iface   "${LAN_IFACE}" \
@@ -2345,14 +2400,21 @@ jq -n \
   --arg wan_ip      "$( [[ "$WAN_MODE" == "static" ]] && echo "${WAN_STATIC_IP}/24 gw ${WAN_STATIC_GW}" || echo "dhcp" )" \
   '{
     hostname:       $hostname,
+    fqdn:           $fqdn,
     role:           $role,
     site:           $site,
     city:           $city,
     country:        $country,
+    country_code:   $country_code,
     entity:         $entity,
+    office_name:    $office_name,
+    street_address: $street_address,
+    postal_code:    $postal_code,
     ansible_managed: false,
     bootstrapped_at: $bootstrapped_at,
     bootstrapped_by: $bootstrapped_by,
+    last_ansible_run: (if $last_ansible_run == "" then null else $last_ansible_run end),
+    last_ansible_play: (if $last_ansible_play == "" then null else $last_ansible_play end),
     environment:    $environment,
     lan_ip:         $lan_ip,
     lan_iface:      $lan_iface,
