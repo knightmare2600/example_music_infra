@@ -1,0 +1,1307 @@
+{
+  "zabbix_export": {
+    "version": "7.0",
+    "template_groups": [
+      {
+        "uuid": "ccb6f6556776402c84ee18b8b9c87c10",
+        "name": "Templates/Example Music"
+      }
+    ],
+    "templates": [
+      {
+        "uuid": "5015e309f9b34ecf89b60dad64d1ab93",
+        "template": "bind9_examplemusic",
+        "name": "BIND9 DNS (Example Music)",
+        "description": "Companion template for ansible/playbooks/bind9/bind9-dns.yml. Copied from zabbix_template_proxmox.json's own generator and expanded, 2026-10-20, following a shopping-list-first review of the full 1588-line playbook (both Play 1 and Play 2).\n\n*** DOES NOT STANDALONE-IMPORT *** -- this template deliberately does NOT declare nodeinfo.json's master item (vfs.file.contents[...]) or its 15-field base schema, which every OTHER template in this series (linuxtools, ansible-node, firewall, cloudpanel, proxmox) currently DOES independently re-declare. Zabbix does not allow two items with the same key on the same host, even from different templates -- found while building this one: the moment any host has linuxtools AND a role-specific template BOTH linked (the normal, intended case, since every host gets linux/tools.yml plus its own role playbook), that's a real conflict. This template's own 4 nodeinfo_extra items (section G below) are DEPENDENT items referencing linuxtools' own master key by name -- confirmed against the real Zabbix docs this is allowed as long as that master item already exists on the host (i.e. linuxtools is linked first/alongside), not a hard same-template-only restriction. Link the linuxtools template to any host before (or together with) this one. The other 4 templates' own exposure to this same conflict is NOT fixed here -- Robert's own call to defer the full fix to a later backlog item (consolidating everything into linuxtools with preprocessing-based placeholder values for fields that don't apply to a given host).\n\nSECTIONS\n  Packages (7): bind9/bind9utils/arping/iproute2/network-manager/bc/localepurge, deduped against common_packages (vim/curl/tmux/grc/zsh/zsh-autosuggestions/zsh-syntax-highlighting/bind9-dnsutils already checked by linuxtools).\n  Listeners: net.udp.listen[53] (local LISTEN-state check -- confirmed there is no net.udp.port key at all, net.tcp.port's UDP equivalent takes no ip parameter) + net.tcp.port[,53] (BIND also listens TCP for transfers/large responses). Both lightweight/local, 10m delay.\n  Functional DNS test: the native net.dns/net.dns.record key family (a real dedicated Zabbix agent item type for exactly this, not a hand-rolled dig via system.run) -- forward (A) and PTR lookups against 127.0.0.1, mirroring bind9-dns.yml's own existing Section 9 self-test. Both the success/fail boolean AND the actual resolved value (compared against {$DNS.OWN_IP}/{$DNS.OWN_HOSTNAME}) are checked -- a real correctness test, not just 'did it respond'. 1h delay, per explicit instruction not to hammer the server.\n  Config/zones: named.conf.options/local (written on BOTH master and slave, confirmed directly -- only the zone-file writes below are role-gated) via a content-regexp matching the file's own managed-by comment. The 3 fixed zone files (forward/provisioning-reverse/CLD-LAN-reverse) are MASTER-ONLY ({$DNS.ROLE}=\"master\"). The per-site reverse-zone loop (57+ sites, too many to enumerate individually) uses the same count-comparison 'box clever' pattern as the proxmox template's own pools check -- sites.csv rows (minus CLD) vs real db.192.168.* files (minus the 2 fixed ones) -- for the same reason (no process substitution under system.run's POSIX sh). Same documented limitation: doesn't name which site, tolerates extras.\n  Scripts: reloadbind/checkbind (world-readable, 0755) get exists+cksum, same pattern as proxmox -- but these are INLINE YAML content blocks, not standalone files, so their cksum was computed by actually parsing bind9-dns.yml's own real YAML (not retyping it) and rendering the one genuine Jinja substitution (domain), then cross-checked byte-for-byte against an independently hand-typed copy. Would need updating if the domain is ever renamed. editzone (0750 root:root) is exists-only -- content unreadable by an unprivileged zabbix-agent user; Robert's own call, not worth adding zabbix-agent to the root group just for one checksum.\n  Network: prov-static.nmconnection, exists-only (0600 root:root, same pattern as cloudpanel/proxmox).\n  nodeinfo.json extras: dns_ip/zone/zone_serial/interface -- see the template's own top-level note above for why these are the ONLY nodeinfo-related items declared here.\n\n{$DNS.ROLE} scopes which triggers are meaningful for master-only checks -- real concrete example, not hypothetical: EXADNSVRK001 is the master, EXADNSFRD001 is the slave/secondary (confirmed directly from configs/inventory/{vrk,frd}.ini and this playbook's own README).\n\nNOT YET LIVE-IMPORTED OR LIVE-TESTED against a real Zabbix server or a real zabbix-agent -- same status as every other template in this series.\n\nIMPORT: configuration.import, rules: createMissing+updateExisting+deleteMissing on items/triggers, createMissing+updateExisting on template_groups/templates.",
+        "groups": [
+          {
+            "name": "Templates/Example Music"
+          }
+        ],
+        "items": [
+          {
+            "uuid": "1d9b233e84204091a46f481bb51a8703",
+            "name": "Package installed: bind9",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/bind9/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/bind9/copyright exists, 0 otherwise. Source: bind9-dns.yml's own package list.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "bind9"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "bind9"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "52178e8078f24249af1597df817f3edd",
+                "expression": "last(/BIND9 DNS (Example Music)/vfs.file.exists[/usr/share/doc/bind9/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing bind9 package",
+                "priority": "WARNING",
+                "description": "bind9 is expected on every BIND9 host but not installed. Re-run bind9-dns.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "bind9"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "bind9"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "1e0cda9653ab4e93aa49f8e18b9d640f",
+            "name": "Package installed: bind9utils",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/bind9utils/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/bind9utils/copyright exists, 0 otherwise. Source: bind9-dns.yml's own package list.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "bind9"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "bind9utils"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "97399de97fd2478e900d23baab059cf3",
+                "expression": "last(/BIND9 DNS (Example Music)/vfs.file.exists[/usr/share/doc/bind9utils/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing bind9utils package",
+                "priority": "WARNING",
+                "description": "bind9utils is expected on every BIND9 host but not installed. Re-run bind9-dns.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "bind9"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "bind9utils"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "6deb6558e433405ebd02a7e8ff7cd965",
+            "name": "Package installed: arping",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/arping/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/arping/copyright exists, 0 otherwise. Source: bind9-dns.yml's own package list.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "bind9"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "arping"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "d78e5bba9a604b469669555e1d0bd733",
+                "expression": "last(/BIND9 DNS (Example Music)/vfs.file.exists[/usr/share/doc/arping/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing arping package",
+                "priority": "WARNING",
+                "description": "arping is expected on every BIND9 host but not installed. Re-run bind9-dns.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "bind9"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "arping"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "ed757ef2315548a49b653a0619ba17bd",
+            "name": "Package installed: iproute2",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/iproute2/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/iproute2/copyright exists, 0 otherwise. Source: bind9-dns.yml's own package list.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "bind9"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "iproute2"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "1b0080e503e44acbb3d8945f419c9f3a",
+                "expression": "last(/BIND9 DNS (Example Music)/vfs.file.exists[/usr/share/doc/iproute2/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing iproute2 package",
+                "priority": "WARNING",
+                "description": "iproute2 is expected on every BIND9 host but not installed. Re-run bind9-dns.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "bind9"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "iproute2"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "c232b0f5da854238b6381e65918840db",
+            "name": "Package installed: network-manager",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/network-manager/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/network-manager/copyright exists, 0 otherwise. Source: bind9-dns.yml's own package list.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "bind9"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "network-manager"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "e27e3e976bcf4c93aa55367dd687b1cb",
+                "expression": "last(/BIND9 DNS (Example Music)/vfs.file.exists[/usr/share/doc/network-manager/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing network-manager package",
+                "priority": "WARNING",
+                "description": "network-manager is expected on every BIND9 host but not installed. Re-run bind9-dns.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "bind9"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "network-manager"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "0b450b4969814c5fb1ab661fda2ea77d",
+            "name": "Package installed: bc",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/bc/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/bc/copyright exists, 0 otherwise. Source: bind9-dns.yml's own package list.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "bind9"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "bc"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "7845060592ee47abae44ccba3286f3b3",
+                "expression": "last(/BIND9 DNS (Example Music)/vfs.file.exists[/usr/share/doc/bc/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing bc package",
+                "priority": "WARNING",
+                "description": "bc is expected on every BIND9 host but not installed. Re-run bind9-dns.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "bind9"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "bc"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "bcefd65a1c344ebbbd3165a2ed7096ff",
+            "name": "Package installed: localepurge",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/localepurge/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/localepurge/copyright exists, 0 otherwise. Source: bind9-dns.yml's own package list.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "bind9"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "localepurge"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "2af924dd643d47e88c350983cc044efe",
+                "expression": "last(/BIND9 DNS (Example Music)/vfs.file.exists[/usr/share/doc/localepurge/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing localepurge package",
+                "priority": "WARNING",
+                "description": "localepurge is expected on every BIND9 host but not installed. Re-run bind9-dns.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "bind9"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "localepurge"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "0257cd2f9b1847af8c336a28f51f5b97",
+            "name": "named listening on UDP/53",
+            "type": "ZABBIX_ACTIVE",
+            "key": "net.udp.listen[53]",
+            "delay": "10m",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if UDP port 53 is in LISTEN state (local socket inspection, not a network probe -- net.udp.listen has no ip parameter at all, unlike net.tcp.port).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "bind9"
+              },
+              {
+                "tag": "scope",
+                "value": "listener"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "38329d545185401182f915a5dae0ece2",
+                "expression": "last(/BIND9 DNS (Example Music)/net.udp.listen[53])=0",
+                "name": "Hey! {HOST.NAME} - named is not listening on UDP/53",
+                "priority": "WARNING",
+                "description": "UDP/53 isn't in LISTEN state. Check named is running (systemctl status named).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "bind9"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "listener"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "834e1c7066b24c9381854caf7c499780",
+            "name": "named listening on TCP/53",
+            "type": "ZABBIX_ACTIVE",
+            "key": "net.tcp.port[,53]",
+            "delay": "10m",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if a TCP connection to port 53 succeeds -- BIND also listens on TCP (zone transfers, large/truncated responses), not just UDP.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "bind9"
+              },
+              {
+                "tag": "scope",
+                "value": "listener"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "597eeb1a99f343539a34f34f06b9f91f",
+                "expression": "last(/BIND9 DNS (Example Music)/net.tcp.port[,53])=0",
+                "name": "Hey! {HOST.NAME} - named is not listening on TCP/53",
+                "priority": "WARNING",
+                "description": "TCP/53 isn't accepting connections. Check named is running (systemctl status named).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "bind9"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "listener"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "144d3e870da1423d98a6d52388b07f81",
+            "name": "DNS self-test: forward lookup resolves",
+            "type": "ZABBIX_ACTIVE",
+            "key": "net.dns[127.0.0.1,{$DNS.OWN_FQDN},A]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if named resolves {$DNS.OWN_FQDN} (A record) via its own loopback -- mirrors bind9-dns.yml's own Section 9 self-test.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "bind9"
+              },
+              {
+                "tag": "scope",
+                "value": "dns-selftest"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "6e0037a73f9d4c0482d7b3f2df47ebf0",
+                "expression": "last(/BIND9 DNS (Example Music)/net.dns[127.0.0.1,{$DNS.OWN_FQDN},A])=0",
+                "name": "Hey! {HOST.NAME} - DNS forward self-test failed",
+                "priority": "WARNING",
+                "description": "named did not resolve {$DNS.OWN_FQDN} at all. Check named-checkconf / journalctl -u named. If this is a slave ({$DNS.ROLE}), check the real master is reachable -- a transient master outage self-heals once AXFR completes.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "bind9"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "dns-selftest"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "0e437f4492f24669a717ab03228aaf1d",
+            "name": "DNS self-test: forward lookup value",
+            "type": "ZABBIX_ACTIVE",
+            "key": "net.dns.record[127.0.0.1,{$DNS.OWN_FQDN},A]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "The actual resolved A record for {$DNS.OWN_FQDN} -- compared against {$DNS.OWN_IP} for a real correctness check, not just 'did it respond'.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "bind9"
+              },
+              {
+                "tag": "scope",
+                "value": "dns-selftest"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "bce8417ce8c94f2eb0097438067d656e",
+                "expression": "last(/BIND9 DNS (Example Music)/net.dns.record[127.0.0.1,{$DNS.OWN_FQDN},A])<>{$DNS.OWN_IP}",
+                "name": "Hey! {HOST.NAME} - DNS forward self-test resolved the wrong IP",
+                "priority": "WARNING",
+                "description": "named resolved {$DNS.OWN_FQDN} to something other than {$DNS.OWN_IP} -- zone data is wrong, not just unreachable.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "bind9"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "dns-selftest"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} - DNS forward self-test failed",
+                    "expression": "last(/BIND9 DNS (Example Music)/net.dns[127.0.0.1,{$DNS.OWN_FQDN},A])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "21dedadc6544461b9b9a49fdb109798b",
+            "name": "DNS self-test: PTR lookup resolves",
+            "type": "ZABBIX_ACTIVE",
+            "key": "net.dns[127.0.0.1,{$DNS.OWN_PTR_NAME},PTR]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if named resolves {$DNS.OWN_PTR_NAME} (PTR record for this host's own IP) via its own loopback -- mirrors bind9-dns.yml's own Section 9 self-test.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "bind9"
+              },
+              {
+                "tag": "scope",
+                "value": "dns-selftest"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "f2c700f58a46411d9716592d75bd849f",
+                "expression": "last(/BIND9 DNS (Example Music)/net.dns[127.0.0.1,{$DNS.OWN_PTR_NAME},PTR])=0",
+                "name": "Hey! {HOST.NAME} - DNS PTR self-test failed",
+                "priority": "WARNING",
+                "description": "named did not resolve {$DNS.OWN_PTR_NAME} at all. Check named-checkconf / journalctl -u named. If this is a slave ({$DNS.ROLE}), check the real master is reachable.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "bind9"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "dns-selftest"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "233c681d62d94384b8283e2c5f12fc1a",
+            "name": "DNS self-test: PTR lookup value",
+            "type": "ZABBIX_ACTIVE",
+            "key": "net.dns.record[127.0.0.1,{$DNS.OWN_PTR_NAME},PTR]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "The actual resolved PTR value for {$DNS.OWN_PTR_NAME} -- checked for containing {$DNS.OWN_HOSTNAME} (substring, matching bind9-dns.yml's own Section 9 'in' check -- a PTR value carries the full FQDN plus a trailing dot, not a bare hostname).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "bind9"
+              },
+              {
+                "tag": "scope",
+                "value": "dns-selftest"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "70c4a679513048fcb72677b64751aac0",
+                "expression": "find(/BIND9 DNS (Example Music)/net.dns.record[127.0.0.1,{$DNS.OWN_PTR_NAME},PTR],,\"like\",{$DNS.OWN_HOSTNAME})=0",
+                "name": "Hey! {HOST.NAME} - DNS PTR self-test resolved the wrong name",
+                "priority": "WARNING",
+                "description": "named's PTR answer for {$DNS.OWN_PTR_NAME} doesn't contain {$DNS.OWN_HOSTNAME} -- zone data is wrong, not just unreachable.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "bind9"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "dns-selftest"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} - DNS PTR self-test failed",
+                    "expression": "last(/BIND9 DNS (Example Music)/net.dns[127.0.0.1,{$DNS.OWN_PTR_NAME},PTR])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "5d037609f9a7403b84ba24c55f0ef222",
+            "name": "named.conf.options present and Ansible-managed (global options)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.regexp[/etc/bind/named.conf.options,\"Managed by Ansible bind9-dns.yml\"]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Matched line if /etc/bind/named.conf.options exists and carries bind9-dns.yml's own managed-by comment. Written on BOTH master and slave roles.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "bind9"
+              },
+              {
+                "tag": "scope",
+                "value": "config"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "fe7bdac993cf4d73ad85a360e2c3baa0",
+                "expression": "length(last(/BIND9 DNS (Example Music)/vfs.file.regexp[/etc/bind/named.conf.options,\"Managed by Ansible bind9-dns.yml\"]))=0",
+                "name": "Hey! {HOST.NAME} - named.conf.options is missing or not Ansible-managed",
+                "priority": "WARNING",
+                "description": "Re-run bind9-dns.yml -- see its 'Write named.conf.options' task.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "bind9"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "config"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "5beccd51e2464bffbe2c4ab863a266e4",
+            "name": "named.conf.local present and Ansible-managed (zone declarations)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.regexp[/etc/bind/named.conf.local,\"Managed by Ansible bind9-dns.yml\"]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Matched line if /etc/bind/named.conf.local exists and carries bind9-dns.yml's own managed-by comment. Written on BOTH master and slave roles.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "bind9"
+              },
+              {
+                "tag": "scope",
+                "value": "config"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "c53edf151dac4b90a115995705e30f4a",
+                "expression": "length(last(/BIND9 DNS (Example Music)/vfs.file.regexp[/etc/bind/named.conf.local,\"Managed by Ansible bind9-dns.yml\"]))=0",
+                "name": "Hey! {HOST.NAME} - named.conf.local is missing or not Ansible-managed",
+                "priority": "WARNING",
+                "description": "Re-run bind9-dns.yml -- see its 'Write named.conf.local' task.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "bind9"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "config"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "afd7a5cd1e8a44d0a792d12f37eff062",
+            "name": "File exists: /etc/bind/db.{$DNS.DOMAIN} (forward zone, master-only)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/etc/bind/db.{$DNS.DOMAIN}]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /etc/bind/db.{$DNS.DOMAIN} exists -- MASTER-ONLY (a slave never writes this locally, see {$DNS.ROLE}).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "bind9"
+              },
+              {
+                "tag": "scope",
+                "value": "zones"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "fdd9a855b6e340dab8d5e079269abc1d",
+                "expression": "{$DNS.ROLE}=\"master\" and last(/BIND9 DNS (Example Music)/vfs.file.exists[/etc/bind/db.{$DNS.DOMAIN}])=0",
+                "name": "Hey! {HOST.NAME} is missing /etc/bind/db.{$DNS.DOMAIN} (forward zone)",
+                "priority": "WARNING",
+                "description": "Re-run bind9-dns.yml --tags zones-full,reload -- see its own header for why zones-full (not zones) is needed to pick up a devices.csv change.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "bind9"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "zones"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "8c48700d002743bbbf48b268a73b2f15",
+            "name": "File exists: /etc/bind/db.192.168.139 (provisioning reverse zone, master-only)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/etc/bind/db.192.168.139]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /etc/bind/db.192.168.139 exists -- MASTER-ONLY (a slave never writes this locally, see {$DNS.ROLE}).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "bind9"
+              },
+              {
+                "tag": "scope",
+                "value": "zones"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "854725cd062e48d9affa2ef09505f850",
+                "expression": "{$DNS.ROLE}=\"master\" and last(/BIND9 DNS (Example Music)/vfs.file.exists[/etc/bind/db.192.168.139])=0",
+                "name": "Hey! {HOST.NAME} is missing /etc/bind/db.192.168.139 (provisioning reverse zone)",
+                "priority": "WARNING",
+                "description": "Re-run bind9-dns.yml --tags zones-full,reload -- see its own header for why zones-full (not zones) is needed to pick up a devices.csv change.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "bind9"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "zones"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "a54211a8d1ad47179fe882c9cb6730b5",
+            "name": "File exists: /etc/bind/db.192.168.69 (CLD LAN reverse zone, master-only)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/etc/bind/db.192.168.69]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /etc/bind/db.192.168.69 exists -- MASTER-ONLY (a slave never writes this locally, see {$DNS.ROLE}).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "bind9"
+              },
+              {
+                "tag": "scope",
+                "value": "zones"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "bc63ba8b7e094986aa350d5fe23c4687",
+                "expression": "{$DNS.ROLE}=\"master\" and last(/BIND9 DNS (Example Music)/vfs.file.exists[/etc/bind/db.192.168.69])=0",
+                "name": "Hey! {HOST.NAME} is missing /etc/bind/db.192.168.69 (CLD LAN reverse zone)",
+                "priority": "WARNING",
+                "description": "Re-run bind9-dns.yml --tags zones-full,reload -- see its own header for why zones-full (not zones) is needed to pick up a devices.csv change.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "bind9"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "zones"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "5362b9ec8da14be1a979a477b4835476",
+            "name": "Per-site reverse zones: expected count (sites.csv rows minus CLD)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "system.run[tail -n +2 /etc/example-music/sites.csv | grep -v '^CLD,' | wc -l,wait]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "Number of sites.csv rows excluding CLD -- one per-site reverse zone file is expected per site (bind9-dns.yml's own per-site loop, rejectattr Site==CLD).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "bind9"
+              },
+              {
+                "tag": "scope",
+                "value": "zones"
+              }
+            ]
+          },
+          {
+            "uuid": "b87192ba71df4192937a7aa2131e17b4",
+            "name": "Per-site reverse zones: actual count (real files, excluding the 2 fixed ones)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "system.run[ls /etc/bind/db.192.168.* 2>/dev/null | grep -vE \"db\\.192\\.168\\.(139|69)$\" | wc -l,wait]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "Number of real /etc/bind/db.192.168.* files, excluding the provisioning (139) and CLD LAN (69) reverse zones already checked individually above.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "bind9"
+              },
+              {
+                "tag": "scope",
+                "value": "zones"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "ed1c95144d164279a07a16b32b5c3252",
+                "expression": "{$DNS.ROLE}=\"master\" and last(/BIND9 DNS (Example Music)/system.run[ls /etc/bind/db.192.168.* 2>/dev/null | grep -vE \"db\\.192\\.168\\.(139|69)$\" | wc -l,wait])<last(/BIND9 DNS (Example Music)/system.run[tail -n +2 /etc/example-music/sites.csv | grep -v '^CLD,' | wc -l,wait])",
+                "name": "Hey! {HOST.NAME} - fewer per-site reverse zones than sites.csv rows",
+                "priority": "WARNING",
+                "description": "Fewer per-site reverse zone files exist than sites.csv has non-CLD rows -- a site was added but its reverse zone hasn't been (re)generated yet. Re-run bind9-dns.yml --tags zones-full,reload against the master. Count comparison only -- doesn't identify WHICH site, and deliberately tolerates MORE files than sites (a renamed/retired site's old zone file surviving isn't itself a fault).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "bind9"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "zones"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "36662ddcce564b06a4b61d2ca87ec83a",
+            "name": "File exists: /usr/local/bin/reloadbind",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/local/bin/reloadbind]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/local/bin/reloadbind exists (bind9-dns.yml's own 'Deploy reloadbind script' task).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "bind9"
+              },
+              {
+                "tag": "scope",
+                "value": "scripts"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "a3a8695dda4f41d4863f5138dc0727ea",
+                "expression": "last(/BIND9 DNS (Example Music)/vfs.file.exists[/usr/local/bin/reloadbind])=0",
+                "name": "Hey! {HOST.NAME} is missing /usr/local/bin/reloadbind",
+                "priority": "WARNING",
+                "description": "Re-run bind9-dns.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "bind9"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "scripts"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "50e0563b0db6497fa2483aecbca9584d",
+            "name": "Checksum: /usr/local/bin/reloadbind",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.cksum[/usr/local/bin/reloadbind]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "cksum of /usr/local/bin/reloadbind, compared against {$BIND9.CKSUM.RELOADBIND} (the rendered content's own cksum with domain=jukebox.internal substituted -- computed by parsing the real bind9-dns.yml YAML, not retyped by hand). Would need updating if the domain itself is ever renamed -- see docs/active-directory/domain-rename-procedure.md.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "bind9"
+              },
+              {
+                "tag": "scope",
+                "value": "scripts"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "e5124aef3921458a8c85ea839991d32b",
+                "expression": "last(/BIND9 DNS (Example Music)/vfs.file.cksum[/usr/local/bin/reloadbind])<>{$BIND9.CKSUM.RELOADBIND}",
+                "name": "Hey! {HOST.NAME} - /usr/local/bin/reloadbind checksum doesn't match the committed source",
+                "priority": "WARNING",
+                "description": "/usr/local/bin/reloadbind's on-disk checksum differs from {$BIND9.CKSUM.RELOADBIND} -- hand-edited, or this node hasn't had bind9-dns.yml re-run since the source last changed.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "bind9"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "scripts"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /usr/local/bin/reloadbind",
+                    "expression": "last(/BIND9 DNS (Example Music)/vfs.file.exists[/usr/local/bin/reloadbind])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "2a25d802297a49a7ad6460cd52f025c5",
+            "name": "File exists: /usr/local/bin/checkbind",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/local/bin/checkbind]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/local/bin/checkbind exists (bind9-dns.yml's own 'Deploy checkbind script' task).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "bind9"
+              },
+              {
+                "tag": "scope",
+                "value": "scripts"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "3c05e503e7524ce88b072f078fb3fb55",
+                "expression": "last(/BIND9 DNS (Example Music)/vfs.file.exists[/usr/local/bin/checkbind])=0",
+                "name": "Hey! {HOST.NAME} is missing /usr/local/bin/checkbind",
+                "priority": "WARNING",
+                "description": "Re-run bind9-dns.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "bind9"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "scripts"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "aba41e6d65934310934e32795a5c98dd",
+            "name": "Checksum: /usr/local/bin/checkbind",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.cksum[/usr/local/bin/checkbind]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "cksum of /usr/local/bin/checkbind, compared against {$BIND9.CKSUM.CHECKBIND} (the rendered content's own cksum with domain=jukebox.internal substituted -- computed by parsing the real bind9-dns.yml YAML, not retyped by hand). Would need updating if the domain itself is ever renamed -- see docs/active-directory/domain-rename-procedure.md.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "bind9"
+              },
+              {
+                "tag": "scope",
+                "value": "scripts"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "29aa005c6d9041cfa75d24c194de11fc",
+                "expression": "last(/BIND9 DNS (Example Music)/vfs.file.cksum[/usr/local/bin/checkbind])<>{$BIND9.CKSUM.CHECKBIND}",
+                "name": "Hey! {HOST.NAME} - /usr/local/bin/checkbind checksum doesn't match the committed source",
+                "priority": "WARNING",
+                "description": "/usr/local/bin/checkbind's on-disk checksum differs from {$BIND9.CKSUM.CHECKBIND} -- hand-edited, or this node hasn't had bind9-dns.yml re-run since the source last changed.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "bind9"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "scripts"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /usr/local/bin/checkbind",
+                    "expression": "last(/BIND9 DNS (Example Music)/vfs.file.exists[/usr/local/bin/checkbind])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "fdf3e4f0a41f4d2392b456059ce3e909",
+            "name": "File exists: /usr/local/bin/editzone",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/local/bin/editzone]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/local/bin/editzone exists. EXISTS-ONLY, no cksum -- mode 0750 owner/group root means an unprivileged zabbix-agent user can't read its contents at all (stat for existence works fine regardless, since that only needs directory traversal on /usr/local/bin/, not permission on the file itself). Robert's own call: leave it exists-only rather than adding zabbix-agent to the root group just for a checksum.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "bind9"
+              },
+              {
+                "tag": "scope",
+                "value": "scripts"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "95a326c88f2d41649369bd9bfc3ee093",
+                "expression": "last(/BIND9 DNS (Example Music)/vfs.file.exists[/usr/local/bin/editzone])=0",
+                "name": "Hey! {HOST.NAME} is missing /usr/local/bin/editzone",
+                "priority": "WARNING",
+                "description": "Re-run bind9-dns.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "bind9"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "scripts"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "74bf724813c04fe49b28c28f6e3964ed",
+            "name": "File exists: prov-static NetworkManager profile",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/etc/NetworkManager/system-connections/prov-static.nmconnection]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if the prov-static .nmconnection profile exists. Mode 0600 root:root (confirmed directly in bind9-dns.yml's own template task) -- exists-only, same pattern as cloudpanel/proxmox's own NetworkManager profile checks.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "bind9"
+              },
+              {
+                "tag": "scope",
+                "value": "network"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "0fd061a627124949a8861eac991968e8",
+                "expression": "last(/BIND9 DNS (Example Music)/vfs.file.exists[/etc/NetworkManager/system-connections/prov-static.nmconnection])=0",
+                "name": "Hey! {HOST.NAME} is missing the prov-static NetworkManager profile",
+                "priority": "WARNING",
+                "description": "Re-run bind9-dns.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "bind9"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "network"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "520ef8f26753426699257d03ed95f80d",
+            "name": "nodeinfo: dns_ip (bind9-specific)",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.dns_ip",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's dns_ip field -- a bind9-specific nodeinfo_extra (bind9-dns.yml). Visibility only, no trigger. Master item (vfs.file.contents[/etc/example-music/nodeinfo.json]) is deliberately NOT declared in this template -- see this template's own top-level description for why.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "bind9"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.dns_ip"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "df72e255e5914918808c666d679dfaf2",
+            "name": "nodeinfo: zone (bind9-specific)",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.zone",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's zone field -- a bind9-specific nodeinfo_extra (bind9-dns.yml). Visibility only, no trigger. Master item (vfs.file.contents[/etc/example-music/nodeinfo.json]) is deliberately NOT declared in this template -- see this template's own top-level description for why.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "bind9"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.zone"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "7a2371992eaa4ad0943df05d78e138e8",
+            "name": "nodeinfo: zone_serial (bind9-specific)",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.zone_serial",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's zone_serial field -- a bind9-specific nodeinfo_extra (bind9-dns.yml). Visibility only, no trigger. Master item (vfs.file.contents[/etc/example-music/nodeinfo.json]) is deliberately NOT declared in this template -- see this template's own top-level description for why.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "bind9"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.zone_serial"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "627d9470ff5b465b8123a220628dbc5c",
+            "name": "nodeinfo: interface (bind9-specific)",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.interface",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's interface field -- a bind9-specific nodeinfo_extra (bind9-dns.yml). Visibility only, no trigger. Master item (vfs.file.contents[/etc/example-music/nodeinfo.json]) is deliberately NOT declared in this template -- see this template's own top-level description for why.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "bind9"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.interface"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          }
+        ],
+        "macros": [
+          {
+            "macro": "{$DNS.ROLE}",
+            "value": "master",
+            "description": "Whether this host is the BIND9 master or a slave/secondary (bind9-dns.yml's own dns_role variable). Valid values: \"master\" or \"slave\". Real example, not hypothetical: EXADNSVRK001=master (default), EXADNSFRD001=slave -- set this macro to \"slave\" on that host's own linked template."
+          },
+          {
+            "macro": "{$DNS.DOMAIN}",
+            "value": "jukebox.internal",
+            "description": "The zone this server is authoritative for (bind9-dns.yml's own domain variable, derived from benarbejde/ad_forest.json). Used to build the forward zone's file path."
+          },
+          {
+            "macro": "{$DNS.OWN_HOSTNAME}",
+            "value": "exadnsvrk001",
+            "description": "This host's own lowercase hostname (zone records are deliberately lowercase, standard DNS convention). Default is EXADNSVRK001's -- override to exadnsfrd001 on that host."
+          },
+          {
+            "macro": "{$DNS.OWN_FQDN}",
+            "value": "exadnsvrk001.jukebox.internal",
+            "description": "This host's own FQDN, queried for the forward self-test. Default is EXADNSVRK001's -- override to exadnsfrd001.jukebox.internal on that host."
+          },
+          {
+            "macro": "{$DNS.OWN_IP}",
+            "value": "192.168.139.8",
+            "description": "This host's own real IP (confirmed from configs/inventory/vrk.ini), compared against the forward self-test's resolved value. Default is EXADNSVRK001's -- override to 172.16.124.8 (EXADNSFRD001, confirmed from configs/inventory/frd.ini) on that host."
+          },
+          {
+            "macro": "{$DNS.OWN_PTR_NAME}",
+            "value": "8.139.168.192.in-addr.arpa",
+            "description": "The in-addr.arpa name for this host's own IP, queried for the PTR self-test. Default is EXADNSVRK001's (192.168.139.8 reversed) -- override to 8.124.16.172.in-addr.arpa (EXADNSFRD001, 172.16.124.8 reversed) on that host."
+          },
+          {
+            "macro": "{$BIND9.CKSUM.RELOADBIND}",
+            "value": "2078407830",
+            "description": "Expected cksum of /usr/local/bin/reloadbind's rendered content (domain=jukebox.internal substituted, computed by parsing bind9-dns.yml's own real YAML). Update this macro's value if that script's content, or the domain itself, ever changes."
+          },
+          {
+            "macro": "{$BIND9.CKSUM.CHECKBIND}",
+            "value": "1314966930",
+            "description": "Expected cksum of /usr/local/bin/checkbind's rendered content (domain=jukebox.internal substituted, computed by parsing bind9-dns.yml's own real YAML). Update this macro's value if that script's content, or the domain itself, ever changes."
+          }
+        ],
+        "tags": [
+          {
+            "tag": "target",
+            "value": "bind9"
+          }
+        ]
+      }
+    ]
+  }
+}
