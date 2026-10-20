@@ -1,0 +1,4489 @@
+{
+  "zabbix_export": {
+    "version": "7.0",
+    "template_groups": [
+      {
+        "uuid": "ccb6f6556776402c84ee18b8b9c87c10",
+        "name": "Templates/Example Music"
+      }
+    ],
+    "templates": [
+      {
+        "uuid": "5220eeaa7a494008a90084e12537419c",
+        "template": "proxmox_examplemusic",
+        "name": "Proxmox VE (Example Music)",
+        "description": "Companion template for ansible/playbooks/proxmox/site.yml (+ bootstrap-new-node.yml). Copied from zabbix_template_cloudpanel.json's own generator and expanded, 2026-10-20, following a shopping-list-first review of all 10 numbered playbooks, bootstrap-new-node.yml, first-boot.sh, and group_vars/pvenodes/main.yml.\n\nSECTIONS\n  Packages: pve_packages (group_vars/pvenodes/main.yml), deduped against common_packages -- jq/net-tools/tree/molly-guard/nmap/parted/vim/zsh/grc/unattended-upgrades are already checked by linuxtools. open-vm-tools is macro-gated ({$PROXMOX.OPEN_VM_TOOLS_EXPECTED}) -- only installed on a VMware guest, real bare-metal nodes never get it.\n  Custom scripts: every script 40-scripts.yml deploys (from bootstrap/web/proxmox/ and this family's own files/), each with TWO items -- vfs.file.exists AND vfs.file.cksum, the latter compared against a per-script {$PROXMOX.CKSUM.*} macro holding the real committed source's own cksum (computed directly, not fabricated). Rudimentary drift/version detection -- a hand-patched file on one node (testing a fix before committing it) shows up immediately against every other node's still-matching checksum, same intent 40-scripts.yml's own header already documents.\n  Config/data files: /etc/example-music's 3 CSVs + nodeinfo.json (same pattern as linuxtools, via 30-example-music.yml instead), plus the unattended-upgrades-pve apt-pin, proxmorph's own apt hook, and the NIC-guard credentials example.\n  nodeinfo.json contents: identical base-schema pattern to every other template, PLUS this family's own real nodeinfo_extra fields (node_ip/gateway, 30-example-music.yml) via the same JSONPATH-dependents technique proven on firewall/ansible-node -- unlike cloudpanel, this family genuinely has role-specific extras.\n  Systemd timers: the 4 real PVE maintenance timers, system.run[systemctl is-enabled ...] (classic agent, NOT the agent2-only systemd.unit.info key). proxmox-replica-nic-guard's own RUNTIME OUTPUT already has a separate, pre-existing template (zabbix_template_proxmox_nicguard.yaml) -- deliberately not duplicated here, this template only checks the script file + timer.\n  Network: vmbr1 (marker-based, matches 36-vmbr1.yml's own Ansible-managed-block comment) and vmbr0's static-vs-DHCP state (visibility only -- a node mid-onboarding may legitimately still be on DHCP). /etc/network/interfaces is a plain 0644 file (confirmed in the code) -- no NetworkManager-style permission workaround needed, unlike cloudpanel's own network check.\n  Pools: cluster-wide (pvesh), 1h delay. Count comparison (sites.csv rows vs. pvesh's own pool count) rather than a full set-difference -- bash process substitution isn't available under system.run's POSIX sh, and a count comparison catches the real, practical failure mode (new site, pool not yet created) without a fragile pipeline. Known limitation, documented on the trigger itself: doesn't name WHICH site, and tolerates MORE pools than sites (35-pools.yml only ever adds).\n  ZFS redundancy: the same vdev-counting regex as 00-preflight.yml's one-time onboarding gate, promoted to an ongoing 24h check -- a disk failing out of a mirror after onboarding is exactly what routine monitoring should catch.\n  V2V/virt tooling: the two mingw-srvany exes (known caveat -- not every upstream RPM build ships both, documented on the item itself, not hidden), VirtIO driver extraction. proxmoxbmc (install + service) and all 6 BIOS ROM files are written but DISABLED -- both genuinely off by default with no real source URL configured anywhere yet; enabling now would be permanent false positives on every real node. Ready to enable once a real pve_proxmoxbmc_deb_url/pve_bios_rom_base_url exists.\n  Identity/access: ansible user in the kvm group (simple length()=0 trigger on a /etc/group regexp, 1h). Also added /etc/sudoers.d/ansible and /home/ansible/.ssh/authorized_keys existence checks -- confirmed by re-reading linuxtools' own real item list that neither is actually checked there (an earlier assumption that they were already redundant turned out wrong on verification).\n  proxmorph: hardware sensor support, mirroring 46-proxmorph.yml's own detect_sensors() precondition (4 chip families) -- visibility only, no trigger, since lacking a supported sensor chip is a real hardware limitation, not a fault. Whether proxmorph itself installed correctly is covered by the apt-hook exists check above, not a separate 'package installed' item (proxmorph isn't a real .deb package).\n\nNOT YET LIVE-IMPORTED OR LIVE-TESTED against a real Zabbix server or a real zabbix-agent -- same status as every other template in this series.\n\nIMPORT: configuration.import, rules: createMissing+updateExisting+deleteMissing on items/triggers, createMissing+updateExisting on template_groups/templates.",
+        "groups": [
+          {
+            "name": "Templates/Example Music"
+          }
+        ],
+        "items": [
+          {
+            "uuid": "8e05b7e2d55a4f248ca902fd573e082d",
+            "name": "Package installed: libguestfs-tools",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/libguestfs-tools/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/libguestfs-tools/copyright exists, 0 otherwise. Source: pve_packages (group_vars/pvenodes/main.yml), via 10-packages.yml.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "libguestfs-tools"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "46a1ed6314874c46a45180d7fc2413df",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/share/doc/libguestfs-tools/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing libguestfs-tools package",
+                "priority": "WARNING",
+                "description": "libguestfs-tools is in pve_packages but not installed (or its copyright doc is gone). Re-run proxmox/site.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "libguestfs-tools"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "025a7e3d76bb4390a136db995898c757",
+            "name": "Package installed: python3-proxmoxer",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/python3-proxmoxer/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/python3-proxmoxer/copyright exists, 0 otherwise. Source: pve_packages (group_vars/pvenodes/main.yml), via 10-packages.yml.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "python3-proxmoxer"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "7eab5b7b18404c3cae88c2c0fd3610f0",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/share/doc/python3-proxmoxer/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing python3-proxmoxer package",
+                "priority": "WARNING",
+                "description": "python3-proxmoxer is in pve_packages but not installed (or its copyright doc is gone). Re-run proxmox/site.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "python3-proxmoxer"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "cb61659aef2a4b2fb8f4ebc89e7808df",
+            "name": "Package installed: python3-requests",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/python3-requests/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/python3-requests/copyright exists, 0 otherwise. Source: pve_packages (group_vars/pvenodes/main.yml), via 10-packages.yml.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "python3-requests"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "c1f4a4e6280541e88f7a420cfd48590d",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/share/doc/python3-requests/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing python3-requests package",
+                "priority": "WARNING",
+                "description": "python3-requests is in pve_packages but not installed (or its copyright doc is gone). Re-run proxmox/site.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "python3-requests"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "b9c83370330f4b91a78fb052b4a3df84",
+            "name": "Package installed: python3-paramiko",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/python3-paramiko/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/python3-paramiko/copyright exists, 0 otherwise. Source: pve_packages (group_vars/pvenodes/main.yml), via 10-packages.yml.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "python3-paramiko"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "48d4d830a62b402491f8f24401c665d7",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/share/doc/python3-paramiko/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing python3-paramiko package",
+                "priority": "WARNING",
+                "description": "python3-paramiko is in pve_packages but not installed (or its copyright doc is gone). Re-run proxmox/site.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "python3-paramiko"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "8f5cb9efffff48bbbc983cc5db27b889",
+            "name": "Package installed: python3-virtualenv",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/python3-virtualenv/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/python3-virtualenv/copyright exists, 0 otherwise. Source: pve_packages (group_vars/pvenodes/main.yml), via 10-packages.yml.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "python3-virtualenv"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "56f747bea60342eda2eb79379e9cb851",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/share/doc/python3-virtualenv/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing python3-virtualenv package",
+                "priority": "WARNING",
+                "description": "python3-virtualenv is in pve_packages but not installed (or its copyright doc is gone). Re-run proxmox/site.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "python3-virtualenv"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "1c19961d186341469b45aac7289d8eb8",
+            "name": "Package installed: sudo",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/sudo/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/sudo/copyright exists, 0 otherwise. Source: pve_packages (group_vars/pvenodes/main.yml), via 10-packages.yml.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "sudo"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "bffd1fea9002462bb230e69874550209",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/share/doc/sudo/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing sudo package",
+                "priority": "WARNING",
+                "description": "sudo is in pve_packages but not installed (or its copyright doc is gone). Re-run proxmox/site.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "sudo"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "bee6817a95174bb78623b727176ad6d0",
+            "name": "Package installed: kpartx",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/kpartx/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/kpartx/copyright exists, 0 otherwise. Source: pve_packages (group_vars/pvenodes/main.yml), via 10-packages.yml.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "kpartx"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "adc534f7ec9e494c8a83bda17458280f",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/share/doc/kpartx/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing kpartx package",
+                "priority": "WARNING",
+                "description": "kpartx is in pve_packages but not installed (or its copyright doc is gone). Re-run proxmox/site.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "kpartx"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "198be644b153469b8bf06e1f5811be5f",
+            "name": "Package installed: ntfs-3g",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/ntfs-3g/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/ntfs-3g/copyright exists, 0 otherwise. Source: pve_packages (group_vars/pvenodes/main.yml), via 10-packages.yml.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "ntfs-3g"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "e27a05890f544f2a96a0c011a03c9a32",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/share/doc/ntfs-3g/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing ntfs-3g package",
+                "priority": "WARNING",
+                "description": "ntfs-3g is in pve_packages but not installed (or its copyright doc is gone). Re-run proxmox/site.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "ntfs-3g"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "a955ceb3d3404676b332a984b08d10a3",
+            "name": "Package installed: bash-completion",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/bash-completion/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/bash-completion/copyright exists, 0 otherwise. Source: pve_packages (group_vars/pvenodes/main.yml), via 10-packages.yml.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "bash-completion"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "99de7ac11d824084b91c3d07a60e5761",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/share/doc/bash-completion/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing bash-completion package",
+                "priority": "WARNING",
+                "description": "bash-completion is in pve_packages but not installed (or its copyright doc is gone). Re-run proxmox/site.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "bash-completion"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "f6a5b894ca7d4df18e4e8aade959c879",
+            "name": "Package installed: bc",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/bc/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/bc/copyright exists, 0 otherwise. Source: pve_packages (group_vars/pvenodes/main.yml), via 10-packages.yml.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "bc"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "ec6ebd27e3174b7c8001d6bf229271c8",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/share/doc/bc/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing bc package",
+                "priority": "WARNING",
+                "description": "bc is in pve_packages but not installed (or its copyright doc is gone). Re-run proxmox/site.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "bc"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "556dec18d84043159d5f11c2a104fc13",
+            "name": "Package installed: arping",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/arping/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/arping/copyright exists, 0 otherwise. Source: pve_packages (group_vars/pvenodes/main.yml), via 10-packages.yml.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "arping"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "2f0869f5939c44c8a955670e0a00af6e",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/share/doc/arping/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing arping package",
+                "priority": "WARNING",
+                "description": "arping is in pve_packages but not installed (or its copyright doc is gone). Re-run proxmox/site.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "arping"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "5f5395f8e12a49d38b135c5aa83c9e92",
+            "name": "Package installed: gdisk",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/gdisk/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/gdisk/copyright exists, 0 otherwise. Source: pve_packages (group_vars/pvenodes/main.yml), via 10-packages.yml.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "gdisk"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "b7c942e66c184161b798c9564f217de0",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/share/doc/gdisk/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing gdisk package",
+                "priority": "WARNING",
+                "description": "gdisk is in pve_packages but not installed (or its copyright doc is gone). Re-run proxmox/site.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "gdisk"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "7575dcbae27945769d5faf16ecb7029d",
+            "name": "Package installed: smartmontools",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/smartmontools/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/smartmontools/copyright exists, 0 otherwise. Source: pve_packages (group_vars/pvenodes/main.yml), via 10-packages.yml.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "smartmontools"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "1ab5971ec9594a31b27646e008643901",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/share/doc/smartmontools/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing smartmontools package",
+                "priority": "WARNING",
+                "description": "smartmontools is in pve_packages but not installed (or its copyright doc is gone). Re-run proxmox/site.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "smartmontools"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "717beee75dac4b4dacfe2efc1602499b",
+            "name": "Package installed: python3-textual",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/python3-textual/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/python3-textual/copyright exists, 0 otherwise. Source: pve_packages (group_vars/pvenodes/main.yml), via 10-packages.yml.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "python3-textual"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "762fe6593d9c4de0be60179a54bfd065",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/share/doc/python3-textual/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing python3-textual package",
+                "priority": "WARNING",
+                "description": "python3-textual is in pve_packages but not installed (or its copyright doc is gone). Re-run proxmox/site.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "python3-textual"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "50d52de62e934837b6068b53e199be5b",
+            "name": "Package installed: python3-textual-fastdatatable",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/python3-textual-fastdatatable/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/python3-textual-fastdatatable/copyright exists, 0 otherwise. Source: pve_packages (group_vars/pvenodes/main.yml), via 10-packages.yml.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "python3-textual-fastdatatable"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "b4e2b2e3af8c44c1b6bf034196c5f1e5",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/share/doc/python3-textual-fastdatatable/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing python3-textual-fastdatatable package",
+                "priority": "WARNING",
+                "description": "python3-textual-fastdatatable is in pve_packages but not installed (or its copyright doc is gone). Re-run proxmox/site.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "python3-textual-fastdatatable"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "3a56e6ff0f044c20b7d8f265d2fd0c5f",
+            "name": "Package installed: python3-textual-textarea",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/python3-textual-textarea/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/python3-textual-textarea/copyright exists, 0 otherwise. Source: pve_packages (group_vars/pvenodes/main.yml), via 10-packages.yml.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "python3-textual-textarea"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "9065b5a6924f466fab6202d5f1b0fb56",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/share/doc/python3-textual-textarea/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing python3-textual-textarea package",
+                "priority": "WARNING",
+                "description": "python3-textual-textarea is in pve_packages but not installed (or its copyright doc is gone). Re-run proxmox/site.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "python3-textual-textarea"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "9211583a17344fb7a3b37f95eb6c58b7",
+            "name": "Package installed: python3-pbr",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/python3-pbr/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/python3-pbr/copyright exists, 0 otherwise. Source: pve_packages (group_vars/pvenodes/main.yml), via 10-packages.yml.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "python3-pbr"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "143e779f357540d2a26ee03ebd7c0b33",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/share/doc/python3-pbr/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing python3-pbr package",
+                "priority": "WARNING",
+                "description": "python3-pbr is in pve_packages but not installed (or its copyright doc is gone). Re-run proxmox/site.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "python3-pbr"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "1ca7a39d97ed4eeebb9e9f157040e25b",
+            "name": "Package installed: python3-six",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/python3-six/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/python3-six/copyright exists, 0 otherwise. Source: pve_packages (group_vars/pvenodes/main.yml), via 10-packages.yml.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "python3-six"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "8824da786a944cc3bb4ad63568d1ff04",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/share/doc/python3-six/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing python3-six package",
+                "priority": "WARNING",
+                "description": "python3-six is in pve_packages but not installed (or its copyright doc is gone). Re-run proxmox/site.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "python3-six"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "a544d68d35124b9a98246de2be187db7",
+            "name": "Package installed: w3m",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/w3m/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/w3m/copyright exists, 0 otherwise. Source: pve_packages (group_vars/pvenodes/main.yml), via 10-packages.yml.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "w3m"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "74ce525b1067408f9a27dbcd10f40a4b",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/share/doc/w3m/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing w3m package",
+                "priority": "WARNING",
+                "description": "w3m is in pve_packages but not installed (or its copyright doc is gone). Re-run proxmox/site.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "w3m"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "14118be69f0040a8aa8f6c647c827194",
+            "name": "Package installed: xxd",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/xxd/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/xxd/copyright exists, 0 otherwise. Source: pve_packages (group_vars/pvenodes/main.yml), via 10-packages.yml.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "xxd"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "fd3fbbf201b34058b927a6a172f47443",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/share/doc/xxd/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing xxd package",
+                "priority": "WARNING",
+                "description": "xxd is in pve_packages but not installed (or its copyright doc is gone). Re-run proxmox/site.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "xxd"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "13bc18f4b910463aa1e11a305e603723",
+            "name": "Package installed: open-vm-tools",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/open-vm-tools/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/open-vm-tools/copyright exists. Only installed when systemd-detect-virt reports 'vmware' (10-packages.yml) -- real bare-metal PVE nodes never get this package. Set {$PROXMOX.OPEN_VM_TOOLS_EXPECTED} to match.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "open-vm-tools"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "1601a6f45f8d4ec0b853b9bfc9bc2c4c",
+                "expression": "{$PROXMOX.OPEN_VM_TOOLS_EXPECTED}=\"yes\" and last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/share/doc/open-vm-tools/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing open-vm-tools (expected on a VMware guest)",
+                "priority": "WARNING",
+                "description": "{$PROXMOX.OPEN_VM_TOOLS_EXPECTED} says this node is a VMware guest, but open-vm-tools isn't installed. Re-run proxmox/site.yml's 10-packages.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "open-vm-tools"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "f332f4554f3a4a8eb185b474078c3b1f",
+            "name": "File exists: /usr/local/bin/create-vm.py",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/local/bin/create-vm.py]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/local/bin/create-vm.py exists. Deployed from bootstrap/web/proxmox/create-vm.py (40-scripts.yml).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "scripts"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "2b45d74bd72d44d9897c7978d1a4a15d",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/local/bin/create-vm.py])=0",
+                "name": "Hey! {HOST.NAME} is missing /usr/local/bin/create-vm.py",
+                "priority": "WARNING",
+                "description": "Re-run proxmox/site.yml -- see its 'Deploy ... scripts' task (bootstrap/web/proxmox/create-vm.py).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "scripts"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "67f72ecdf9d84ff98eb010f834421c5c",
+            "name": "Checksum: /usr/local/bin/create-vm.py",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.cksum[/usr/local/bin/create-vm.py]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "cksum of /usr/local/bin/create-vm.py, compared against {$PROXMOX.CKSUM.CREATE_VM_PY} (the real committed source's own cksum, bootstrap/web/proxmox/create-vm.py). Rudimentary drift/version check -- e.g. if this file is hand-patched directly on one node for a test, every other node (and the next 'this' node's own re-run) will show the real committed version instead, and this trigger makes that drift visible without needing to remember to go check by hand.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "scripts"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "1183ca5e16534d0cbab76c04d0fda3f5",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.cksum[/usr/local/bin/create-vm.py])<>{$PROXMOX.CKSUM.CREATE_VM_PY}",
+                "name": "Hey! {HOST.NAME} - /usr/local/bin/create-vm.py checksum doesn't match the committed source",
+                "priority": "WARNING",
+                "description": "/usr/local/bin/create-vm.py's on-disk checksum differs from {$PROXMOX.CKSUM.CREATE_VM_PY} (bootstrap/web/proxmox/create-vm.py's own committed cksum) -- the file was hand-edited, or this node hasn't had proxmox/site.yml re-run since the source last changed.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "scripts"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /usr/local/bin/create-vm.py",
+                    "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/local/bin/create-vm.py])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "3601a6a2e6aa4469b56448a465b4c2b5",
+            "name": "File exists: /usr/local/bin/create-vm-tui.py",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/local/bin/create-vm-tui.py]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/local/bin/create-vm-tui.py exists. Deployed from bootstrap/web/proxmox/create-vm-tui.py (40-scripts.yml).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "scripts"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "e5ad06db099544acb834afba5ac0aa4e",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/local/bin/create-vm-tui.py])=0",
+                "name": "Hey! {HOST.NAME} is missing /usr/local/bin/create-vm-tui.py",
+                "priority": "WARNING",
+                "description": "Re-run proxmox/site.yml -- see its 'Deploy ... scripts' task (bootstrap/web/proxmox/create-vm-tui.py).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "scripts"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "8f946379d29f47fd9130c1ba695d9551",
+            "name": "Checksum: /usr/local/bin/create-vm-tui.py",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.cksum[/usr/local/bin/create-vm-tui.py]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "cksum of /usr/local/bin/create-vm-tui.py, compared against {$PROXMOX.CKSUM.CREATE_VM_TUI_PY} (the real committed source's own cksum, bootstrap/web/proxmox/create-vm-tui.py). Rudimentary drift/version check -- e.g. if this file is hand-patched directly on one node for a test, every other node (and the next 'this' node's own re-run) will show the real committed version instead, and this trigger makes that drift visible without needing to remember to go check by hand.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "scripts"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "285e085bc61642d18b1ef7decb1166c0",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.cksum[/usr/local/bin/create-vm-tui.py])<>{$PROXMOX.CKSUM.CREATE_VM_TUI_PY}",
+                "name": "Hey! {HOST.NAME} - /usr/local/bin/create-vm-tui.py checksum doesn't match the committed source",
+                "priority": "WARNING",
+                "description": "/usr/local/bin/create-vm-tui.py's on-disk checksum differs from {$PROXMOX.CKSUM.CREATE_VM_TUI_PY} (bootstrap/web/proxmox/create-vm-tui.py's own committed cksum) -- the file was hand-edited, or this node hasn't had proxmox/site.yml re-run since the source last changed.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "scripts"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /usr/local/bin/create-vm-tui.py",
+                    "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/local/bin/create-vm-tui.py])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "f3720de5590745709a2220f93fb289fd",
+            "name": "File exists: /usr/local/bin/convert-v2v.py",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/local/bin/convert-v2v.py]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/local/bin/convert-v2v.py exists. Deployed from bootstrap/web/proxmox/convert-v2v.py (40-scripts.yml).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "scripts"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "161d1a9e9077486392f60694c6eab489",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/local/bin/convert-v2v.py])=0",
+                "name": "Hey! {HOST.NAME} is missing /usr/local/bin/convert-v2v.py",
+                "priority": "WARNING",
+                "description": "Re-run proxmox/site.yml -- see its 'Deploy ... scripts' task (bootstrap/web/proxmox/convert-v2v.py).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "scripts"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "9bb59c1b618b4c78818f2ea606f47ce9",
+            "name": "Checksum: /usr/local/bin/convert-v2v.py",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.cksum[/usr/local/bin/convert-v2v.py]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "cksum of /usr/local/bin/convert-v2v.py, compared against {$PROXMOX.CKSUM.CONVERT_V2V_PY} (the real committed source's own cksum, bootstrap/web/proxmox/convert-v2v.py). Rudimentary drift/version check -- e.g. if this file is hand-patched directly on one node for a test, every other node (and the next 'this' node's own re-run) will show the real committed version instead, and this trigger makes that drift visible without needing to remember to go check by hand.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "scripts"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "7a360cab2e97469dbcfb27de455d5d7f",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.cksum[/usr/local/bin/convert-v2v.py])<>{$PROXMOX.CKSUM.CONVERT_V2V_PY}",
+                "name": "Hey! {HOST.NAME} - /usr/local/bin/convert-v2v.py checksum doesn't match the committed source",
+                "priority": "WARNING",
+                "description": "/usr/local/bin/convert-v2v.py's on-disk checksum differs from {$PROXMOX.CKSUM.CONVERT_V2V_PY} (bootstrap/web/proxmox/convert-v2v.py's own committed cksum) -- the file was hand-edited, or this node hasn't had proxmox/site.yml re-run since the source last changed.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "scripts"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /usr/local/bin/convert-v2v.py",
+                    "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/local/bin/convert-v2v.py])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "9878d9f640984228bcb861a267f7cfd2",
+            "name": "File exists: /usr/local/bin/manage-pool.py",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/local/bin/manage-pool.py]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/local/bin/manage-pool.py exists. Deployed from bootstrap/web/proxmox/manage-pool.py (40-scripts.yml).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "scripts"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "375a2a44fb6a4a76aa48e103da89f7f6",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/local/bin/manage-pool.py])=0",
+                "name": "Hey! {HOST.NAME} is missing /usr/local/bin/manage-pool.py",
+                "priority": "WARNING",
+                "description": "Re-run proxmox/site.yml -- see its 'Deploy ... scripts' task (bootstrap/web/proxmox/manage-pool.py).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "scripts"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "040432e451e149b58ad5b5e34843957d",
+            "name": "Checksum: /usr/local/bin/manage-pool.py",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.cksum[/usr/local/bin/manage-pool.py]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "cksum of /usr/local/bin/manage-pool.py, compared against {$PROXMOX.CKSUM.MANAGE_POOL_PY} (the real committed source's own cksum, bootstrap/web/proxmox/manage-pool.py). Rudimentary drift/version check -- e.g. if this file is hand-patched directly on one node for a test, every other node (and the next 'this' node's own re-run) will show the real committed version instead, and this trigger makes that drift visible without needing to remember to go check by hand.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "scripts"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "b2468e3a88d7473abb531947a9a26f41",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.cksum[/usr/local/bin/manage-pool.py])<>{$PROXMOX.CKSUM.MANAGE_POOL_PY}",
+                "name": "Hey! {HOST.NAME} - /usr/local/bin/manage-pool.py checksum doesn't match the committed source",
+                "priority": "WARNING",
+                "description": "/usr/local/bin/manage-pool.py's on-disk checksum differs from {$PROXMOX.CKSUM.MANAGE_POOL_PY} (bootstrap/web/proxmox/manage-pool.py's own committed cksum) -- the file was hand-edited, or this node hasn't had proxmox/site.yml re-run since the source last changed.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "scripts"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /usr/local/bin/manage-pool.py",
+                    "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/local/bin/manage-pool.py])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "5cca87c52e5c469d9cd4e0a0157f3009",
+            "name": "File exists: /usr/local/bin/site-inventory-audit.py",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/local/bin/site-inventory-audit.py]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/local/bin/site-inventory-audit.py exists. Deployed from bootstrap/web/proxmox/site-inventory-audit.py (40-scripts.yml).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "scripts"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "c060db060e51430f8a5c784cb7e2e5ea",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/local/bin/site-inventory-audit.py])=0",
+                "name": "Hey! {HOST.NAME} is missing /usr/local/bin/site-inventory-audit.py",
+                "priority": "WARNING",
+                "description": "Re-run proxmox/site.yml -- see its 'Deploy ... scripts' task (bootstrap/web/proxmox/site-inventory-audit.py).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "scripts"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "85c5694b38b64ca2a5f62c02b4161c02",
+            "name": "Checksum: /usr/local/bin/site-inventory-audit.py",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.cksum[/usr/local/bin/site-inventory-audit.py]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "cksum of /usr/local/bin/site-inventory-audit.py, compared against {$PROXMOX.CKSUM.SITE_INVENTORY_AUDIT_PY} (the real committed source's own cksum, bootstrap/web/proxmox/site-inventory-audit.py). Rudimentary drift/version check -- e.g. if this file is hand-patched directly on one node for a test, every other node (and the next 'this' node's own re-run) will show the real committed version instead, and this trigger makes that drift visible without needing to remember to go check by hand.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "scripts"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "122015d2d255460ba4579fd27f336fd1",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.cksum[/usr/local/bin/site-inventory-audit.py])<>{$PROXMOX.CKSUM.SITE_INVENTORY_AUDIT_PY}",
+                "name": "Hey! {HOST.NAME} - /usr/local/bin/site-inventory-audit.py checksum doesn't match the committed source",
+                "priority": "WARNING",
+                "description": "/usr/local/bin/site-inventory-audit.py's on-disk checksum differs from {$PROXMOX.CKSUM.SITE_INVENTORY_AUDIT_PY} (bootstrap/web/proxmox/site-inventory-audit.py's own committed cksum) -- the file was hand-edited, or this node hasn't had proxmox/site.yml re-run since the source last changed.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "scripts"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /usr/local/bin/site-inventory-audit.py",
+                    "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/local/bin/site-inventory-audit.py])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "e246cd21788b4309848e498e4404a7b0",
+            "name": "File exists: /usr/local/bin/bulk_iso_upload.py",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/local/bin/bulk_iso_upload.py]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/local/bin/bulk_iso_upload.py exists. Deployed from bootstrap/web/proxmox/bulk_iso_upload.py (40-scripts.yml).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "scripts"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "8e48b833ed9448c999819c0554bd23e3",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/local/bin/bulk_iso_upload.py])=0",
+                "name": "Hey! {HOST.NAME} is missing /usr/local/bin/bulk_iso_upload.py",
+                "priority": "WARNING",
+                "description": "Re-run proxmox/site.yml -- see its 'Deploy ... scripts' task (bootstrap/web/proxmox/bulk_iso_upload.py).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "scripts"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "32c59d12016a48c28f068f9abe5f630f",
+            "name": "Checksum: /usr/local/bin/bulk_iso_upload.py",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.cksum[/usr/local/bin/bulk_iso_upload.py]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "cksum of /usr/local/bin/bulk_iso_upload.py, compared against {$PROXMOX.CKSUM.BULK_ISO_UPLOAD_PY} (the real committed source's own cksum, bootstrap/web/proxmox/bulk_iso_upload.py). Rudimentary drift/version check -- e.g. if this file is hand-patched directly on one node for a test, every other node (and the next 'this' node's own re-run) will show the real committed version instead, and this trigger makes that drift visible without needing to remember to go check by hand.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "scripts"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "f320b41b86f043b5829e289572e49d4a",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.cksum[/usr/local/bin/bulk_iso_upload.py])<>{$PROXMOX.CKSUM.BULK_ISO_UPLOAD_PY}",
+                "name": "Hey! {HOST.NAME} - /usr/local/bin/bulk_iso_upload.py checksum doesn't match the committed source",
+                "priority": "WARNING",
+                "description": "/usr/local/bin/bulk_iso_upload.py's on-disk checksum differs from {$PROXMOX.CKSUM.BULK_ISO_UPLOAD_PY} (bootstrap/web/proxmox/bulk_iso_upload.py's own committed cksum) -- the file was hand-edited, or this node hasn't had proxmox/site.yml re-run since the source last changed.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "scripts"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /usr/local/bin/bulk_iso_upload.py",
+                    "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/local/bin/bulk_iso_upload.py])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "4d2f6d438f954826a9909ad4ed726da7",
+            "name": "File exists: /usr/local/bin/pve-bootorder.py",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/local/bin/pve-bootorder.py]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/local/bin/pve-bootorder.py exists. Deployed from bootstrap/web/proxmox/pve-bootorder.py (40-scripts.yml).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "scripts"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "0ce10993350d4cd9bbe61f41979f8b1c",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/local/bin/pve-bootorder.py])=0",
+                "name": "Hey! {HOST.NAME} is missing /usr/local/bin/pve-bootorder.py",
+                "priority": "WARNING",
+                "description": "Re-run proxmox/site.yml -- see its 'Deploy ... scripts' task (bootstrap/web/proxmox/pve-bootorder.py).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "scripts"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "79518dc640404458906071636d73f707",
+            "name": "Checksum: /usr/local/bin/pve-bootorder.py",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.cksum[/usr/local/bin/pve-bootorder.py]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "cksum of /usr/local/bin/pve-bootorder.py, compared against {$PROXMOX.CKSUM.PVE_BOOTORDER_PY} (the real committed source's own cksum, bootstrap/web/proxmox/pve-bootorder.py). Rudimentary drift/version check -- e.g. if this file is hand-patched directly on one node for a test, every other node (and the next 'this' node's own re-run) will show the real committed version instead, and this trigger makes that drift visible without needing to remember to go check by hand.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "scripts"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "6b7d2e842743487e9785f9176860cf3f",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.cksum[/usr/local/bin/pve-bootorder.py])<>{$PROXMOX.CKSUM.PVE_BOOTORDER_PY}",
+                "name": "Hey! {HOST.NAME} - /usr/local/bin/pve-bootorder.py checksum doesn't match the committed source",
+                "priority": "WARNING",
+                "description": "/usr/local/bin/pve-bootorder.py's on-disk checksum differs from {$PROXMOX.CKSUM.PVE_BOOTORDER_PY} (bootstrap/web/proxmox/pve-bootorder.py's own committed cksum) -- the file was hand-edited, or this node hasn't had proxmox/site.yml re-run since the source last changed.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "scripts"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /usr/local/bin/pve-bootorder.py",
+                    "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/local/bin/pve-bootorder.py])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "0728a2f778b649458d46fa2dae906cdb",
+            "name": "File exists: /usr/local/bin/virt-v2v-vmdp.sh",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/local/bin/virt-v2v-vmdp.sh]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/local/bin/virt-v2v-vmdp.sh exists. Deployed from bootstrap/web/proxmox/virt-v2v-vmdp.sh (40-scripts.yml).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "scripts"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "63a92116ff354954a1fd6b137c8db388",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/local/bin/virt-v2v-vmdp.sh])=0",
+                "name": "Hey! {HOST.NAME} is missing /usr/local/bin/virt-v2v-vmdp.sh",
+                "priority": "WARNING",
+                "description": "Re-run proxmox/site.yml -- see its 'Deploy ... scripts' task (bootstrap/web/proxmox/virt-v2v-vmdp.sh).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "scripts"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "1925bad9530d401e90bf1834aa51e046",
+            "name": "Checksum: /usr/local/bin/virt-v2v-vmdp.sh",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.cksum[/usr/local/bin/virt-v2v-vmdp.sh]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "cksum of /usr/local/bin/virt-v2v-vmdp.sh, compared against {$PROXMOX.CKSUM.VIRT_V2V_VMDP_SH} (the real committed source's own cksum, bootstrap/web/proxmox/virt-v2v-vmdp.sh). Rudimentary drift/version check -- e.g. if this file is hand-patched directly on one node for a test, every other node (and the next 'this' node's own re-run) will show the real committed version instead, and this trigger makes that drift visible without needing to remember to go check by hand.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "scripts"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "0706a611873f4b148b2b34721f313157",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.cksum[/usr/local/bin/virt-v2v-vmdp.sh])<>{$PROXMOX.CKSUM.VIRT_V2V_VMDP_SH}",
+                "name": "Hey! {HOST.NAME} - /usr/local/bin/virt-v2v-vmdp.sh checksum doesn't match the committed source",
+                "priority": "WARNING",
+                "description": "/usr/local/bin/virt-v2v-vmdp.sh's on-disk checksum differs from {$PROXMOX.CKSUM.VIRT_V2V_VMDP_SH} (bootstrap/web/proxmox/virt-v2v-vmdp.sh's own committed cksum) -- the file was hand-edited, or this node hasn't had proxmox/site.yml re-run since the source last changed.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "scripts"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /usr/local/bin/virt-v2v-vmdp.sh",
+                    "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/local/bin/virt-v2v-vmdp.sh])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "0851148726fd44e3892390443afced1d",
+            "name": "File exists: /usr/local/bin/create-pve-users.py",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/local/bin/create-pve-users.py]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/local/bin/create-pve-users.py exists. Deployed from bootstrap/web/proxmox/create-pve-users.py (40-scripts.yml).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "scripts"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "49f47b2ce4b74fd3aec453a3c07460ef",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/local/bin/create-pve-users.py])=0",
+                "name": "Hey! {HOST.NAME} is missing /usr/local/bin/create-pve-users.py",
+                "priority": "WARNING",
+                "description": "Re-run proxmox/site.yml -- see its 'Deploy ... scripts' task (bootstrap/web/proxmox/create-pve-users.py).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "scripts"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "d283dbf2aa694b21a3f74a5bc9d7da8b",
+            "name": "Checksum: /usr/local/bin/create-pve-users.py",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.cksum[/usr/local/bin/create-pve-users.py]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "cksum of /usr/local/bin/create-pve-users.py, compared against {$PROXMOX.CKSUM.CREATE_PVE_USERS_PY} (the real committed source's own cksum, bootstrap/web/proxmox/create-pve-users.py). Rudimentary drift/version check -- e.g. if this file is hand-patched directly on one node for a test, every other node (and the next 'this' node's own re-run) will show the real committed version instead, and this trigger makes that drift visible without needing to remember to go check by hand.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "scripts"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "d5e4c05757664c6090c204c45f64ce2d",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.cksum[/usr/local/bin/create-pve-users.py])<>{$PROXMOX.CKSUM.CREATE_PVE_USERS_PY}",
+                "name": "Hey! {HOST.NAME} - /usr/local/bin/create-pve-users.py checksum doesn't match the committed source",
+                "priority": "WARNING",
+                "description": "/usr/local/bin/create-pve-users.py's on-disk checksum differs from {$PROXMOX.CKSUM.CREATE_PVE_USERS_PY} (bootstrap/web/proxmox/create-pve-users.py's own committed cksum) -- the file was hand-edited, or this node hasn't had proxmox/site.yml re-run since the source last changed.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "scripts"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /usr/local/bin/create-pve-users.py",
+                    "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/local/bin/create-pve-users.py])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "32f4f5a0673c41ecb2841ada41cc701e",
+            "name": "File exists: /usr/local/bin/zfs-disk-replace.sh",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/local/bin/zfs-disk-replace.sh]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/local/bin/zfs-disk-replace.sh exists. Deployed from bootstrap/web/proxmox/zfs-disk-replace.sh (40-scripts.yml).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "scripts"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "fb28dc8ce48e49769c7a93ef47be9e12",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/local/bin/zfs-disk-replace.sh])=0",
+                "name": "Hey! {HOST.NAME} is missing /usr/local/bin/zfs-disk-replace.sh",
+                "priority": "WARNING",
+                "description": "Re-run proxmox/site.yml -- see its 'Deploy ... scripts' task (bootstrap/web/proxmox/zfs-disk-replace.sh).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "scripts"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "9fdf9144518b4461b486c8fab9ecedd4",
+            "name": "Checksum: /usr/local/bin/zfs-disk-replace.sh",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.cksum[/usr/local/bin/zfs-disk-replace.sh]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "cksum of /usr/local/bin/zfs-disk-replace.sh, compared against {$PROXMOX.CKSUM.ZFS_DISK_REPLACE_SH} (the real committed source's own cksum, bootstrap/web/proxmox/zfs-disk-replace.sh). Rudimentary drift/version check -- e.g. if this file is hand-patched directly on one node for a test, every other node (and the next 'this' node's own re-run) will show the real committed version instead, and this trigger makes that drift visible without needing to remember to go check by hand.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "scripts"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "b9cf9c8cb162423782ddd0b78ce26812",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.cksum[/usr/local/bin/zfs-disk-replace.sh])<>{$PROXMOX.CKSUM.ZFS_DISK_REPLACE_SH}",
+                "name": "Hey! {HOST.NAME} - /usr/local/bin/zfs-disk-replace.sh checksum doesn't match the committed source",
+                "priority": "WARNING",
+                "description": "/usr/local/bin/zfs-disk-replace.sh's on-disk checksum differs from {$PROXMOX.CKSUM.ZFS_DISK_REPLACE_SH} (bootstrap/web/proxmox/zfs-disk-replace.sh's own committed cksum) -- the file was hand-edited, or this node hasn't had proxmox/site.yml re-run since the source last changed.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "scripts"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /usr/local/bin/zfs-disk-replace.sh",
+                    "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/local/bin/zfs-disk-replace.sh])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "bee404cff5a04e12b38b2729eb24a2a7",
+            "name": "File exists: /usr/local/bin/enable_vm_trim_discard.sh",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/local/bin/enable_vm_trim_discard.sh]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/local/bin/enable_vm_trim_discard.sh exists. Deployed from ansible/playbooks/proxmox/files/enable_vm_trim_discard.sh (40-scripts.yml).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "scripts"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "cc9c7317a65f498e83ba851d7cee7924",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/local/bin/enable_vm_trim_discard.sh])=0",
+                "name": "Hey! {HOST.NAME} is missing /usr/local/bin/enable_vm_trim_discard.sh",
+                "priority": "WARNING",
+                "description": "Re-run proxmox/site.yml -- see its 'Deploy ... scripts' task (ansible/playbooks/proxmox/files/enable_vm_trim_discard.sh).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "scripts"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "c60ed1817b164df6a3415d80cefa11fb",
+            "name": "Checksum: /usr/local/bin/enable_vm_trim_discard.sh",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.cksum[/usr/local/bin/enable_vm_trim_discard.sh]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "cksum of /usr/local/bin/enable_vm_trim_discard.sh, compared against {$PROXMOX.CKSUM.ENABLE_VM_TRIM_DISCARD_SH} (the real committed source's own cksum, ansible/playbooks/proxmox/files/enable_vm_trim_discard.sh). Rudimentary drift/version check -- e.g. if this file is hand-patched directly on one node for a test, every other node (and the next 'this' node's own re-run) will show the real committed version instead, and this trigger makes that drift visible without needing to remember to go check by hand.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "scripts"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "aa547a4a87884e15be005a761b6a3120",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.cksum[/usr/local/bin/enable_vm_trim_discard.sh])<>{$PROXMOX.CKSUM.ENABLE_VM_TRIM_DISCARD_SH}",
+                "name": "Hey! {HOST.NAME} - /usr/local/bin/enable_vm_trim_discard.sh checksum doesn't match the committed source",
+                "priority": "WARNING",
+                "description": "/usr/local/bin/enable_vm_trim_discard.sh's on-disk checksum differs from {$PROXMOX.CKSUM.ENABLE_VM_TRIM_DISCARD_SH} (ansible/playbooks/proxmox/files/enable_vm_trim_discard.sh's own committed cksum) -- the file was hand-edited, or this node hasn't had proxmox/site.yml re-run since the source last changed.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "scripts"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /usr/local/bin/enable_vm_trim_discard.sh",
+                    "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/local/bin/enable_vm_trim_discard.sh])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "3060a0f9845b4479a9005554f331ffc8",
+            "name": "File exists: /usr/local/bin/pve-monthly-hoover.sh",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/local/bin/pve-monthly-hoover.sh]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/local/bin/pve-monthly-hoover.sh exists. Deployed from ansible/playbooks/proxmox/files/pve-monthly-hoover.sh (40-scripts.yml).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "scripts"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "f166e943db1e4811b663d0a44e985c75",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/local/bin/pve-monthly-hoover.sh])=0",
+                "name": "Hey! {HOST.NAME} is missing /usr/local/bin/pve-monthly-hoover.sh",
+                "priority": "WARNING",
+                "description": "Re-run proxmox/site.yml -- see its 'Deploy ... scripts' task (ansible/playbooks/proxmox/files/pve-monthly-hoover.sh).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "scripts"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "e66c54c274e34494b554bfb6b0f5d8c0",
+            "name": "Checksum: /usr/local/bin/pve-monthly-hoover.sh",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.cksum[/usr/local/bin/pve-monthly-hoover.sh]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "cksum of /usr/local/bin/pve-monthly-hoover.sh, compared against {$PROXMOX.CKSUM.PVE_MONTHLY_HOOVER_SH} (the real committed source's own cksum, ansible/playbooks/proxmox/files/pve-monthly-hoover.sh). Rudimentary drift/version check -- e.g. if this file is hand-patched directly on one node for a test, every other node (and the next 'this' node's own re-run) will show the real committed version instead, and this trigger makes that drift visible without needing to remember to go check by hand.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "scripts"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "ec94834df6214935a0723a0279a40ceb",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.cksum[/usr/local/bin/pve-monthly-hoover.sh])<>{$PROXMOX.CKSUM.PVE_MONTHLY_HOOVER_SH}",
+                "name": "Hey! {HOST.NAME} - /usr/local/bin/pve-monthly-hoover.sh checksum doesn't match the committed source",
+                "priority": "WARNING",
+                "description": "/usr/local/bin/pve-monthly-hoover.sh's on-disk checksum differs from {$PROXMOX.CKSUM.PVE_MONTHLY_HOOVER_SH} (ansible/playbooks/proxmox/files/pve-monthly-hoover.sh's own committed cksum) -- the file was hand-edited, or this node hasn't had proxmox/site.yml re-run since the source last changed.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "scripts"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /usr/local/bin/pve-monthly-hoover.sh",
+                    "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/local/bin/pve-monthly-hoover.sh])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "3cb576ef41c64504871207683ce9c31c",
+            "name": "File exists: /usr/local/bin/pve-snapshot-check.py",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/local/bin/pve-snapshot-check.py]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/local/bin/pve-snapshot-check.py exists. Deployed from ansible/playbooks/proxmox/files/pve-snapshot-check.py (40-scripts.yml).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "scripts"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "ee4be9cffb554a3db244e8625ab63443",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/local/bin/pve-snapshot-check.py])=0",
+                "name": "Hey! {HOST.NAME} is missing /usr/local/bin/pve-snapshot-check.py",
+                "priority": "WARNING",
+                "description": "Re-run proxmox/site.yml -- see its 'Deploy ... scripts' task (ansible/playbooks/proxmox/files/pve-snapshot-check.py).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "scripts"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "85df444a2f384ffc99a0869289014eb2",
+            "name": "Checksum: /usr/local/bin/pve-snapshot-check.py",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.cksum[/usr/local/bin/pve-snapshot-check.py]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "cksum of /usr/local/bin/pve-snapshot-check.py, compared against {$PROXMOX.CKSUM.PVE_SNAPSHOT_CHECK_PY} (the real committed source's own cksum, ansible/playbooks/proxmox/files/pve-snapshot-check.py). Rudimentary drift/version check -- e.g. if this file is hand-patched directly on one node for a test, every other node (and the next 'this' node's own re-run) will show the real committed version instead, and this trigger makes that drift visible without needing to remember to go check by hand.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "scripts"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "39e3145cbcde41848ef0cf445168489a",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.cksum[/usr/local/bin/pve-snapshot-check.py])<>{$PROXMOX.CKSUM.PVE_SNAPSHOT_CHECK_PY}",
+                "name": "Hey! {HOST.NAME} - /usr/local/bin/pve-snapshot-check.py checksum doesn't match the committed source",
+                "priority": "WARNING",
+                "description": "/usr/local/bin/pve-snapshot-check.py's on-disk checksum differs from {$PROXMOX.CKSUM.PVE_SNAPSHOT_CHECK_PY} (ansible/playbooks/proxmox/files/pve-snapshot-check.py's own committed cksum) -- the file was hand-edited, or this node hasn't had proxmox/site.yml re-run since the source last changed.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "scripts"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /usr/local/bin/pve-snapshot-check.py",
+                    "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/local/bin/pve-snapshot-check.py])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "b416d8c9df5b4a658aa31aa224acb887",
+            "name": "File exists: /usr/local/bin/proxmox-replica-nic-guard.py",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/local/bin/proxmox-replica-nic-guard.py]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/local/bin/proxmox-replica-nic-guard.py exists. Deployed from ansible/playbooks/proxmox/files/proxmox-replica-nic-guard.py (40-scripts.yml).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "scripts"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "c23432ba55694798b79a88c8cd1da872",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/local/bin/proxmox-replica-nic-guard.py])=0",
+                "name": "Hey! {HOST.NAME} is missing /usr/local/bin/proxmox-replica-nic-guard.py",
+                "priority": "WARNING",
+                "description": "Re-run proxmox/site.yml -- see its 'Deploy ... scripts' task (ansible/playbooks/proxmox/files/proxmox-replica-nic-guard.py).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "scripts"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "97818e2187e7454398123b87964bcb42",
+            "name": "Checksum: /usr/local/bin/proxmox-replica-nic-guard.py",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.cksum[/usr/local/bin/proxmox-replica-nic-guard.py]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "cksum of /usr/local/bin/proxmox-replica-nic-guard.py, compared against {$PROXMOX.CKSUM.PROXMOX_REPLICA_NIC_GUARD_PY} (the real committed source's own cksum, ansible/playbooks/proxmox/files/proxmox-replica-nic-guard.py). Rudimentary drift/version check -- e.g. if this file is hand-patched directly on one node for a test, every other node (and the next 'this' node's own re-run) will show the real committed version instead, and this trigger makes that drift visible without needing to remember to go check by hand.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "scripts"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "ac99974244e7491f8b3230f7e6f35c1e",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.cksum[/usr/local/bin/proxmox-replica-nic-guard.py])<>{$PROXMOX.CKSUM.PROXMOX_REPLICA_NIC_GUARD_PY}",
+                "name": "Hey! {HOST.NAME} - /usr/local/bin/proxmox-replica-nic-guard.py checksum doesn't match the committed source",
+                "priority": "WARNING",
+                "description": "/usr/local/bin/proxmox-replica-nic-guard.py's on-disk checksum differs from {$PROXMOX.CKSUM.PROXMOX_REPLICA_NIC_GUARD_PY} (ansible/playbooks/proxmox/files/proxmox-replica-nic-guard.py's own committed cksum) -- the file was hand-edited, or this node hasn't had proxmox/site.yml re-run since the source last changed.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "scripts"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /usr/local/bin/proxmox-replica-nic-guard.py",
+                    "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/local/bin/proxmox-replica-nic-guard.py])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "cc563de6d2f749c5980b037db4c329f3",
+            "name": "File exists: /usr/local/bin/proxmox-zfs-vm-audit.py",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/local/bin/proxmox-zfs-vm-audit.py]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/local/bin/proxmox-zfs-vm-audit.py exists. Deployed from ansible/playbooks/proxmox/files/proxmox-zfs-vm-audit.py (40-scripts.yml).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "scripts"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "a53da6b75173467aafd711d22d7964ed",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/local/bin/proxmox-zfs-vm-audit.py])=0",
+                "name": "Hey! {HOST.NAME} is missing /usr/local/bin/proxmox-zfs-vm-audit.py",
+                "priority": "WARNING",
+                "description": "Re-run proxmox/site.yml -- see its 'Deploy ... scripts' task (ansible/playbooks/proxmox/files/proxmox-zfs-vm-audit.py).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "scripts"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "a78a0e568e814647a2d69c36bb2ce19f",
+            "name": "Checksum: /usr/local/bin/proxmox-zfs-vm-audit.py",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.cksum[/usr/local/bin/proxmox-zfs-vm-audit.py]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "cksum of /usr/local/bin/proxmox-zfs-vm-audit.py, compared against {$PROXMOX.CKSUM.PROXMOX_ZFS_VM_AUDIT_PY} (the real committed source's own cksum, ansible/playbooks/proxmox/files/proxmox-zfs-vm-audit.py). Rudimentary drift/version check -- e.g. if this file is hand-patched directly on one node for a test, every other node (and the next 'this' node's own re-run) will show the real committed version instead, and this trigger makes that drift visible without needing to remember to go check by hand.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "scripts"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "ccf7a2a1b10343b89a96eb4ea8404b03",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.cksum[/usr/local/bin/proxmox-zfs-vm-audit.py])<>{$PROXMOX.CKSUM.PROXMOX_ZFS_VM_AUDIT_PY}",
+                "name": "Hey! {HOST.NAME} - /usr/local/bin/proxmox-zfs-vm-audit.py checksum doesn't match the committed source",
+                "priority": "WARNING",
+                "description": "/usr/local/bin/proxmox-zfs-vm-audit.py's on-disk checksum differs from {$PROXMOX.CKSUM.PROXMOX_ZFS_VM_AUDIT_PY} (ansible/playbooks/proxmox/files/proxmox-zfs-vm-audit.py's own committed cksum) -- the file was hand-edited, or this node hasn't had proxmox/site.yml re-run since the source last changed.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "scripts"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /usr/local/bin/proxmox-zfs-vm-audit.py",
+                    "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/local/bin/proxmox-zfs-vm-audit.py])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "bf4724e51f3146efa243226f35021414",
+            "name": "File exists: /etc/update-motd.d/10-pve",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/etc/update-motd.d/10-pve]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /etc/update-motd.d/10-pve exists. Deployed from ansible/playbooks/proxmox/files/10-pve-motd (40-scripts.yml).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "scripts"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "8b007b08d8ae40a7886f59a95d49e6b9",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/etc/update-motd.d/10-pve])=0",
+                "name": "Hey! {HOST.NAME} is missing /etc/update-motd.d/10-pve",
+                "priority": "WARNING",
+                "description": "Re-run proxmox/site.yml -- see its 'Deploy ... scripts' task (ansible/playbooks/proxmox/files/10-pve-motd).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "scripts"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "b18afa5539734381ad67e79377434583",
+            "name": "Checksum: /etc/update-motd.d/10-pve",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.cksum[/etc/update-motd.d/10-pve]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "cksum of /etc/update-motd.d/10-pve, compared against {$PROXMOX.CKSUM.10_PVE} (the real committed source's own cksum, ansible/playbooks/proxmox/files/10-pve-motd). Rudimentary drift/version check -- e.g. if this file is hand-patched directly on one node for a test, every other node (and the next 'this' node's own re-run) will show the real committed version instead, and this trigger makes that drift visible without needing to remember to go check by hand.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "scripts"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "cc2e58b1a74349a7b0d62abe268b5f91",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.cksum[/etc/update-motd.d/10-pve])<>{$PROXMOX.CKSUM.10_PVE}",
+                "name": "Hey! {HOST.NAME} - /etc/update-motd.d/10-pve checksum doesn't match the committed source",
+                "priority": "WARNING",
+                "description": "/etc/update-motd.d/10-pve's on-disk checksum differs from {$PROXMOX.CKSUM.10_PVE} (ansible/playbooks/proxmox/files/10-pve-motd's own committed cksum) -- the file was hand-edited, or this node hasn't had proxmox/site.yml re-run since the source last changed.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "scripts"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /etc/update-motd.d/10-pve",
+                    "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/etc/update-motd.d/10-pve])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "aa338d8cfa1e46f5b2cd6d1dd67c87fd",
+            "name": "Directory exists: /etc/example-music",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/etc/example-music,dir]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /etc/example-music exists as a directory. Every file item below depends on this item's own trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "filesystem"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "3937596c7bc14a449212c0009a3a8e9a",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/etc/example-music,dir])=0",
+                "name": "Hey! {HOST.NAME} is missing /etc/example-music directory",
+                "priority": "WARNING",
+                "description": "Re-run proxmox/site.yml -- see its 30-example-music.yml stage.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "filesystem"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "b6ff18d367784f28b4cc5cfda2289416",
+            "name": "File exists: /etc/example-music/sites.csv",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/etc/example-music/sites.csv]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /etc/example-music/sites.csv exists. Depends on the /etc/example-music directory trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "filesystem"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "d63057c70e6f49259b4292bf17389284",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/etc/example-music/sites.csv])=0",
+                "name": "Hey! {HOST.NAME} is missing /etc/example-music/sites.csv",
+                "priority": "WARNING",
+                "description": "Re-run proxmox/site.yml -- see its 30-example-music.yml stage.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "filesystem"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /etc/example-music directory",
+                    "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/etc/example-music,dir])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "9192f0951826468f8012f48b2774172a",
+            "name": "File exists: /etc/example-music/devices.csv",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/etc/example-music/devices.csv]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /etc/example-music/devices.csv exists. Depends on the /etc/example-music directory trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "filesystem"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "5e231727a739470ca2617b769f147bfe",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/etc/example-music/devices.csv])=0",
+                "name": "Hey! {HOST.NAME} is missing /etc/example-music/devices.csv",
+                "priority": "WARNING",
+                "description": "Re-run proxmox/site.yml -- see its 30-example-music.yml stage.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "filesystem"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /etc/example-music directory",
+                    "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/etc/example-music,dir])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "451fe6772b3847f39781a02508507643",
+            "name": "File exists: /etc/example-music/address_policy.csv",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/etc/example-music/address_policy.csv]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /etc/example-music/address_policy.csv exists. Depends on the /etc/example-music directory trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "filesystem"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "845e6d0972674cf39891a41e4eb3d5f7",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/etc/example-music/address_policy.csv])=0",
+                "name": "Hey! {HOST.NAME} is missing /etc/example-music/address_policy.csv",
+                "priority": "WARNING",
+                "description": "Re-run proxmox/site.yml -- see its 30-example-music.yml stage.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "filesystem"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /etc/example-music directory",
+                    "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/etc/example-music,dir])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "c42a9bd267964117bdac58530c7af0d0",
+            "name": "File exists: /etc/apt/apt.conf.d/52unattended-upgrades-pve (PVE kernel-cleanup apt config)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/etc/apt/apt.conf.d/52unattended-upgrades-pve]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /etc/apt/apt.conf.d/52unattended-upgrades-pve exists (PVE kernel-cleanup apt config).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "filesystem"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "1b282b44b8c1440ca77c3fdc210c0fc0",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/etc/apt/apt.conf.d/52unattended-upgrades-pve])=0",
+                "name": "Hey! {HOST.NAME} is missing /etc/apt/apt.conf.d/52unattended-upgrades-pve",
+                "priority": "WARNING",
+                "description": "Re-run proxmox/site.yml -- see its 40-scripts.yml (PVE kernel-cleanup apt config) stage.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "filesystem"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "5f63f542d7f04b08b39a87c39c9cdff4",
+            "name": "File exists: /etc/apt/apt.conf.d/99proxmorph (proxmorph's own apt hook)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/etc/apt/apt.conf.d/99proxmorph]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /etc/apt/apt.conf.d/99proxmorph exists (proxmorph's own apt hook).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "filesystem"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "5ff292d9d97349f6a63e65a484d2ab31",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/etc/apt/apt.conf.d/99proxmorph])=0",
+                "name": "Hey! {HOST.NAME} is missing /etc/apt/apt.conf.d/99proxmorph",
+                "priority": "WARNING",
+                "description": "Re-run proxmox/site.yml -- see its 40-scripts.yml (proxmorph's own apt hook) stage.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "filesystem"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "50ced244b2f9485f89d98a17bb60a24f",
+            "name": "File exists: /etc/proxmox-replica-nic-guard/auth.env.example (NIC-guard credentials example)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/etc/proxmox-replica-nic-guard/auth.env.example]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /etc/proxmox-replica-nic-guard/auth.env.example exists (NIC-guard credentials example).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "filesystem"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "6990e1026c7043218b481880018f47da",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/etc/proxmox-replica-nic-guard/auth.env.example])=0",
+                "name": "Hey! {HOST.NAME} is missing /etc/proxmox-replica-nic-guard/auth.env.example",
+                "priority": "WARNING",
+                "description": "Re-run proxmox/site.yml -- see its 40-scripts.yml (NIC-guard credentials example) stage.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "filesystem"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "a306c729657a40249fb44258a0773710",
+            "name": "File exists: /etc/example-music/nodeinfo.json",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/etc/example-music/nodeinfo.json]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if nodeinfo.json exists. Every properly-built host is EXA[ROLE][SITE][NNN]-conformant, so this should never legitimately be 0.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "filesystem"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "c56276e474504b36b5b1cbfaa6c58826",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/etc/example-music/nodeinfo.json])=0",
+                "name": "Hey! {HOST.NAME} is missing /etc/example-music/nodeinfo.json",
+                "priority": "WARNING",
+                "description": "Re-run proxmox/site.yml. If this fires, something is wrong with the host's own hostname/build, not just a missing file.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "filesystem"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "00e2734e27984806aa174a90ef511f71",
+            "name": "nodeinfo.json contents (master)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]",
+            "delay": "1h",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Raw nodeinfo.json content -- master item for every examplemusic.nodeinfo.* dependent item below. Staleness (nodata) trigger depends on the exists trigger above -- a missing file would eventually go stale too, same root cause, one alert.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              },
+              {
+                "tag": "item-type",
+                "value": "master"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "dfa01178e3ae4b9a82862cc3186706c2",
+                "expression": "nodata(/Proxmox VE (Example Music)/vfs.file.contents[/etc/example-music/nodeinfo.json],{$NODEINFO.MAXAGE})=1",
+                "name": "Hey! {HOST.NAME} hasn't had proxmox/site.yml run in {$NODEINFO.MAXAGE}",
+                "priority": "WARNING",
+                "description": "nodeinfo.json hasn't been rewritten within {$NODEINFO.MAXAGE} -- proxmox/site.yml hasn't run against this host recently.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "nodeinfo"
+                  },
+                  {
+                    "tag": "item-type",
+                    "value": "master"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /etc/example-music/nodeinfo.json",
+                    "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/etc/example-music/nodeinfo.json])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "a04ebf72bb33459e938ec2d0392da2d3",
+            "name": "nodeinfo: hostname",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.hostname",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's hostname field -- visibility only, no trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.hostname"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "695f22ceb83f4ed5848caa5fa5596b48",
+            "name": "nodeinfo: fqdn",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.fqdn",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's fqdn field -- visibility only, no trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.fqdn"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "1c3b8ea989144dfa8cab239151fb41d1",
+            "name": "nodeinfo: role",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.role",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's role field -- visibility only, no trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.role"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "4a01d0a9d399478d994e0666e22d439b",
+            "name": "nodeinfo: site",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.site",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's site field -- visibility only, no trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.site"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "075cd38d9e4d47e39bc11a2f20eaa2a0",
+            "name": "nodeinfo: city",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.city",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's city field -- visibility only, no trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.city"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "286ca8dad89e49dc961f5af1157f0003",
+            "name": "nodeinfo: country",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.country",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's country field -- visibility only, no trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.country"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "56a3c93a2d454735ae1c8bcbf50d3591",
+            "name": "nodeinfo: country_code",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.country_code",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's country_code field -- visibility only, no trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.country_code"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "7a359916a2d24314b16b6a70290f6193",
+            "name": "nodeinfo: entity",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.entity",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's entity field -- visibility only, no trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.entity"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "fd998a879d5a4dd58494438da97f3bc4",
+            "name": "nodeinfo: office_name",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.office_name",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's office_name field -- visibility only, no trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.office_name"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "4ce088f4cba041fd9358acbd4d5043eb",
+            "name": "nodeinfo: street_address",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.street_address",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's street_address field -- visibility only, no trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.street_address"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "32e488b2127146639bba69f7fb87c918",
+            "name": "nodeinfo: postal_code",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.postal_code",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's postal_code field -- visibility only, no trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.postal_code"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "7032b9bc168341e49e2490f302307d04",
+            "name": "nodeinfo: bootstrapped_at",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.bootstrapped_at",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's bootstrapped_at field -- visibility only, no trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.bootstrapped_at"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "dace2379f0a14643b6adc11f9d0d90f8",
+            "name": "nodeinfo: bootstrapped_by",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.bootstrapped_by",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's bootstrapped_by field -- visibility only, no trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.bootstrapped_by"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "43fea0c7a5a5487da16f2d3cee356395",
+            "name": "nodeinfo: last_ansible_run",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.last_ansible_run",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's last_ansible_run field -- visibility only, no trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.last_ansible_run"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "e27ba3b0c2ec4d2b9c1125ce5024d3b7",
+            "name": "nodeinfo: last_ansible_play",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.last_ansible_play",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's last_ansible_play field -- visibility only, no trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.last_ansible_play"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "d8e24f05610545ba8339d08abd9da1ee",
+            "name": "nodeinfo: ansible_managed",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.ansible_managed",
+            "delay": "0",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "JSON boolean -> 0/1 via a second preprocessing step (BOOL_TO_DECIMAL). Should always be 1; a 0 means something wrote nodeinfo.json outside Ansible's own nodeinfo.yml.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "40a442d84aae43b2bc2e650b5bd96a0d",
+                "expression": "last(/Proxmox VE (Example Music)/examplemusic.nodeinfo.ansible_managed)=0",
+                "name": "Hey! {HOST.NAME}'s nodeinfo.json says ansible_managed=false",
+                "priority": "WARNING",
+                "description": "nodeinfo.json's ansible_managed field is false -- something wrote this file outside Ansible.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "nodeinfo"
+                  }
+                ]
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.ansible_managed"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              },
+              {
+                "type": "BOOL_TO_DECIMAL",
+                "parameters": [],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "b5b1e6663a3f471083bf8e3229c80c76",
+            "name": "nodeinfo: environment",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.environment",
+            "delay": "0",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Drift detector -- fires if this host's recorded environment changed since the previous proxmox/site.yml run.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "ac3c51207afe4f05ac1278b376ed5c65",
+                "expression": "last(/Proxmox VE (Example Music)/examplemusic.nodeinfo.environment)<>last(/Proxmox VE (Example Music)/examplemusic.nodeinfo.environment,#2)",
+                "name": "Hey! {HOST.NAME}'s nodeinfo environment changed ({ITEM.LASTVALUE})",
+                "priority": "WARNING",
+                "description": "environment in nodeinfo.json differs from the previous recorded run.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "nodeinfo"
+                  }
+                ]
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.environment"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "58ccdabb79994d7ea372b91a32ac19ac",
+            "name": "nodeinfo: node_ip (proxmox-specific)",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.node_ip",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's node_ip field -- a proxmox-specific nodeinfo_extra (30-example-music.yml), not part of the generic base schema. Visibility only, no trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.node_ip"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "9b28c7b23bde405ebf36cf3d82f46e65",
+            "name": "nodeinfo: gateway (proxmox-specific)",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.gateway",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's gateway field -- a proxmox-specific nodeinfo_extra (30-example-music.yml), not part of the generic base schema. Visibility only, no trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.gateway"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "f9034b0ca1cf4a6387a2d73366b4aa9d",
+            "name": "Timer enabled: pve-monthly-hoover.timer",
+            "type": "ZABBIX_ACTIVE",
+            "key": "system.run[systemctl is-enabled pve-monthly-hoover.timer,wait]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "systemctl is-enabled pve-monthly-hoover.timer, via system.run (classic zabbix-agent, not agent2 -- AllowKey=system.run[*] already deployed by tasks/zabbix_agent_onboard.yml). is-enabled, not is-active -- checks the boot-time enablement, same reasoning the firewall template's own service checks use.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "systemd"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "8e2fd40c96e0413eaea020570bac04e1",
+                "expression": "find(/Proxmox VE (Example Music)/system.run[systemctl is-enabled pve-monthly-hoover.timer,wait],,\"like\",\"enabled\")=0",
+                "name": "Hey! {HOST.NAME} - pve-monthly-hoover.timer is not enabled",
+                "priority": "WARNING",
+                "description": "pve-monthly-hoover.timer isn't enabled. Re-run proxmox/site.yml with -e pve_force_full_onboard=true (50-systemd-units.yml is gated).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "systemd"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "35c53b2f39cc46ecbf65e36422bd681e",
+            "name": "Timer enabled: pve-snapshot-check.timer",
+            "type": "ZABBIX_ACTIVE",
+            "key": "system.run[systemctl is-enabled pve-snapshot-check.timer,wait]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "systemctl is-enabled pve-snapshot-check.timer, via system.run (classic zabbix-agent, not agent2 -- AllowKey=system.run[*] already deployed by tasks/zabbix_agent_onboard.yml). is-enabled, not is-active -- checks the boot-time enablement, same reasoning the firewall template's own service checks use.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "systemd"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "adb06d54874a4a23a81caae28f3aeb66",
+                "expression": "find(/Proxmox VE (Example Music)/system.run[systemctl is-enabled pve-snapshot-check.timer,wait],,\"like\",\"enabled\")=0",
+                "name": "Hey! {HOST.NAME} - pve-snapshot-check.timer is not enabled",
+                "priority": "WARNING",
+                "description": "pve-snapshot-check.timer isn't enabled. Re-run proxmox/site.yml with -e pve_force_full_onboard=true (50-systemd-units.yml is gated).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "systemd"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "0e5f742a5d0b4cc7b8abf7436c19e01e",
+            "name": "Timer enabled: proxmox-replica-nic-guard.timer",
+            "type": "ZABBIX_ACTIVE",
+            "key": "system.run[systemctl is-enabled proxmox-replica-nic-guard.timer,wait]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "systemctl is-enabled proxmox-replica-nic-guard.timer, via system.run (classic zabbix-agent, not agent2 -- AllowKey=system.run[*] already deployed by tasks/zabbix_agent_onboard.yml). is-enabled, not is-active -- checks the boot-time enablement, same reasoning the firewall template's own service checks use.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "systemd"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "2d0b0dfe300a419a99a6d3e53800c7fe",
+                "expression": "find(/Proxmox VE (Example Music)/system.run[systemctl is-enabled proxmox-replica-nic-guard.timer,wait],,\"like\",\"enabled\")=0",
+                "name": "Hey! {HOST.NAME} - proxmox-replica-nic-guard.timer is not enabled",
+                "priority": "WARNING",
+                "description": "proxmox-replica-nic-guard.timer isn't enabled. Re-run proxmox/site.yml with -e pve_force_full_onboard=true (50-systemd-units.yml is gated).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "systemd"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "177fc978c13c4af98c3811b7290db733",
+            "name": "Timer enabled: proxmox-zfs-vm-audit.timer",
+            "type": "ZABBIX_ACTIVE",
+            "key": "system.run[systemctl is-enabled proxmox-zfs-vm-audit.timer,wait]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "systemctl is-enabled proxmox-zfs-vm-audit.timer, via system.run (classic zabbix-agent, not agent2 -- AllowKey=system.run[*] already deployed by tasks/zabbix_agent_onboard.yml). is-enabled, not is-active -- checks the boot-time enablement, same reasoning the firewall template's own service checks use.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "systemd"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "e4e3e78fc55c4a95a0f9a3aa26e669c6",
+                "expression": "find(/Proxmox VE (Example Music)/system.run[systemctl is-enabled proxmox-zfs-vm-audit.timer,wait],,\"like\",\"enabled\")=0",
+                "name": "Hey! {HOST.NAME} - proxmox-zfs-vm-audit.timer is not enabled",
+                "priority": "WARNING",
+                "description": "proxmox-zfs-vm-audit.timer isn't enabled. Re-run proxmox/site.yml with -e pve_force_full_onboard=true (50-systemd-units.yml is gated).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "systemd"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "491dbae2ee6344c49ccf1aae618e2dfd",
+            "name": "vmbr1 (VLAN bridge) configured",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.regexp[/etc/network/interfaces,\"BEGIN ANSIBLE MANAGED BLOCK vmbr1\"]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Matches 36-vmbr1.yml's own marker comment in /etc/network/interfaces -- confirms the VLAN-aware VM bridge stanza is present (either Ansible-written or adopted from a pre-existing hand-written one).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "network"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "05758f60b2a945ff8a44de909fddc3b5",
+                "expression": "length(last(/Proxmox VE (Example Music)/vfs.file.regexp[/etc/network/interfaces,\"BEGIN ANSIBLE MANAGED BLOCK vmbr1\"]))=0",
+                "name": "Hey! {HOST.NAME} is missing the vmbr1 VLAN bridge config",
+                "priority": "WARNING",
+                "description": "Re-run proxmox/site.yml's 36-vmbr1.yml -- see its own header for the pve_vmbr1_uplink_iface requirement.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "network"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "92ec1b53d88744a7be77739cb603ef9e",
+            "name": "vmbr0 (management bridge): configured static",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.regexp[/etc/network/interfaces,\"iface vmbr0 inet static\"]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Matches 'iface vmbr0 inet static' in /etc/network/interfaces -- confirms the node's own management IP is static, not left on DHCP (bootstrap-new-node.yml writes this at onboarding time). Visibility only, no trigger -- a node mid-onboarding may legitimately still be on DHCP briefly.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "network"
+              }
+            ]
+          },
+          {
+            "uuid": "54e20a6206ca46c1b08dd782047d500d",
+            "name": "Pools: expected count (sites.csv rows)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "system.run[tail -n +2 /etc/example-music/sites.csv | wc -l,wait]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "Number of non-header rows in /etc/example-music/sites.csv -- one pool is expected per site (35-pools.yml).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "pools"
+              }
+            ]
+          },
+          {
+            "uuid": "ccc8091ce42a43ad8fdee4df998b906d",
+            "name": "Pools: actual count (pvesh)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "system.run[pvesh get /pools --output-format json | grep -o poolid | wc -l,wait]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "Number of pools pvesh actually reports. Compared against the expected-count item above.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "pools"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "074fe59c951c463a9bae45e225122555",
+                "expression": "last(/Proxmox VE (Example Music)/system.run[pvesh get /pools --output-format json | grep -o poolid | wc -l,wait])<last(/Proxmox VE (Example Music)/system.run[tail -n +2 /etc/example-music/sites.csv | wc -l,wait])",
+                "name": "Hey! {HOST.NAME} - fewer Proxmox pools than sites.csv rows",
+                "priority": "WARNING",
+                "description": "pvesh reports fewer pools than sites.csv has rows -- a site was added but its pool hasn't been created yet (35-pools.yml is run_once, cluster-wide -- re-run proxmox/site.yml against any one pvenode). Count comparison only -- doesn't identify WHICH site, and deliberately tolerates MORE pools than sites (35-pools.yml only ever adds pools, never removes, so a legacy/renamed site's old pool surviving isn't itself a fault).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "pools"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "242bd9b1bf73463da49b3c4b6ee63ca4",
+            "name": "ZFS rpool: ONLINE vdev (disk) count",
+            "type": "ZABBIX_ACTIVE",
+            "key": "system.run[\"zpool status rpool 2>/dev/null | grep -E '^\\s+\\S+\\s+ONLINE\\s+[0-9]+\\s+[0-9]+\\s+[0-9]+\\s*$' | grep -vE '^\\s+(rpool|mirror|raidz[123]?|spare|replacing|indirect|log|cache|special|dedup)(-[0-9]+)?\\s' | wc -l\",wait]",
+            "delay": "24h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "Same leaf-disk-counting regex as 00-preflight.yml's own one-time single-disk onboarding check (excludes pool-name/vdev-group lines rather than matching specific device-name patterns, so it's correct regardless of by-id vs. short kernel device naming) -- promoted here to an ongoing check, since a disk failing out of a mirror after onboarding is exactly the kind of thing routine monitoring should catch, not just a point-in-time gate.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "zfs"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "003aa4bab969475897fbc19cfb49c975",
+                "expression": "last(/Proxmox VE (Example Music)/system.run[\"zpool status rpool 2>/dev/null | grep -E '^\\s+\\S+\\s+ONLINE\\s+[0-9]+\\s+[0-9]+\\s+[0-9]+\\s*$' | grep -vE '^\\s+(rpool|mirror|raidz[123]?|spare|replacing|indirect|log|cache|special|dedup)(-[0-9]+)?\\s' | wc -l\",wait])<2",
+                "name": "Hey! {HOST.NAME} - ZFS rpool has no redundancy (< 2 disks)",
+                "priority": "WARNING",
+                "description": "rpool has fewer than 2 ONLINE vdevs -- no redundancy, will lose all data if the remaining disk fails. See docs/proxmox/zfs-raid0-to-raid1.md.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "zfs"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "9af425a7d88248bda7660f3053275186",
+            "name": "File exists: /usr/share/virt-tools/pvvxsvc.exe",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/virt-tools/pvvxsvc.exe]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/virt-tools/pvvxsvc.exe exists -- extracted from Fedora's mingw32-srvany RPM by 45-virt-tools.yml. KNOWN CAVEAT: 'not all mingw-srvany RPM builds ship both exes' (45-virt-tools.yml's own ignore_errors: true on this extraction) -- a missing exe here may be a real upstream-build gap, not necessarily something re-running the playbook fixes.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "virt-tools"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "ca7a6f33f1334c1d8ed45021ceaf9955",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/share/virt-tools/pvvxsvc.exe])=0",
+                "name": "Hey! {HOST.NAME} is missing pvvxsvc.exe (Windows V2V conversion prerequisite)",
+                "priority": "WARNING",
+                "description": "virt-v2v will abort Windows guest conversions without this. See 45-virt-tools.yml's own caveat about upstream RPM builds before assuming a simple re-run fixes it.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "virt-tools"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "c94f48ff236c4fdcad5f7358d12a4e68",
+            "name": "File exists: /usr/share/virt-tools/rhsrvany.exe",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/virt-tools/rhsrvany.exe]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/virt-tools/rhsrvany.exe exists -- extracted from Fedora's mingw32-srvany RPM by 45-virt-tools.yml. KNOWN CAVEAT: 'not all mingw-srvany RPM builds ship both exes' (45-virt-tools.yml's own ignore_errors: true on this extraction) -- a missing exe here may be a real upstream-build gap, not necessarily something re-running the playbook fixes.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "virt-tools"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "88ca19225cc54ac58b0e104115d55bc3",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/share/virt-tools/rhsrvany.exe])=0",
+                "name": "Hey! {HOST.NAME} is missing rhsrvany.exe (Windows V2V conversion prerequisite)",
+                "priority": "WARNING",
+                "description": "virt-v2v will abort Windows guest conversions without this. See 45-virt-tools.yml's own caveat about upstream RPM builds before assuming a simple re-run fixes it.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "virt-tools"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "57e99e1206c2460e9ad7a1077c01ced5",
+            "name": "Directory exists: /usr/share/virtio-win/vioscsi",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/virtio-win/vioscsi,dir]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if the VirtIO drivers ISO has been extracted (45-virt-tools.yml). Without this, virt-v2v falls back to emulated IDE/RTL8139 for converted Windows VMs.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "virt-tools"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "cf67d73990434bedbdebbe1552837264",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/share/virtio-win/vioscsi,dir])=0",
+                "name": "Hey! {HOST.NAME} is missing extracted VirtIO drivers",
+                "priority": "WARNING",
+                "description": "Re-run proxmox/site.yml's 45-virt-tools.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "virt-tools"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "fdb334bda0f4447495272efa3a93e6e2",
+            "name": "proxmoxbmc installed (DISABLED until pve_proxmoxbmc_deb_url is set)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/local/bin/proxmoxbmc]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if the proxmoxbmc binary exists. DISABLED -- pve_proxmoxbmc_deb_url defaults to empty in group_vars/pvenodes/main.yml (45-virt-tools.yml skips the whole install cleanly until a real .deb source is configured). Enable this item once that's actually set for a real node.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "virt-tools"
+              }
+            ],
+            "status": "DISABLED",
+            "triggers": [
+              {
+                "uuid": "b533879ac5534dc39e7563dcbf012868",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/local/bin/proxmoxbmc])=0",
+                "name": "Hey! {HOST.NAME} is missing proxmoxbmc",
+                "priority": "WARNING",
+                "description": "proxmoxbmc isn't installed. Re-run proxmox/site.yml's 45-virt-tools.yml (requires pve_proxmoxbmc_deb_url to be set).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "virt-tools"
+                  }
+                ],
+                "status": "DISABLED"
+              }
+            ]
+          },
+          {
+            "uuid": "a39d2d14fb184820aedb28b3f8df6c10",
+            "name": "proxmoxbmc service enabled (DISABLED until pve_proxmoxbmc_deb_url is set)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "system.run[systemctl is-enabled proxmoxbmc,wait]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "systemctl is-enabled proxmoxbmc. DISABLED -- same reason as the install-check item above.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "systemd"
+              }
+            ],
+            "status": "DISABLED",
+            "triggers": [
+              {
+                "uuid": "14260abe610c467f9ddf6f78c0da659d",
+                "expression": "find(/Proxmox VE (Example Music)/system.run[systemctl is-enabled proxmoxbmc,wait],,\"like\",\"enabled\")=0",
+                "name": "Hey! {HOST.NAME} - proxmoxbmc service is not enabled",
+                "priority": "WARNING",
+                "description": "proxmoxbmc service isn't enabled. Re-run proxmox/site.yml's 50-systemd-units.yml with -e pve_force_full_onboard=true.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "systemd"
+                  }
+                ],
+                "status": "DISABLED"
+              }
+            ]
+          },
+          {
+            "uuid": "eac08410943c42d99dc164f47832f03d",
+            "name": "File exists: /usr/share/kvm/WORKSTATION_25H2_DELL2.7_BIOS.440.ROM (DISABLED until pve_bios_rom_base_url is set)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/kvm/WORKSTATION_25H2_DELL2.7_BIOS.440.ROM]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/kvm/WORKSTATION_25H2_DELL2.7_BIOS.440.ROM exists. DISABLED -- pve_bios_rom_base_url defaults to empty (45-virt-tools.yml skips this download cleanly until a real source is configured). Enable once that's actually set.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "virt-tools"
+              }
+            ],
+            "status": "DISABLED",
+            "triggers": [
+              {
+                "uuid": "c3121d6bf6394c9faad4ae9cc46b00ba",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/share/kvm/WORKSTATION_25H2_DELL2.7_BIOS.440.ROM])=0",
+                "name": "Hey! {HOST.NAME} is missing BIOS ROM WORKSTATION_25H2_DELL2.7_BIOS.440.ROM",
+                "priority": "WARNING",
+                "description": "Re-run proxmox/site.yml's 45-virt-tools.yml (requires pve_bios_rom_base_url to be set).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "virt-tools"
+                  }
+                ],
+                "status": "DISABLED"
+              }
+            ]
+          },
+          {
+            "uuid": "e6d952f53c634c6ba5ea3805bc288aaf",
+            "name": "File exists: /usr/share/kvm/WORKSTATION_25H2_DELL2.7_EFI20-64.ROM (DISABLED until pve_bios_rom_base_url is set)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/kvm/WORKSTATION_25H2_DELL2.7_EFI20-64.ROM]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/kvm/WORKSTATION_25H2_DELL2.7_EFI20-64.ROM exists. DISABLED -- pve_bios_rom_base_url defaults to empty (45-virt-tools.yml skips this download cleanly until a real source is configured). Enable once that's actually set.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "virt-tools"
+              }
+            ],
+            "status": "DISABLED",
+            "triggers": [
+              {
+                "uuid": "adc8e6db51b849bf943d2823a0e0284e",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/share/kvm/WORKSTATION_25H2_DELL2.7_EFI20-64.ROM])=0",
+                "name": "Hey! {HOST.NAME} is missing BIOS ROM WORKSTATION_25H2_DELL2.7_EFI20-64.ROM",
+                "priority": "WARNING",
+                "description": "Re-run proxmox/site.yml's 45-virt-tools.yml (requires pve_bios_rom_base_url to be set).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "virt-tools"
+                  }
+                ],
+                "status": "DISABLED"
+              }
+            ]
+          },
+          {
+            "uuid": "07c14a81d05c42749421ba31a130301d",
+            "name": "File exists: /usr/share/kvm/WORKSTATION_25H2_DELL2.7_EFI64.ROM (DISABLED until pve_bios_rom_base_url is set)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/kvm/WORKSTATION_25H2_DELL2.7_EFI64.ROM]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/kvm/WORKSTATION_25H2_DELL2.7_EFI64.ROM exists. DISABLED -- pve_bios_rom_base_url defaults to empty (45-virt-tools.yml skips this download cleanly until a real source is configured). Enable once that's actually set.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "virt-tools"
+              }
+            ],
+            "status": "DISABLED",
+            "triggers": [
+              {
+                "uuid": "3ae2b88c3a3e47bc85678db1322ecf1c",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/share/kvm/WORKSTATION_25H2_DELL2.7_EFI64.ROM])=0",
+                "name": "Hey! {HOST.NAME} is missing BIOS ROM WORKSTATION_25H2_DELL2.7_EFI64.ROM",
+                "priority": "WARNING",
+                "description": "Re-run proxmox/site.yml's 45-virt-tools.yml (requires pve_bios_rom_base_url to be set).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "virt-tools"
+                  }
+                ],
+                "status": "DISABLED"
+              }
+            ]
+          },
+          {
+            "uuid": "32abfc8e963142cea19bbbe81d0cd859",
+            "name": "File exists: /usr/share/kvm/BIOS.440.ROM (DISABLED until pve_bios_rom_base_url is set)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/kvm/BIOS.440.ROM]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/kvm/BIOS.440.ROM exists. DISABLED -- pve_bios_rom_base_url defaults to empty (45-virt-tools.yml skips this download cleanly until a real source is configured). Enable once that's actually set.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "virt-tools"
+              }
+            ],
+            "status": "DISABLED",
+            "triggers": [
+              {
+                "uuid": "ce9468d3b6914553b0315b518d788945",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/share/kvm/BIOS.440.ROM])=0",
+                "name": "Hey! {HOST.NAME} is missing BIOS ROM BIOS.440.ROM",
+                "priority": "WARNING",
+                "description": "Re-run proxmox/site.yml's 45-virt-tools.yml (requires pve_bios_rom_base_url to be set).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "virt-tools"
+                  }
+                ],
+                "status": "DISABLED"
+              }
+            ]
+          },
+          {
+            "uuid": "04e7460ace5841249798e1648aeb00c4",
+            "name": "File exists: /usr/share/kvm/EFI20-64.ROM (DISABLED until pve_bios_rom_base_url is set)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/kvm/EFI20-64.ROM]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/kvm/EFI20-64.ROM exists. DISABLED -- pve_bios_rom_base_url defaults to empty (45-virt-tools.yml skips this download cleanly until a real source is configured). Enable once that's actually set.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "virt-tools"
+              }
+            ],
+            "status": "DISABLED",
+            "triggers": [
+              {
+                "uuid": "57a5097b2fcf45f18dec9e0bbf8ff780",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/share/kvm/EFI20-64.ROM])=0",
+                "name": "Hey! {HOST.NAME} is missing BIOS ROM EFI20-64.ROM",
+                "priority": "WARNING",
+                "description": "Re-run proxmox/site.yml's 45-virt-tools.yml (requires pve_bios_rom_base_url to be set).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "virt-tools"
+                  }
+                ],
+                "status": "DISABLED"
+              }
+            ]
+          },
+          {
+            "uuid": "8cddf7e65cb741a4898941fca8eedec5",
+            "name": "File exists: /usr/share/kvm/EFI64.ROM (DISABLED until pve_bios_rom_base_url is set)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/kvm/EFI64.ROM]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/kvm/EFI64.ROM exists. DISABLED -- pve_bios_rom_base_url defaults to empty (45-virt-tools.yml skips this download cleanly until a real source is configured). Enable once that's actually set.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "virt-tools"
+              }
+            ],
+            "status": "DISABLED",
+            "triggers": [
+              {
+                "uuid": "007fbb838ff14b3ab98d3f68c85ad969",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/usr/share/kvm/EFI64.ROM])=0",
+                "name": "Hey! {HOST.NAME} is missing BIOS ROM EFI64.ROM",
+                "priority": "WARNING",
+                "description": "Re-run proxmox/site.yml's 45-virt-tools.yml (requires pve_bios_rom_base_url to be set).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "virt-tools"
+                  }
+                ],
+                "status": "DISABLED"
+              }
+            ]
+          },
+          {
+            "uuid": "569d6fe48f1f41e2bdf1d85f99fb3b2c",
+            "name": "ansible user in kvm group",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.regexp[/etc/group,\"^kvm:.*\\bansible\\b\"]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Matched /etc/group line if ansible is in the kvm group (needed for virt-customize in cloud_templates.yml, 20-ansible-access.yml). Simple length()=0 trigger instead of a separate 0/1 boolean item.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "identity"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "d76d2da58e034893a3cbbd07df5dde7d",
+                "expression": "length(last(/Proxmox VE (Example Music)/vfs.file.regexp[/etc/group,\"^kvm:.*\\bansible\\b\"]))=0",
+                "name": "Hey! {HOST.NAME} - ansible user is not in the kvm group",
+                "priority": "WARNING",
+                "description": "Re-run proxmox/site.yml's 20-ansible-access.yml with -e pve_force_full_onboard=true (gated, only runs on first onboard by default).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "identity"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "082fe662ad154c47a272b25e96ddd1e6",
+            "name": "File exists: /etc/sudoers.d/ansible",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/etc/sudoers.d/ansible]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if the ansible sudoers drop-in exists (20-ansible-access.yml / first-boot.sh's own ansible-bootstrap sliver). NOT checked by the linuxtools template -- confirmed by re-reading its real item list, not assumed.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "identity"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "0447333c26d34c5ebd76d2b5df3d69a9",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/etc/sudoers.d/ansible])=0",
+                "name": "Hey! {HOST.NAME} is missing /etc/sudoers.d/ansible",
+                "priority": "WARNING",
+                "description": "Re-run proxmox/site.yml's 20-ansible-access.yml with -e pve_force_full_onboard=true.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "identity"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "9a36d103fced4f47bd3c1d264007e6e1",
+            "name": "File exists: /home/ansible/.ssh/authorized_keys",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/home/ansible/.ssh/authorized_keys]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if the ansible user's authorized_keys file exists (first-boot.sh's own ansible-bootstrap sliver, re-asserted by 20-ansible-access.yml). NOT checked by the linuxtools template -- confirmed by re-reading its real item list, not assumed.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "identity"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "cb148abaeb434f78a5366c80612ee1cf",
+                "expression": "last(/Proxmox VE (Example Music)/vfs.file.exists[/home/ansible/.ssh/authorized_keys])=0",
+                "name": "Hey! {HOST.NAME} is missing /home/ansible/.ssh/authorized_keys",
+                "priority": "WARNING",
+                "description": "Re-run proxmox/site.yml's 20-ansible-access.yml with -e pve_force_full_onboard=true.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "proxmox"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "identity"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "c37b443f9655496c94f5eeb3294bc918",
+            "name": "proxmorph: hardware sensor support",
+            "type": "ZABBIX_ACTIVE",
+            "key": "system.run[\"sensors -j 2>/dev/null | grep -qE 'coretemp-isa-|k10temp-pci-|nvme-pci-|drivetemp-scsi-|fan[0-9]*_input' && echo supported || echo unsupported\",wait]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Mirrors 46-proxmorph.yml's own detect_sensors() precondition check (same 4 chip-pattern families). 'unsupported' is a real hardware limitation on this specific box, not a fault -- visibility only, no trigger. The apt-hook exists check above (/etc/apt/apt.conf.d/99proxmorph) already covers whether proxmorph itself installed correctly.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "proxmox"
+              },
+              {
+                "tag": "scope",
+                "value": "proxmorph"
+              }
+            ]
+          }
+        ],
+        "macros": [
+          {
+            "macro": "{$NODEINFO.MAXAGE}",
+            "value": "2d",
+            "description": "How long nodeinfo.json can go without a fresh write before the staleness trigger fires. Override per-host if a host is deliberately on a less frequent Ansible run schedule."
+          },
+          {
+            "macro": "{$PROXMOX.OPEN_VM_TOOLS_EXPECTED}",
+            "value": "no",
+            "description": "Whether this node is itself a VMware guest (nested/test PVE, not a real bare-metal node) -- 10-packages.yml only installs open-vm-tools when systemd-detect-virt reports 'vmware'. Valid values: \"yes\" or \"no\". Default \"no\" matches the normal case (real hardware)."
+          },
+          {
+            "macro": "{$PROXMOX.CKSUM.CREATE_VM_PY}",
+            "value": "3272974997",
+            "description": "Expected cksum of bootstrap/web/proxmox/create-vm.py (computed via: cksum bootstrap/web/proxmox/create-vm.py | awk '{print $1}'). Update this macro's value whenever that file's real content changes."
+          },
+          {
+            "macro": "{$PROXMOX.CKSUM.CREATE_VM_TUI_PY}",
+            "value": "4175387279",
+            "description": "Expected cksum of bootstrap/web/proxmox/create-vm-tui.py (computed via: cksum bootstrap/web/proxmox/create-vm-tui.py | awk '{print $1}'). Update this macro's value whenever that file's real content changes."
+          },
+          {
+            "macro": "{$PROXMOX.CKSUM.CONVERT_V2V_PY}",
+            "value": "2834272395",
+            "description": "Expected cksum of bootstrap/web/proxmox/convert-v2v.py (computed via: cksum bootstrap/web/proxmox/convert-v2v.py | awk '{print $1}'). Update this macro's value whenever that file's real content changes."
+          },
+          {
+            "macro": "{$PROXMOX.CKSUM.MANAGE_POOL_PY}",
+            "value": "2332280877",
+            "description": "Expected cksum of bootstrap/web/proxmox/manage-pool.py (computed via: cksum bootstrap/web/proxmox/manage-pool.py | awk '{print $1}'). Update this macro's value whenever that file's real content changes."
+          },
+          {
+            "macro": "{$PROXMOX.CKSUM.SITE_INVENTORY_AUDIT_PY}",
+            "value": "3609385279",
+            "description": "Expected cksum of bootstrap/web/proxmox/site-inventory-audit.py (computed via: cksum bootstrap/web/proxmox/site-inventory-audit.py | awk '{print $1}'). Update this macro's value whenever that file's real content changes."
+          },
+          {
+            "macro": "{$PROXMOX.CKSUM.BULK_ISO_UPLOAD_PY}",
+            "value": "2363283465",
+            "description": "Expected cksum of bootstrap/web/proxmox/bulk_iso_upload.py (computed via: cksum bootstrap/web/proxmox/bulk_iso_upload.py | awk '{print $1}'). Update this macro's value whenever that file's real content changes."
+          },
+          {
+            "macro": "{$PROXMOX.CKSUM.PVE_BOOTORDER_PY}",
+            "value": "3416689301",
+            "description": "Expected cksum of bootstrap/web/proxmox/pve-bootorder.py (computed via: cksum bootstrap/web/proxmox/pve-bootorder.py | awk '{print $1}'). Update this macro's value whenever that file's real content changes."
+          },
+          {
+            "macro": "{$PROXMOX.CKSUM.VIRT_V2V_VMDP_SH}",
+            "value": "36764916",
+            "description": "Expected cksum of bootstrap/web/proxmox/virt-v2v-vmdp.sh (computed via: cksum bootstrap/web/proxmox/virt-v2v-vmdp.sh | awk '{print $1}'). Update this macro's value whenever that file's real content changes."
+          },
+          {
+            "macro": "{$PROXMOX.CKSUM.CREATE_PVE_USERS_PY}",
+            "value": "3128702084",
+            "description": "Expected cksum of bootstrap/web/proxmox/create-pve-users.py (computed via: cksum bootstrap/web/proxmox/create-pve-users.py | awk '{print $1}'). Update this macro's value whenever that file's real content changes."
+          },
+          {
+            "macro": "{$PROXMOX.CKSUM.ZFS_DISK_REPLACE_SH}",
+            "value": "3497376639",
+            "description": "Expected cksum of bootstrap/web/proxmox/zfs-disk-replace.sh (computed via: cksum bootstrap/web/proxmox/zfs-disk-replace.sh | awk '{print $1}'). Update this macro's value whenever that file's real content changes."
+          },
+          {
+            "macro": "{$PROXMOX.CKSUM.ENABLE_VM_TRIM_DISCARD_SH}",
+            "value": "42442725",
+            "description": "Expected cksum of ansible/playbooks/proxmox/files/enable_vm_trim_discard.sh (computed via: cksum ansible/playbooks/proxmox/files/enable_vm_trim_discard.sh | awk '{print $1}'). Update this macro's value whenever that file's real content changes."
+          },
+          {
+            "macro": "{$PROXMOX.CKSUM.PVE_MONTHLY_HOOVER_SH}",
+            "value": "3861992809",
+            "description": "Expected cksum of ansible/playbooks/proxmox/files/pve-monthly-hoover.sh (computed via: cksum ansible/playbooks/proxmox/files/pve-monthly-hoover.sh | awk '{print $1}'). Update this macro's value whenever that file's real content changes."
+          },
+          {
+            "macro": "{$PROXMOX.CKSUM.PVE_SNAPSHOT_CHECK_PY}",
+            "value": "555983063",
+            "description": "Expected cksum of ansible/playbooks/proxmox/files/pve-snapshot-check.py (computed via: cksum ansible/playbooks/proxmox/files/pve-snapshot-check.py | awk '{print $1}'). Update this macro's value whenever that file's real content changes."
+          },
+          {
+            "macro": "{$PROXMOX.CKSUM.PROXMOX_REPLICA_NIC_GUARD_PY}",
+            "value": "2812053718",
+            "description": "Expected cksum of ansible/playbooks/proxmox/files/proxmox-replica-nic-guard.py (computed via: cksum ansible/playbooks/proxmox/files/proxmox-replica-nic-guard.py | awk '{print $1}'). Update this macro's value whenever that file's real content changes."
+          },
+          {
+            "macro": "{$PROXMOX.CKSUM.PROXMOX_ZFS_VM_AUDIT_PY}",
+            "value": "1600381115",
+            "description": "Expected cksum of ansible/playbooks/proxmox/files/proxmox-zfs-vm-audit.py (computed via: cksum ansible/playbooks/proxmox/files/proxmox-zfs-vm-audit.py | awk '{print $1}'). Update this macro's value whenever that file's real content changes."
+          },
+          {
+            "macro": "{$PROXMOX.CKSUM.10_PVE}",
+            "value": "4127533224",
+            "description": "Expected cksum of ansible/playbooks/proxmox/files/10-pve-motd (computed via: cksum ansible/playbooks/proxmox/files/10-pve-motd | awk '{print $1}'). Update this macro's value whenever that file's real content changes."
+          }
+        ],
+        "tags": [
+          {
+            "tag": "target",
+            "value": "proxmox"
+          }
+        ]
+      }
+    ]
+  }
+}
