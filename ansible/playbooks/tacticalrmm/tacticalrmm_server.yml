@@ -2034,6 +2034,33 @@
           CELERYBEAT_PID_FILE="/rmm/api/tacticalrmm/beat.pid"
           CELERYBEAT_LOG_FILE="/var/log/celery/beat.log"
 
+    # Added 2026-10-20 (Robert, Zabbix companion-template shopping-list round) --
+    # no logrotate stanza existed anywhere in this playbook for /var/log/celery,
+    # CELERYD_LOG_LEVEL="ERROR" above keeps per-line volume low but nothing was
+    # actually bounding total size, a real unguarded growth path. copytruncate,
+    # not a postrotate restart/signal -- celery's own worker/beat processes don't
+    # reliably reopen log file descriptors on HUP (confirmed against celery's own
+    # docs: only some logging backends honour it), and restarting celery daily
+    # just to rotate a log is worse than the growth problem it would fix (drops
+    # in-flight tasks, matching this file's own Section 19 reasoning for why
+    # services use state: started rather than a blind restart). copytruncate
+    # accepts a brief gap between truncate and the next write landing at offset 0
+    # -- fine for a log file, not fine for a database, and there is no database
+    # here.
+    - name: "17 | Write logrotate config for celery logs"
+      copy:
+        dest: /etc/logrotate.d/tacticalrmm-celery
+        mode: "0644"
+        content: |
+          /var/log/celery/*.log {
+            daily
+            rotate 14
+            compress
+            missingok
+            notifempty
+            copytruncate
+          }
+
     - name: "17 | Write celery.service"
       copy:
         dest: /etc/systemd/system/celery.service
@@ -2245,6 +2272,32 @@
               }
           }
       notify: Reload nginx
+
+    # Added 2026-10-20 (Robert, Zabbix companion-template shopping-list round) --
+    # rmm.conf's own access_log/error_log directives above point outside
+    # /var/log/nginx entirely (tacticalrmm/private/log/), so the nginx.org
+    # package's own stock /etc/logrotate.d/nginx (globs /var/log/nginx/*.log
+    # only) never touches these -- a second real unguarded growth path,
+    # same class of gap as celery's. postrotate here (not copytruncate) --
+    # nginx itself correctly reopens log files on reload (unlike celery),
+    # confirmed standard nginx practice, so a graceful `systemctl reload`
+    # (already this file's own established handler, not a restart) is the
+    # right, non-disruptive way to pick up the renamed file.
+    - name: "18 | Write logrotate config for TacticalRMM's nginx private logs"
+      copy:
+        dest: /etc/logrotate.d/tacticalrmm-nginx
+        mode: "0644"
+        content: |
+          /rmm/api/tacticalrmm/tacticalrmm/private/log/*.log {
+            daily
+            rotate 14
+            compress
+            missingok
+            notifempty
+            postrotate
+              systemctl reload nginx >/dev/null 2>&1 || true
+            endscript
+          }
 
     - name: "18 | Symlink rmm.conf into sites-enabled"
       file:
@@ -2733,6 +2786,54 @@
         regexp: '^ADMIN_ENABLED = '
         line: "ADMIN_ENABLED = False"
       notify: Restart TacticalRMM backend services
+
+    # Added 2026-10-20 (Robert, Zabbix companion-template shopping-list round,
+    # category 13) -- Section 6's own nodeinfo_extra.rmm_install_status was
+    # written once, early (before Phases 2-13 had even run), with a hardcoded
+    # string that only ever described Phase 1's own state ("VM prep + Phase 1
+    # done -- see PLAN-tacticalrmmme.md"). Nothing anywhere in this file ever
+    # refreshed it, so every genuinely-fully-installed box has carried a
+    # permanently stale, misleading value in nodeinfo.json since the box was
+    # first bootstrapped -- a real content bug, not a template-design issue.
+    # Re-including nodeinfo.yml here is safe and non-destructive: it preserves
+    # bootstrapped_at/by and every other already-written field (its own
+    # 2026-10-17 fix), only nodeinfo_extra's own keys are refreshed. Re-stats
+    # nats-rmm.conf rather than trusting "20 | Check if NATS has already been
+    # initialised" above -- that var was registered BEFORE this same run's own
+    # "Run NATS init" task, so on a genuine first-ever run it would still read
+    # as absent even though the file now exists moments later.
+    - name: "20 | Re-check NATS init marker for an accurate final install status"
+      stat:
+        path: /rmm/api/tacticalrmm/nats-rmm.conf
+      register: _rmm_final_nats_check
+
+    - name: "20 | Resolve final rmm_install_status"
+      set_fact:
+        rmm_install_status: >-
+          {{
+            'fully installed -- all 13 phases complete (see PLAN-tacticalrmmme.md)'
+            if _rmm_final_nats_check.stat.exists
+            else 'partial install -- NATS init (Phase 13) not yet complete, see PLAN-tacticalrmmme.md'
+          }}
+
+    - name: "20 | Refresh nodeinfo.json with the final install status"
+      include_tasks: ../../tasks/nodeinfo.yml
+      vars:
+        nodeinfo_hostname: "{{ rmm_hostname }}"
+        nodeinfo_role: "tacticalrmm"
+        nodeinfo_site: "{{ rmm_site_code }}"
+        nodeinfo_city: "{{ rmm_site_city }}"
+        nodeinfo_country: "{{ rmm_site_country }}"
+        nodeinfo_country_code: "{{ rmm_site_country_code | default('') }}"
+        nodeinfo_entity: "{{ rmm_site_entity }}"
+        nodeinfo_office_name: "{{ rmm_site_office_name | default('') }}"
+        nodeinfo_street_address: "{{ rmm_site_street | default('') }}"
+        nodeinfo_postal_code: "{{ rmm_site_postal_code | default('') }}"
+        nodeinfo_environment: "{{ rmm_environment | default('production') }}"
+        nodeinfo_bootstrapped_by: "tacticalrmm_server.yml"
+        nodeinfo_extra:
+          static_ip: "{{ rmm_static_ip }}"
+          rmm_install_status: "{{ rmm_install_status }}"
 
     - name: "20 | Completion report"
       debug:
