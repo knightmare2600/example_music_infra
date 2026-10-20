@@ -1,0 +1,3504 @@
+{
+  "zabbix_export": {
+    "version": "7.0",
+    "template_groups": [
+      {
+        "uuid": "ccb6f6556776402c84ee18b8b9c87c10",
+        "name": "Templates/Example Music"
+      }
+    ],
+    "templates": [
+      {
+        "uuid": "a68ad820b348408e80c2c661cea8bdb7",
+        "template": "tacticalrmm_examplemusic",
+        "name": "TacticalRMM (Example Music)",
+        "description": "Companion template for ansible/playbooks/tacticalrmm/tacticalrmm_server.yml -- covers TacticalRMM AND its bundled MeshCentral in ONE template (Robert's explicit 2026-10-20 call: the standalone meshcentral playbook is retired, EXAMSHCLD001 decommissioned, TacticalRMM's own bundled instance is the real, live replacement; no separate meshcentral template was built). Copied from zabbix_template_bind9.json's own generator and extended with httptests (web scenarios) -- the FIRST template in this series to use that object type, following a shopping-list-first review of the full 2808-line playbook.\n\n*** DOES NOT STANDALONE-IMPORT *** -- same reasoning as bind9 (template 6): this template does NOT declare nodeinfo.json's master item or its 15-field base schema (every one of templates 1-5 still does, independently, a known deferred-fix backlog item -- see feedback_zabbix_duplicate_item_keys_across_templates.md). This template's one nodeinfo_extra item (section O) is a DEPENDENT item referencing linuxtools' own master key by name. Link the linuxtools template to any host before (or together with) this one.\n\nSECTIONS\n  A. Packages (12): rmm_base_packages minus common_packages overlap, plus the install-time functional packages (nginx/nodejs/postgresql-18/redis).\n  B. Systemd service state (11): is-active via system.run (classic agent only -- NOT the agent2-only systemd.unit.info key), anchored regexp trigger (avoids the 'active' being a substring of 'inactive' trap a plain 'like' match would hit).\n  C. Listening ports (7): 443/80/9235 confirmed directly from this playbook's own nginx configs; 5432/6379/4430 are each service's own well-known/configured default. NATS's own client port is UNCONFIRMED (nats-rmm.conf is generated dynamically, not templated anywhere) -- {$TACTICALRMM.NATS_PORT} macro defaults to NATS's documented default (4222), flagged for live confirmation. No UDP component anywhere in this stack.\n  D. Web scenarios (3, httptests): frontend/backend/MeshCentral vhosts, verify_peer/verify_host left at their documented default (0/skip -- the shared cert is self-signed by design, TRMM_INSECURE=True, so skip-verification is exactly the behaviour wanted; the two fields' own export-format string encoding wasn't confirmed against a real example, unlike follow_redirects, so they're omitted rather than guessed) -- doubles as a DNS-resolution check (category 14's own ask: bind9's template can't know whether an RMM subdomain SHOULD resolve, this one can). status_codes not pinned to one exact value -- NOT YET LIVE-TESTED, tune once real responses are seen. Triggers on the auto-created web.test.fail[<scenario>] item, not a manually-declared one.\n  E. Config/script files (12): 9 files (nginx.conf/celery.conf/7 systemd units) get exists+cksum -- their content is either fully static or templated only with a fixed group_vars constant (rmm_service_user), so a single expected cksum is genuinely stable; cksums computed by parsing the real YAML with PyYAML, never retyped by hand. The 3 nginx SITE configs are exists-only -- their content embeds live, per-host facts (rmm_domain/subdomains), no single stable expected value.\n  F. Secret-bearing files (4): exists-only (contents never read) + a mode-drift check (system.run + stat -- no native classic-agent key reads file permissions). Triggers on ANY drift from the expected mode, not just more-permissive.\n  G. Install markers (3): INFORMATION severity only -- install-phase completion, not an active-outage signal.\n  H. TLS certificate expiry: classic-agent has no built-in cert-expiry key (web.certificate.get is Zabbix AGENT 2 ONLY, confirmed against the real docs, not usable under this estate's classic-agent-only policy) -- system.run + openssl + date instead, same UserParameter-equivalent idiom already used everywhere else in this series. WARNING/HIGH two-stage trigger on the same item ({$TACTICALRMM.CERT_WARN_DAYS}/{$TACTICALRMM.CERT_HIGH_DAYS}).\n  I. UFW: count-based ALLOW-rule check (package + service-active already covered in A/B) -- not matched against exact status-output column formatting, not independently confirmed live.\n  J. PostgreSQL: DELIBERATELY no live psql existence check for the 2 DBs/roles -- the zabbix-agent OS user has no confirmed permission path to query PostgreSQL, and granting one would be a new security-relevant sudoers/pg_hba change, Robert's call to make, not assumed here. Service-active + port-listening (A/B/C) are the practical proxies.\n  K. Git repo drift (4): /rmm and /opt/trmm-community-scripts, both world-readable clones -- branch + dirty-count, same shape as the ansible-node template's own repo checks.\n  L. Python venv integrity: backend venv's own python binary exists.\n  M. Celery liveness (4): proc.num[] (a real classic-agent built-in key -- deliberately NOT a kill -0 pidfile check, which would silently misreport EPERM-under-a-different-UID as 'process doesn't exist', a real false-positive trap avoided here) beyond systemd's own 'active' state, which only proves the wrapper launched. Process-name patterns not independently confirmed live.\n  N. Log growth (2, with WARNING/HIGH two-stage triggers): no logrotate existed for celery or the backend vhost's nginx private logs before this round -- FIXED DIRECTLY in tacticalrmm_server.yml itself (Robert's explicit go-ahead, 2026-10-20). These items are the ongoing guard on top of that fix, {$TACTICALRMM.LOG_WARN_BYTES} for WARNING, double that for HIGH.\n  O. nodeinfo.json extras: static_ip only. rmm_install_status is deliberately excluded from monitoring (a human-readable sentence, not a stable monitorable value) -- but its underlying staleness bug (permanently describing Phase 1 only, on every box regardless of real completion) WAS fixed directly in tacticalrmm_server.yml's own Section 20, same round.\n\nNOT YET LIVE-IMPORTED OR LIVE-TESTED against a real Zabbix server or a real zabbix-agent -- same status as every other template in this series. The httptests block (section D) is this series' first use of that object type --  double-check it specifically on first import.\n\nIMPORT: configuration.import, rules: createMissing+updateExisting+deleteMissing on items/triggers/httptests, createMissing+updateExisting on template_groups/templates.",
+        "groups": [
+          {
+            "name": "Templates/Example Music"
+          }
+        ],
+        "items": [
+          {
+            "uuid": "8dc08120b6df4efd9c98d543d9cc3918",
+            "name": "Package installed: network-manager",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/network-manager/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/network-manager/copyright exists, 0 otherwise. Source: tacticalrmm_server.yml's rmm_base_packages + Sections 10/11's own apt installs.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "network-manager"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "20f5562df80d41aa8722494627731f1c",
+                "expression": "last(/TacticalRMM (Example Music)/vfs.file.exists[/usr/share/doc/network-manager/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing network-manager package",
+                "priority": "WARNING",
+                "description": "network-manager is expected on every TacticalRMM host but not installed. Re-run tacticalrmm_server.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "network-manager"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "16025588fa364e458d6a75397180098c",
+            "name": "Package installed: fail2ban",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/fail2ban/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/fail2ban/copyright exists, 0 otherwise. Source: tacticalrmm_server.yml's rmm_base_packages + Sections 10/11's own apt installs.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "fail2ban"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "e315c400b54b429e859180140497ddb9",
+                "expression": "last(/TacticalRMM (Example Music)/vfs.file.exists[/usr/share/doc/fail2ban/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing fail2ban package",
+                "priority": "WARNING",
+                "description": "fail2ban is expected on every TacticalRMM host but not installed. Re-run tacticalrmm_server.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "fail2ban"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "9939cce5920b4c5ab3fc92710c9b50f4",
+            "name": "Package installed: ufw",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/ufw/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/ufw/copyright exists, 0 otherwise. Source: tacticalrmm_server.yml's rmm_base_packages + Sections 10/11's own apt installs.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "ufw"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "01370e34d9094f81a4c976d09c238148",
+                "expression": "last(/TacticalRMM (Example Music)/vfs.file.exists[/usr/share/doc/ufw/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing ufw package",
+                "priority": "WARNING",
+                "description": "ufw is expected on every TacticalRMM host but not installed. Re-run tacticalrmm_server.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "ufw"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "ed2a1eb876934a0092d2a571eb1c57e6",
+            "name": "Package installed: ca-certificates",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/ca-certificates/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/ca-certificates/copyright exists, 0 otherwise. Source: tacticalrmm_server.yml's rmm_base_packages + Sections 10/11's own apt installs.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "ca-certificates"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "6524c035ea574dd784df6c1e2869f935",
+                "expression": "last(/TacticalRMM (Example Music)/vfs.file.exists[/usr/share/doc/ca-certificates/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing ca-certificates package",
+                "priority": "WARNING",
+                "description": "ca-certificates is expected on every TacticalRMM host but not installed. Re-run tacticalrmm_server.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "ca-certificates"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "96fc353761654da88bb12eaecda171a9",
+            "name": "Package installed: gnupg",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/gnupg/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/gnupg/copyright exists, 0 otherwise. Source: tacticalrmm_server.yml's rmm_base_packages + Sections 10/11's own apt installs.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "gnupg"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "83a0c90e0fe14e14af200fa84882db9f",
+                "expression": "last(/TacticalRMM (Example Music)/vfs.file.exists[/usr/share/doc/gnupg/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing gnupg package",
+                "priority": "WARNING",
+                "description": "gnupg is expected on every TacticalRMM host but not installed. Re-run tacticalrmm_server.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "gnupg"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "c99d3f8574b8419085b7ea1840b4962d",
+            "name": "Package installed: lsb-release",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/lsb-release/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/lsb-release/copyright exists, 0 otherwise. Source: tacticalrmm_server.yml's rmm_base_packages + Sections 10/11's own apt installs.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "lsb-release"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "c3cb48d1b66c4f21aaeabcbdbab30174",
+                "expression": "last(/TacticalRMM (Example Music)/vfs.file.exists[/usr/share/doc/lsb-release/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing lsb-release package",
+                "priority": "WARNING",
+                "description": "lsb-release is expected on every TacticalRMM host but not installed. Re-run tacticalrmm_server.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "lsb-release"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "899aa3b87c44452e88d0b682d3655707",
+            "name": "Package installed: dirmngr",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/dirmngr/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/dirmngr/copyright exists, 0 otherwise. Source: tacticalrmm_server.yml's rmm_base_packages + Sections 10/11's own apt installs.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "dirmngr"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "d7038ae50dde4955aa08bae87742a6c6",
+                "expression": "last(/TacticalRMM (Example Music)/vfs.file.exists[/usr/share/doc/dirmngr/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing dirmngr package",
+                "priority": "WARNING",
+                "description": "dirmngr is expected on every TacticalRMM host but not installed. Re-run tacticalrmm_server.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "dirmngr"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "2acdd0e72484425b8e6896ddc02d4fce",
+            "name": "Package installed: openssl",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/openssl/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/openssl/copyright exists, 0 otherwise. Source: tacticalrmm_server.yml's rmm_base_packages + Sections 10/11's own apt installs.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "openssl"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "62064fda34b44012833a2ce8f633a963",
+                "expression": "last(/TacticalRMM (Example Music)/vfs.file.exists[/usr/share/doc/openssl/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing openssl package",
+                "priority": "WARNING",
+                "description": "openssl is expected on every TacticalRMM host but not installed. Re-run tacticalrmm_server.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "openssl"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "e7c59567fba64e7a8641a828451fdcae",
+            "name": "Package installed: nginx",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/nginx/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/nginx/copyright exists, 0 otherwise. Source: tacticalrmm_server.yml's rmm_base_packages + Sections 10/11's own apt installs.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "nginx"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "872b20356a3342ed97f81bed5a44aec7",
+                "expression": "last(/TacticalRMM (Example Music)/vfs.file.exists[/usr/share/doc/nginx/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing nginx package",
+                "priority": "WARNING",
+                "description": "nginx is expected on every TacticalRMM host but not installed. Re-run tacticalrmm_server.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "nginx"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "8d67362c58e649d4aecdde6e19887d40",
+            "name": "Package installed: nodejs",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/nodejs/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/nodejs/copyright exists, 0 otherwise. Source: tacticalrmm_server.yml's rmm_base_packages + Sections 10/11's own apt installs.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "nodejs"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "ff9de90db979438ea2819658fd55a706",
+                "expression": "last(/TacticalRMM (Example Music)/vfs.file.exists[/usr/share/doc/nodejs/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing nodejs package",
+                "priority": "WARNING",
+                "description": "nodejs is expected on every TacticalRMM host but not installed. Re-run tacticalrmm_server.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "nodejs"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "f438a4216549429cb730c7781c68d013",
+            "name": "Package installed: postgresql-18",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/postgresql-18/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/postgresql-18/copyright exists, 0 otherwise. Source: tacticalrmm_server.yml's rmm_base_packages + Sections 10/11's own apt installs.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "postgresql-18"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "3308553e51b747ccafb67618b005ccfd",
+                "expression": "last(/TacticalRMM (Example Music)/vfs.file.exists[/usr/share/doc/postgresql-18/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing postgresql-18 package",
+                "priority": "WARNING",
+                "description": "postgresql-18 is expected on every TacticalRMM host but not installed. Re-run tacticalrmm_server.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "postgresql-18"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "3441c7eeed4a479b817d1aaad4a51b34",
+            "name": "Package installed: redis",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/redis/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/redis/copyright exists, 0 otherwise. Source: tacticalrmm_server.yml's rmm_base_packages + Sections 10/11's own apt installs.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "redis"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "f45531d5f8ca40319a07848f63667ae5",
+                "expression": "last(/TacticalRMM (Example Music)/vfs.file.exists[/usr/share/doc/redis/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing redis package",
+                "priority": "WARNING",
+                "description": "redis is expected on every TacticalRMM host but not installed. Re-run tacticalrmm_server.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "redis"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "cec518f42fbe4aaa923dbbcd6e7ac425",
+            "name": "Service active: rmm",
+            "type": "ZABBIX_ACTIVE",
+            "key": "system.run[systemctl is-active rmm,wait]",
+            "delay": "5m",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "systemctl is-active rmm, via system.run (classic zabbix-agent, AllowKey=system.run[*] already deployed by tasks/zabbix_agent_onboard.yml). Trigger uses an anchored regexp (^active$), not a substring 'like' match -- 'active' is a literal substring of 'inactive', a plain like-match would wrongly pass a stopped service.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "systemd"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "7420d3d62de14b5dbb8e46e77c04f335",
+                "expression": "find(/TacticalRMM (Example Music)/system.run[systemctl is-active rmm,wait],,\"regexp\",\"^active$\")=0",
+                "name": "Hey! {HOST.NAME} - rmm is not active",
+                "priority": "HIGH",
+                "description": "rmm is not reporting active (stopped/failed/activating). Check: systemctl status rmm && journalctl -u rmm -n 100.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "systemd"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "d05bf879a26b4493afcb6dc13dcb4e68",
+            "name": "Service active: daphne",
+            "type": "ZABBIX_ACTIVE",
+            "key": "system.run[systemctl is-active daphne,wait]",
+            "delay": "5m",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "systemctl is-active daphne, via system.run (classic zabbix-agent, AllowKey=system.run[*] already deployed by tasks/zabbix_agent_onboard.yml). Trigger uses an anchored regexp (^active$), not a substring 'like' match -- 'active' is a literal substring of 'inactive', a plain like-match would wrongly pass a stopped service.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "systemd"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "4d075f8629364eb8910fe7768863ca48",
+                "expression": "find(/TacticalRMM (Example Music)/system.run[systemctl is-active daphne,wait],,\"regexp\",\"^active$\")=0",
+                "name": "Hey! {HOST.NAME} - daphne is not active",
+                "priority": "HIGH",
+                "description": "daphne is not reporting active (stopped/failed/activating). Check: systemctl status daphne && journalctl -u daphne -n 100.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "systemd"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "f7e0bbb05c744c7b9357c7b28556418f",
+            "name": "Service active: nats",
+            "type": "ZABBIX_ACTIVE",
+            "key": "system.run[systemctl is-active nats,wait]",
+            "delay": "5m",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "systemctl is-active nats, via system.run (classic zabbix-agent, AllowKey=system.run[*] already deployed by tasks/zabbix_agent_onboard.yml). Trigger uses an anchored regexp (^active$), not a substring 'like' match -- 'active' is a literal substring of 'inactive', a plain like-match would wrongly pass a stopped service.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "systemd"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "a74518f4b40a4662a13cdcae511839a7",
+                "expression": "find(/TacticalRMM (Example Music)/system.run[systemctl is-active nats,wait],,\"regexp\",\"^active$\")=0",
+                "name": "Hey! {HOST.NAME} - nats is not active",
+                "priority": "HIGH",
+                "description": "nats is not reporting active (stopped/failed/activating). Check: systemctl status nats && journalctl -u nats -n 100.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "systemd"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "fb357d9f553242109dd032e585bafff9",
+            "name": "Service active: nats-api",
+            "type": "ZABBIX_ACTIVE",
+            "key": "system.run[systemctl is-active nats-api,wait]",
+            "delay": "5m",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "systemctl is-active nats-api, via system.run (classic zabbix-agent, AllowKey=system.run[*] already deployed by tasks/zabbix_agent_onboard.yml). Trigger uses an anchored regexp (^active$), not a substring 'like' match -- 'active' is a literal substring of 'inactive', a plain like-match would wrongly pass a stopped service.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "systemd"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "db22dbf7c359498bb6543389f78406f4",
+                "expression": "find(/TacticalRMM (Example Music)/system.run[systemctl is-active nats-api,wait],,\"regexp\",\"^active$\")=0",
+                "name": "Hey! {HOST.NAME} - nats-api is not active",
+                "priority": "HIGH",
+                "description": "nats-api is not reporting active (stopped/failed/activating). Check: systemctl status nats-api && journalctl -u nats-api -n 100.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "systemd"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "2ea1ccbffa864e78855672ac0e9e3b81",
+            "name": "Service active: celery",
+            "type": "ZABBIX_ACTIVE",
+            "key": "system.run[systemctl is-active celery,wait]",
+            "delay": "5m",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "systemctl is-active celery, via system.run (classic zabbix-agent, AllowKey=system.run[*] already deployed by tasks/zabbix_agent_onboard.yml). Trigger uses an anchored regexp (^active$), not a substring 'like' match -- 'active' is a literal substring of 'inactive', a plain like-match would wrongly pass a stopped service.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "systemd"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "6686798e21ca464aa705836df9358407",
+                "expression": "find(/TacticalRMM (Example Music)/system.run[systemctl is-active celery,wait],,\"regexp\",\"^active$\")=0",
+                "name": "Hey! {HOST.NAME} - celery is not active",
+                "priority": "HIGH",
+                "description": "celery is not reporting active (stopped/failed/activating). Check: systemctl status celery && journalctl -u celery -n 100.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "systemd"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "9973bedbaa054df7b433a0b151b31b1b",
+            "name": "Service active: celerybeat",
+            "type": "ZABBIX_ACTIVE",
+            "key": "system.run[systemctl is-active celerybeat,wait]",
+            "delay": "5m",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "systemctl is-active celerybeat, via system.run (classic zabbix-agent, AllowKey=system.run[*] already deployed by tasks/zabbix_agent_onboard.yml). Trigger uses an anchored regexp (^active$), not a substring 'like' match -- 'active' is a literal substring of 'inactive', a plain like-match would wrongly pass a stopped service.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "systemd"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "cab722f55e5145f5bf13ecc37b4c4568",
+                "expression": "find(/TacticalRMM (Example Music)/system.run[systemctl is-active celerybeat,wait],,\"regexp\",\"^active$\")=0",
+                "name": "Hey! {HOST.NAME} - celerybeat is not active",
+                "priority": "HIGH",
+                "description": "celerybeat is not reporting active (stopped/failed/activating). Check: systemctl status celerybeat && journalctl -u celerybeat -n 100.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "systemd"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "d80dfd9b851f4fb9ba312d02fc6f7630",
+            "name": "Service active: meshcentral",
+            "type": "ZABBIX_ACTIVE",
+            "key": "system.run[systemctl is-active meshcentral,wait]",
+            "delay": "5m",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "systemctl is-active meshcentral, via system.run (classic zabbix-agent, AllowKey=system.run[*] already deployed by tasks/zabbix_agent_onboard.yml). Trigger uses an anchored regexp (^active$), not a substring 'like' match -- 'active' is a literal substring of 'inactive', a plain like-match would wrongly pass a stopped service.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "systemd"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "dd82c13285904a0594137a1ab6cca4fc",
+                "expression": "find(/TacticalRMM (Example Music)/system.run[systemctl is-active meshcentral,wait],,\"regexp\",\"^active$\")=0",
+                "name": "Hey! {HOST.NAME} - meshcentral is not active",
+                "priority": "HIGH",
+                "description": "meshcentral is not reporting active (stopped/failed/activating). Check: systemctl status meshcentral && journalctl -u meshcentral -n 100.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "systemd"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "956212e905fe447eba49675398ed7a98",
+            "name": "Service active: nginx",
+            "type": "ZABBIX_ACTIVE",
+            "key": "system.run[systemctl is-active nginx,wait]",
+            "delay": "5m",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "systemctl is-active nginx, via system.run (classic zabbix-agent, AllowKey=system.run[*] already deployed by tasks/zabbix_agent_onboard.yml). Trigger uses an anchored regexp (^active$), not a substring 'like' match -- 'active' is a literal substring of 'inactive', a plain like-match would wrongly pass a stopped service.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "systemd"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "fe26001cc0ba4494a1271ee1f73dedbc",
+                "expression": "find(/TacticalRMM (Example Music)/system.run[systemctl is-active nginx,wait],,\"regexp\",\"^active$\")=0",
+                "name": "Hey! {HOST.NAME} - nginx is not active",
+                "priority": "HIGH",
+                "description": "nginx is not reporting active (stopped/failed/activating). Check: systemctl status nginx && journalctl -u nginx -n 100.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "systemd"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "53d7ce4883c4443da485b438c0b62840",
+            "name": "Service active: postgresql",
+            "type": "ZABBIX_ACTIVE",
+            "key": "system.run[systemctl is-active postgresql,wait]",
+            "delay": "5m",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "systemctl is-active postgresql, via system.run (classic zabbix-agent, AllowKey=system.run[*] already deployed by tasks/zabbix_agent_onboard.yml). Trigger uses an anchored regexp (^active$), not a substring 'like' match -- 'active' is a literal substring of 'inactive', a plain like-match would wrongly pass a stopped service.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "systemd"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "995897e55202443cb1cb831d7d147226",
+                "expression": "find(/TacticalRMM (Example Music)/system.run[systemctl is-active postgresql,wait],,\"regexp\",\"^active$\")=0",
+                "name": "Hey! {HOST.NAME} - postgresql is not active",
+                "priority": "HIGH",
+                "description": "postgresql is not reporting active (stopped/failed/activating). Check: systemctl status postgresql && journalctl -u postgresql -n 100.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "systemd"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "0867c3db0774443bb2eadd3caf161087",
+            "name": "Service active: redis-server",
+            "type": "ZABBIX_ACTIVE",
+            "key": "system.run[systemctl is-active redis-server,wait]",
+            "delay": "5m",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "systemctl is-active redis-server, via system.run (classic zabbix-agent, AllowKey=system.run[*] already deployed by tasks/zabbix_agent_onboard.yml). Trigger uses an anchored regexp (^active$), not a substring 'like' match -- 'active' is a literal substring of 'inactive', a plain like-match would wrongly pass a stopped service.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "systemd"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "b500fb14bbda4db0ae226577c3330cdc",
+                "expression": "find(/TacticalRMM (Example Music)/system.run[systemctl is-active redis-server,wait],,\"regexp\",\"^active$\")=0",
+                "name": "Hey! {HOST.NAME} - redis-server is not active",
+                "priority": "HIGH",
+                "description": "redis-server is not reporting active (stopped/failed/activating). Check: systemctl status redis-server && journalctl -u redis-server -n 100.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "systemd"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "0f46dffe5d1f44c0a3a81333edddfca3",
+            "name": "Service active: ufw",
+            "type": "ZABBIX_ACTIVE",
+            "key": "system.run[systemctl is-active ufw,wait]",
+            "delay": "5m",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "systemctl is-active ufw, via system.run (classic zabbix-agent, AllowKey=system.run[*] already deployed by tasks/zabbix_agent_onboard.yml). Trigger uses an anchored regexp (^active$), not a substring 'like' match -- 'active' is a literal substring of 'inactive', a plain like-match would wrongly pass a stopped service.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "systemd"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "0cc0537313204514957e579b576a8d1e",
+                "expression": "find(/TacticalRMM (Example Music)/system.run[systemctl is-active ufw,wait],,\"regexp\",\"^active$\")=0",
+                "name": "Hey! {HOST.NAME} - ufw is not active",
+                "priority": "WARNING",
+                "description": "ufw is not reporting active (stopped/failed/activating). Check: systemctl status ufw && journalctl -u ufw -n 100.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "systemd"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "fbca13249b1d40778862efed9e523838",
+            "name": "TCP port 443 accepting connections (nginx HTTPS (all 3 vhosts share it via SNI))",
+            "type": "ZABBIX_ACTIVE",
+            "key": "net.tcp.port[,443]",
+            "delay": "10m",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if a local TCP connection to port 443 succeeds -- nginx HTTPS (all 3 vhosts share it via SNI).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "listener"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "85c11f3ae02747cabc0f8c1af395cda1",
+                "expression": "last(/TacticalRMM (Example Music)/net.tcp.port[,443])=0",
+                "name": "Hey! {HOST.NAME} - port 443 is not accepting connections (nginx HTTPS (all 3 vhosts share it via SNI))",
+                "priority": "HIGH",
+                "description": "TCP/443 isn't accepting local connections. nginx HTTPS (all 3 vhosts share it via SNI).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "listener"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "25196c5cdcc64fea8ba27cc15498166f",
+            "name": "TCP port 80 accepting connections (nginx HTTP (redirect only))",
+            "type": "ZABBIX_ACTIVE",
+            "key": "net.tcp.port[,80]",
+            "delay": "10m",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if a local TCP connection to port 80 succeeds -- nginx HTTP (redirect only).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "listener"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "6019e310397c4944ad11b428164590b3",
+                "expression": "last(/TacticalRMM (Example Music)/net.tcp.port[,80])=0",
+                "name": "Hey! {HOST.NAME} - port 80 is not accepting connections (nginx HTTP (redirect only))",
+                "priority": "HIGH",
+                "description": "TCP/80 isn't accepting local connections. nginx HTTP (redirect only).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "listener"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "dc18cc83ce774e3196cbf9759568f5f5",
+            "name": "TCP port 5432 accepting connections (PostgreSQL)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "net.tcp.port[,5432]",
+            "delay": "10m",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if a local TCP connection to port 5432 succeeds -- PostgreSQL.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "listener"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "8a2860d977294f78abc9becb2d3815a9",
+                "expression": "last(/TacticalRMM (Example Music)/net.tcp.port[,5432])=0",
+                "name": "Hey! {HOST.NAME} - port 5432 is not accepting connections (PostgreSQL)",
+                "priority": "HIGH",
+                "description": "TCP/5432 isn't accepting local connections. PostgreSQL.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "listener"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "70424c0cb84248faba74cf14b5da1faa",
+            "name": "TCP port 6379 accepting connections (Redis)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "net.tcp.port[,6379]",
+            "delay": "10m",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if a local TCP connection to port 6379 succeeds -- Redis.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "listener"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "88d6b47eb1c74640893582df533eed80",
+                "expression": "last(/TacticalRMM (Example Music)/net.tcp.port[,6379])=0",
+                "name": "Hey! {HOST.NAME} - port 6379 is not accepting connections (Redis)",
+                "priority": "HIGH",
+                "description": "TCP/6379 isn't accepting local connections. Redis.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "listener"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "cc93c4d95d0642139fdb62be99c62c14",
+            "name": "TCP port 4430 accepting connections (MeshCentral internal (config.json's own port))",
+            "type": "ZABBIX_ACTIVE",
+            "key": "net.tcp.port[,4430]",
+            "delay": "10m",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if a local TCP connection to port 4430 succeeds -- MeshCentral internal (config.json's own port).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "listener"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "4c163f3c8b0b41f390e4ee1d77f0106b",
+                "expression": "last(/TacticalRMM (Example Music)/net.tcp.port[,4430])=0",
+                "name": "Hey! {HOST.NAME} - port 4430 is not accepting connections (MeshCentral internal (config.json's own port))",
+                "priority": "HIGH",
+                "description": "TCP/4430 isn't accepting local connections. MeshCentral internal (config.json's own port).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "listener"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "7ca0ad60068646a18d28217fe4481c40",
+            "name": "TCP port 9235 accepting connections (NATS websocket proxy target (confirmed directly in rmm.conf's /natsws location))",
+            "type": "ZABBIX_ACTIVE",
+            "key": "net.tcp.port[,9235]",
+            "delay": "10m",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if a local TCP connection to port 9235 succeeds -- NATS websocket proxy target (confirmed directly in rmm.conf's /natsws location).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "listener"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "143e4dee20c54b7294b4ab7831156970",
+                "expression": "last(/TacticalRMM (Example Music)/net.tcp.port[,9235])=0",
+                "name": "Hey! {HOST.NAME} - port 9235 is not accepting connections (NATS websocket proxy target (confirmed directly in rmm.conf's /natsws location))",
+                "priority": "HIGH",
+                "description": "TCP/9235 isn't accepting local connections. NATS websocket proxy target (confirmed directly in rmm.conf's /natsws location).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "listener"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "ca03f4e939f5495280783afd9c156487",
+            "name": "TCP port {$TACTICALRMM.NATS_PORT} accepting connections (NATS client port, UNCONFIRMED default)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "net.tcp.port[,{$TACTICALRMM.NATS_PORT}]",
+            "delay": "10m",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if a local TCP connection to {$TACTICALRMM.NATS_PORT} succeeds. Default value (4222) is NATS's own documented default client port -- NOT independently confirmed against this box's real nats-rmm.conf, which is generated dynamically by manage.py reload_nats() and not templated anywhere in this repo. Confirm live and correct the macro if the real box uses something else.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "listener"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "74c9f9b23ea647479f3ca869a0dd86d9",
+                "expression": "last(/TacticalRMM (Example Music)/net.tcp.port[,{$TACTICALRMM.NATS_PORT}])=0",
+                "name": "Hey! {HOST.NAME} - NATS client port not accepting connections",
+                "priority": "HIGH",
+                "description": "TCP/{$TACTICALRMM.NATS_PORT} isn't accepting local connections -- check nats.service, and confirm this macro still matches the real nats-rmm.conf port.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "listener"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "6334f2187a684977971295b791cf1414",
+            "name": "File exists: /etc/nginx/nginx.conf",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/etc/nginx/nginx.conf]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /etc/nginx/nginx.conf exists (tacticalrmm_server.yml's own write task).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "config"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "f59f5742655a4fbbb6b789963d6855c3",
+                "expression": "last(/TacticalRMM (Example Music)/vfs.file.exists[/etc/nginx/nginx.conf])=0",
+                "name": "Hey! {HOST.NAME} is missing /etc/nginx/nginx.conf",
+                "priority": "WARNING",
+                "description": "Re-run tacticalrmm_server.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "config"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "2bf8948809c2405db82feb05e7c86205",
+            "name": "Checksum: /etc/nginx/nginx.conf",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.cksum[/etc/nginx/nginx.conf]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "cksum of /etc/nginx/nginx.conf, compared against {$NGINXCONF} (3714063139, 663 bytes -- computed by parsing tacticalrmm_server.yml's own real YAML and rendering its only substitution, rmm_service_user=tacticalrmm, a fixed group_vars constant).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "config"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "4dab2914c484410ab84b060e7a3ed0d1",
+                "expression": "last(/TacticalRMM (Example Music)/vfs.file.cksum[/etc/nginx/nginx.conf])<>{$NGINXCONF}",
+                "name": "Hey! {HOST.NAME} - /etc/nginx/nginx.conf checksum doesn't match the committed source",
+                "priority": "WARNING",
+                "description": "/etc/nginx/nginx.conf's on-disk checksum differs from {$NGINXCONF} -- hand-edited, or this node hasn't had tacticalrmm_server.yml re-run since the source last changed.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "config"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /etc/nginx/nginx.conf",
+                    "expression": "last(/TacticalRMM (Example Music)/vfs.file.exists[/etc/nginx/nginx.conf])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "2d782235b6724c4093f15e4be895fbfe",
+            "name": "File exists: /etc/conf.d/celery.conf",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/etc/conf.d/celery.conf]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /etc/conf.d/celery.conf exists (tacticalrmm_server.yml's own write task).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "config"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "4807195319074ddd955fd297ab0f8e74",
+                "expression": "last(/TacticalRMM (Example Music)/vfs.file.exists[/etc/conf.d/celery.conf])=0",
+                "name": "Hey! {HOST.NAME} is missing /etc/conf.d/celery.conf",
+                "priority": "WARNING",
+                "description": "Re-run tacticalrmm_server.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "config"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "bba991181b104ba5a63ae71a2ab0ccac",
+            "name": "Checksum: /etc/conf.d/celery.conf",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.cksum[/etc/conf.d/celery.conf]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "cksum of /etc/conf.d/celery.conf, compared against {$CELERYCONF} (4156308549, 376 bytes -- computed by parsing tacticalrmm_server.yml's own real YAML and rendering its only substitution, rmm_service_user=tacticalrmm, a fixed group_vars constant).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "config"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "2ffbd652b05041589ec5d045ca7adbdf",
+                "expression": "last(/TacticalRMM (Example Music)/vfs.file.cksum[/etc/conf.d/celery.conf])<>{$CELERYCONF}",
+                "name": "Hey! {HOST.NAME} - /etc/conf.d/celery.conf checksum doesn't match the committed source",
+                "priority": "WARNING",
+                "description": "/etc/conf.d/celery.conf's on-disk checksum differs from {$CELERYCONF} -- hand-edited, or this node hasn't had tacticalrmm_server.yml re-run since the source last changed.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "config"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /etc/conf.d/celery.conf",
+                    "expression": "last(/TacticalRMM (Example Music)/vfs.file.exists[/etc/conf.d/celery.conf])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "37fa522b56a94cd7a0a0d082cdf144bf",
+            "name": "File exists: /etc/systemd/system/rmm.service",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/etc/systemd/system/rmm.service]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /etc/systemd/system/rmm.service exists (tacticalrmm_server.yml's own write task).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "config"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "9afd287852c04f8f961756982d0e4910",
+                "expression": "last(/TacticalRMM (Example Music)/vfs.file.exists[/etc/systemd/system/rmm.service])=0",
+                "name": "Hey! {HOST.NAME} is missing /etc/systemd/system/rmm.service",
+                "priority": "WARNING",
+                "description": "Re-run tacticalrmm_server.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "config"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "9607a90f38a342a0b81b042fd4421ecf",
+            "name": "Checksum: /etc/systemd/system/rmm.service",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.cksum[/etc/systemd/system/rmm.service]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "cksum of /etc/systemd/system/rmm.service, compared against {$RMMSERVICE} (4200253370, 377 bytes -- computed by parsing tacticalrmm_server.yml's own real YAML and rendering its only substitution, rmm_service_user=tacticalrmm, a fixed group_vars constant).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "config"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "75f6bdd764a944a19ba85fbfa46e9db1",
+                "expression": "last(/TacticalRMM (Example Music)/vfs.file.cksum[/etc/systemd/system/rmm.service])<>{$RMMSERVICE}",
+                "name": "Hey! {HOST.NAME} - /etc/systemd/system/rmm.service checksum doesn't match the committed source",
+                "priority": "WARNING",
+                "description": "/etc/systemd/system/rmm.service's on-disk checksum differs from {$RMMSERVICE} -- hand-edited, or this node hasn't had tacticalrmm_server.yml re-run since the source last changed.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "config"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /etc/systemd/system/rmm.service",
+                    "expression": "last(/TacticalRMM (Example Music)/vfs.file.exists[/etc/systemd/system/rmm.service])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "9cab8145d67d497999d3a867e4898cb4",
+            "name": "File exists: /etc/systemd/system/daphne.service",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/etc/systemd/system/daphne.service]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /etc/systemd/system/daphne.service exists (tacticalrmm_server.yml's own write task).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "config"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "7fa797bb51724b41b6ccfed83647480d",
+                "expression": "last(/TacticalRMM (Example Music)/vfs.file.exists[/etc/systemd/system/daphne.service])=0",
+                "name": "Hey! {HOST.NAME} is missing /etc/systemd/system/daphne.service",
+                "priority": "WARNING",
+                "description": "Re-run tacticalrmm_server.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "config"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "de312520c0234b79bf379a753cddb19b",
+            "name": "Checksum: /etc/systemd/system/daphne.service",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.cksum[/etc/systemd/system/daphne.service]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "cksum of /etc/systemd/system/daphne.service, compared against {$DAPHNESERVICE} (327507170, 493 bytes -- computed by parsing tacticalrmm_server.yml's own real YAML and rendering its only substitution, rmm_service_user=tacticalrmm, a fixed group_vars constant).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "config"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "c1eb2ba1863b45dd80b08d43168d33bd",
+                "expression": "last(/TacticalRMM (Example Music)/vfs.file.cksum[/etc/systemd/system/daphne.service])<>{$DAPHNESERVICE}",
+                "name": "Hey! {HOST.NAME} - /etc/systemd/system/daphne.service checksum doesn't match the committed source",
+                "priority": "WARNING",
+                "description": "/etc/systemd/system/daphne.service's on-disk checksum differs from {$DAPHNESERVICE} -- hand-edited, or this node hasn't had tacticalrmm_server.yml re-run since the source last changed.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "config"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /etc/systemd/system/daphne.service",
+                    "expression": "last(/TacticalRMM (Example Music)/vfs.file.exists[/etc/systemd/system/daphne.service])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "80fee30d1f2f4acc801f8b7327f19645",
+            "name": "File exists: /etc/systemd/system/nats.service",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/etc/systemd/system/nats.service]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /etc/systemd/system/nats.service exists (tacticalrmm_server.yml's own write task).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "config"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "d77b213c689b4a208b425eff7d37f46f",
+                "expression": "last(/TacticalRMM (Example Music)/vfs.file.exists[/etc/systemd/system/nats.service])=0",
+                "name": "Hey! {HOST.NAME} is missing /etc/systemd/system/nats.service",
+                "priority": "WARNING",
+                "description": "Re-run tacticalrmm_server.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "config"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "72fa67a30a254f268e7f15dc9519f7cd",
+            "name": "Checksum: /etc/systemd/system/nats.service",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.cksum[/etc/systemd/system/nats.service]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "cksum of /etc/systemd/system/nats.service, compared against {$NATSSERVICE} (368666581, 371 bytes -- computed by parsing tacticalrmm_server.yml's own real YAML and rendering its only substitution, rmm_service_user=tacticalrmm, a fixed group_vars constant).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "config"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "ae9752e5b6de46c3912c9198ea4bc1be",
+                "expression": "last(/TacticalRMM (Example Music)/vfs.file.cksum[/etc/systemd/system/nats.service])<>{$NATSSERVICE}",
+                "name": "Hey! {HOST.NAME} - /etc/systemd/system/nats.service checksum doesn't match the committed source",
+                "priority": "WARNING",
+                "description": "/etc/systemd/system/nats.service's on-disk checksum differs from {$NATSSERVICE} -- hand-edited, or this node hasn't had tacticalrmm_server.yml re-run since the source last changed.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "config"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /etc/systemd/system/nats.service",
+                    "expression": "last(/TacticalRMM (Example Music)/vfs.file.exists[/etc/systemd/system/nats.service])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "0d0af7d52bc745b184d1eaa4b49cbc05",
+            "name": "File exists: /etc/systemd/system/nats-api.service",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/etc/systemd/system/nats-api.service]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /etc/systemd/system/nats-api.service exists (tacticalrmm_server.yml's own write task).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "config"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "92b76b957c524cac80e72387130a0e16",
+                "expression": "last(/TacticalRMM (Example Music)/vfs.file.exists[/etc/systemd/system/nats-api.service])=0",
+                "name": "Hey! {HOST.NAME} is missing /etc/systemd/system/nats-api.service",
+                "priority": "WARNING",
+                "description": "Re-run tacticalrmm_server.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "config"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "5612bfcbd1be4bd5868999d8c18a138d",
+            "name": "Checksum: /etc/systemd/system/nats-api.service",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.cksum[/etc/systemd/system/nats-api.service]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "cksum of /etc/systemd/system/nats-api.service, compared against {$NATSAPISERVICE} (2089494372, 221 bytes -- computed by parsing tacticalrmm_server.yml's own real YAML and rendering its only substitution, rmm_service_user=tacticalrmm, a fixed group_vars constant).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "config"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "60c4846dd46849fe9a6c7d2f8648ed86",
+                "expression": "last(/TacticalRMM (Example Music)/vfs.file.cksum[/etc/systemd/system/nats-api.service])<>{$NATSAPISERVICE}",
+                "name": "Hey! {HOST.NAME} - /etc/systemd/system/nats-api.service checksum doesn't match the committed source",
+                "priority": "WARNING",
+                "description": "/etc/systemd/system/nats-api.service's on-disk checksum differs from {$NATSAPISERVICE} -- hand-edited, or this node hasn't had tacticalrmm_server.yml re-run since the source last changed.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "config"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /etc/systemd/system/nats-api.service",
+                    "expression": "last(/TacticalRMM (Example Music)/vfs.file.exists[/etc/systemd/system/nats-api.service])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "a5b43d92a9444810a3d0e7cc848602f1",
+            "name": "File exists: /etc/systemd/system/celery.service",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/etc/systemd/system/celery.service]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /etc/systemd/system/celery.service exists (tacticalrmm_server.yml's own write task).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "config"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "fd689708274743049c4c2ac65d48e458",
+                "expression": "last(/TacticalRMM (Example Music)/vfs.file.exists[/etc/systemd/system/celery.service])=0",
+                "name": "Hey! {HOST.NAME} is missing /etc/systemd/system/celery.service",
+                "priority": "WARNING",
+                "description": "Re-run tacticalrmm_server.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "config"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "3d8b3f795ba044aeb860ba439213ac90",
+            "name": "Checksum: /etc/systemd/system/celery.service",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.cksum[/etc/systemd/system/celery.service]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "cksum of /etc/systemd/system/celery.service, compared against {$CELERYSERVICE} (1647044332, 810 bytes -- computed by parsing tacticalrmm_server.yml's own real YAML and rendering its only substitution, rmm_service_user=tacticalrmm, a fixed group_vars constant).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "config"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "1cb7763313654232afc9290b46283357",
+                "expression": "last(/TacticalRMM (Example Music)/vfs.file.cksum[/etc/systemd/system/celery.service])<>{$CELERYSERVICE}",
+                "name": "Hey! {HOST.NAME} - /etc/systemd/system/celery.service checksum doesn't match the committed source",
+                "priority": "WARNING",
+                "description": "/etc/systemd/system/celery.service's on-disk checksum differs from {$CELERYSERVICE} -- hand-edited, or this node hasn't had tacticalrmm_server.yml re-run since the source last changed.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "config"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /etc/systemd/system/celery.service",
+                    "expression": "last(/TacticalRMM (Example Music)/vfs.file.exists[/etc/systemd/system/celery.service])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "6d20f9eaa2a24a2e89c8b6daebecaa73",
+            "name": "File exists: /etc/systemd/system/celerybeat.service",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/etc/systemd/system/celerybeat.service]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /etc/systemd/system/celerybeat.service exists (tacticalrmm_server.yml's own write task).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "config"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "e62e54b9661a41fcac4526ae07b21f6b",
+                "expression": "last(/TacticalRMM (Example Music)/vfs.file.exists[/etc/systemd/system/celerybeat.service])=0",
+                "name": "Hey! {HOST.NAME} is missing /etc/systemd/system/celerybeat.service",
+                "priority": "WARNING",
+                "description": "Re-run tacticalrmm_server.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "config"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "1d9f6ef2c9844309a3ebe07cbc9e2c7c",
+            "name": "Checksum: /etc/systemd/system/celerybeat.service",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.cksum[/etc/systemd/system/celerybeat.service]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "cksum of /etc/systemd/system/celerybeat.service, compared against {$CELERYBEATSERVICE} (469311373, 573 bytes -- computed by parsing tacticalrmm_server.yml's own real YAML and rendering its only substitution, rmm_service_user=tacticalrmm, a fixed group_vars constant).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "config"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "6263db4c20ef45e1b04b65c3b86fdeec",
+                "expression": "last(/TacticalRMM (Example Music)/vfs.file.cksum[/etc/systemd/system/celerybeat.service])<>{$CELERYBEATSERVICE}",
+                "name": "Hey! {HOST.NAME} - /etc/systemd/system/celerybeat.service checksum doesn't match the committed source",
+                "priority": "WARNING",
+                "description": "/etc/systemd/system/celerybeat.service's on-disk checksum differs from {$CELERYBEATSERVICE} -- hand-edited, or this node hasn't had tacticalrmm_server.yml re-run since the source last changed.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "config"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /etc/systemd/system/celerybeat.service",
+                    "expression": "last(/TacticalRMM (Example Music)/vfs.file.exists[/etc/systemd/system/celerybeat.service])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "a0a41247781249aaa436b26392efc6ee",
+            "name": "File exists: /etc/systemd/system/meshcentral.service",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/etc/systemd/system/meshcentral.service]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /etc/systemd/system/meshcentral.service exists (tacticalrmm_server.yml's own write task).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "config"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "d34c019efdf748018cbdb7588a9e7353",
+                "expression": "last(/TacticalRMM (Example Music)/vfs.file.exists[/etc/systemd/system/meshcentral.service])=0",
+                "name": "Hey! {HOST.NAME} is missing /etc/systemd/system/meshcentral.service",
+                "priority": "WARNING",
+                "description": "Re-run tacticalrmm_server.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "config"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "daab72c12d0547698b7cda34710b6941",
+            "name": "Checksum: /etc/systemd/system/meshcentral.service",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.cksum[/etc/systemd/system/meshcentral.service]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "cksum of /etc/systemd/system/meshcentral.service, compared against {$MESHCENTRALSERVICE} (542597736, 348 bytes -- computed by parsing tacticalrmm_server.yml's own real YAML and rendering its only substitution, rmm_service_user=tacticalrmm, a fixed group_vars constant).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "config"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "f83e17fefc164089a734b8a22cce8064",
+                "expression": "last(/TacticalRMM (Example Music)/vfs.file.cksum[/etc/systemd/system/meshcentral.service])<>{$MESHCENTRALSERVICE}",
+                "name": "Hey! {HOST.NAME} - /etc/systemd/system/meshcentral.service checksum doesn't match the committed source",
+                "priority": "WARNING",
+                "description": "/etc/systemd/system/meshcentral.service's on-disk checksum differs from {$MESHCENTRALSERVICE} -- hand-edited, or this node hasn't had tacticalrmm_server.yml re-run since the source last changed.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "config"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /etc/systemd/system/meshcentral.service",
+                    "expression": "last(/TacticalRMM (Example Music)/vfs.file.exists[/etc/systemd/system/meshcentral.service])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "d5c68c7c6dc442f3ac21a1896a354d9d",
+            "name": "File exists: /etc/nginx/sites-available/rmm.conf (backend vhost)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/etc/nginx/sites-available/rmm.conf]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /etc/nginx/sites-available/rmm.conf exists. EXISTS-ONLY, no cksum -- content embeds rmm_domain (a live ad_forest.json lookup) and subdomain vars, no single stable expected value across hosts. Already covered end-to-end by this template's own web scenarios (section D).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "config"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "98f69b124ab74043aa68d5b3f62365ae",
+                "expression": "last(/TacticalRMM (Example Music)/vfs.file.exists[/etc/nginx/sites-available/rmm.conf])=0",
+                "name": "Hey! {HOST.NAME} is missing /etc/nginx/sites-available/rmm.conf (backend vhost)",
+                "priority": "WARNING",
+                "description": "Re-run tacticalrmm_server.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "config"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "2c180ff538a74a1a8a25d1c2cf5e703e",
+            "name": "File exists: /etc/nginx/sites-available/meshcentral.conf (MeshCentral vhost)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/etc/nginx/sites-available/meshcentral.conf]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /etc/nginx/sites-available/meshcentral.conf exists. EXISTS-ONLY, no cksum -- content embeds rmm_domain (a live ad_forest.json lookup) and subdomain vars, no single stable expected value across hosts. Already covered end-to-end by this template's own web scenarios (section D).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "config"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "c133fb92469c4067adcfabd9144a0a2d",
+                "expression": "last(/TacticalRMM (Example Music)/vfs.file.exists[/etc/nginx/sites-available/meshcentral.conf])=0",
+                "name": "Hey! {HOST.NAME} is missing /etc/nginx/sites-available/meshcentral.conf (MeshCentral vhost)",
+                "priority": "WARNING",
+                "description": "Re-run tacticalrmm_server.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "config"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "4062a78445b348c18411928f36b227be",
+            "name": "File exists: /etc/nginx/sites-available/frontend.conf (frontend vhost)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/etc/nginx/sites-available/frontend.conf]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /etc/nginx/sites-available/frontend.conf exists. EXISTS-ONLY, no cksum -- content embeds rmm_domain (a live ad_forest.json lookup) and subdomain vars, no single stable expected value across hosts. Already covered end-to-end by this template's own web scenarios (section D).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "config"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "8985bd6741dc45d78ce4671ecc80a193",
+                "expression": "last(/TacticalRMM (Example Music)/vfs.file.exists[/etc/nginx/sites-available/frontend.conf])=0",
+                "name": "Hey! {HOST.NAME} is missing /etc/nginx/sites-available/frontend.conf (frontend vhost)",
+                "priority": "WARNING",
+                "description": "Re-run tacticalrmm_server.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "config"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "c39ed261b6f746bdb0ae50e1a83f58fa",
+            "name": "File exists: /rmm/api/tacticalrmm/tacticalrmm/local_settings.py",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/rmm/api/tacticalrmm/tacticalrmm/local_settings.py]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /rmm/api/tacticalrmm/tacticalrmm/local_settings.py exists. Contains: SECRET_KEY, DB password, ADMIN_URL, MESH_TOKEN_KEY. EXISTS-ONLY, contents never read by this template.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "secrets"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "11e8e34f9b8d4e7690bb2f012beb9c3c",
+                "expression": "last(/TacticalRMM (Example Music)/vfs.file.exists[/rmm/api/tacticalrmm/tacticalrmm/local_settings.py])=0",
+                "name": "Hey! {HOST.NAME} is missing /rmm/api/tacticalrmm/tacticalrmm/local_settings.py",
+                "priority": "WARNING",
+                "description": "Re-run tacticalrmm_server.yml -- or investigate why a previously-written secret-bearing file has disappeared, don't assume a re-run alone is always the safe fix here.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "secrets"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "05a43dc3489b477ea948ef536d83699f",
+            "name": "Mode: /rmm/api/tacticalrmm/tacticalrmm/local_settings.py",
+            "type": "ZABBIX_ACTIVE",
+            "key": "system.run[stat -c %a /rmm/api/tacticalrmm/tacticalrmm/local_settings.py,wait]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "stat -c %a on /rmm/api/tacticalrmm/tacticalrmm/local_settings.py, compared against the expected 640 (tacticalrmm_server.yml's own write task).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "secrets"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "2eb3e99f477844f8a34fadecb2d84056",
+                "expression": "last(/TacticalRMM (Example Music)/system.run[stat -c %a /rmm/api/tacticalrmm/tacticalrmm/local_settings.py,wait])<>\"640\"",
+                "name": "Hey! {HOST.NAME} - /rmm/api/tacticalrmm/tacticalrmm/local_settings.py has drifted from mode 640",
+                "priority": "WARNING",
+                "description": "/rmm/api/tacticalrmm/tacticalrmm/local_settings.py's real mode no longer matches the expected 640 -- could be a security exposure (more permissive) or an app-breaking change (more restrictive, the service user may no longer be able to read its own file). Investigate, don't just chmod back blindly.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "secrets"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /rmm/api/tacticalrmm/tacticalrmm/local_settings.py",
+                    "expression": "last(/TacticalRMM (Example Music)/vfs.file.exists[/rmm/api/tacticalrmm/tacticalrmm/local_settings.py])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "2561f82f7eae4dd7a6b59cf8e4e10063",
+            "name": "File exists: /meshcentral/meshcentral-data/config.json",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/meshcentral/meshcentral-data/config.json]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /meshcentral/meshcentral-data/config.json exists. Contains: MeshCentral's own PostgreSQL password. EXISTS-ONLY, contents never read by this template.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "secrets"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "1b5d1c8e1ea24779b63d21cf07f601da",
+                "expression": "last(/TacticalRMM (Example Music)/vfs.file.exists[/meshcentral/meshcentral-data/config.json])=0",
+                "name": "Hey! {HOST.NAME} is missing /meshcentral/meshcentral-data/config.json",
+                "priority": "WARNING",
+                "description": "Re-run tacticalrmm_server.yml -- or investigate why a previously-written secret-bearing file has disappeared, don't assume a re-run alone is always the safe fix here.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "secrets"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "8179a939f17f41ffbb9420d60370ac20",
+            "name": "Mode: /meshcentral/meshcentral-data/config.json",
+            "type": "ZABBIX_ACTIVE",
+            "key": "system.run[stat -c %a /meshcentral/meshcentral-data/config.json,wait]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "stat -c %a on /meshcentral/meshcentral-data/config.json, compared against the expected 644 (tacticalrmm_server.yml's own write task).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "secrets"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "cdf51534fe6c4d0db9216c8a2355f885",
+                "expression": "last(/TacticalRMM (Example Music)/system.run[stat -c %a /meshcentral/meshcentral-data/config.json,wait])<>\"644\"",
+                "name": "Hey! {HOST.NAME} - /meshcentral/meshcentral-data/config.json has drifted from mode 644",
+                "priority": "WARNING",
+                "description": "/meshcentral/meshcentral-data/config.json's real mode no longer matches the expected 644 -- could be a security exposure (more permissive) or an app-breaking change (more restrictive, the service user may no longer be able to read its own file). Investigate, don't just chmod back blindly.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "secrets"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /meshcentral/meshcentral-data/config.json",
+                    "expression": "last(/TacticalRMM (Example Music)/vfs.file.exists[/meshcentral/meshcentral-data/config.json])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "73b5dd1de506478a9fd5ee7c38236a57",
+            "name": "File exists: /etc/NetworkManager/system-connections/rmm-static.nmconnection",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/etc/NetworkManager/system-connections/rmm-static.nmconnection]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /etc/NetworkManager/system-connections/rmm-static.nmconnection exists. Contains: network profile (no secrets, but NM's own convention for connection files). EXISTS-ONLY, contents never read by this template.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "secrets"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "3adc724e38f94adc9e4122b8a497945d",
+                "expression": "last(/TacticalRMM (Example Music)/vfs.file.exists[/etc/NetworkManager/system-connections/rmm-static.nmconnection])=0",
+                "name": "Hey! {HOST.NAME} is missing /etc/NetworkManager/system-connections/rmm-static.nmconnection",
+                "priority": "WARNING",
+                "description": "Re-run tacticalrmm_server.yml -- or investigate why a previously-written secret-bearing file has disappeared, don't assume a re-run alone is always the safe fix here.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "secrets"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "44fd22e429454e01809dbf75754a51f9",
+            "name": "Mode: /etc/NetworkManager/system-connections/rmm-static.nmconnection",
+            "type": "ZABBIX_ACTIVE",
+            "key": "system.run[stat -c %a /etc/NetworkManager/system-connections/rmm-static.nmconnection,wait]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "stat -c %a on /etc/NetworkManager/system-connections/rmm-static.nmconnection, compared against the expected 600 (tacticalrmm_server.yml's own write task).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "secrets"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "4993838075c841bea480997796c17203",
+                "expression": "last(/TacticalRMM (Example Music)/system.run[stat -c %a /etc/NetworkManager/system-connections/rmm-static.nmconnection,wait])<>\"600\"",
+                "name": "Hey! {HOST.NAME} - /etc/NetworkManager/system-connections/rmm-static.nmconnection has drifted from mode 600",
+                "priority": "WARNING",
+                "description": "/etc/NetworkManager/system-connections/rmm-static.nmconnection's real mode no longer matches the expected 600 -- could be a security exposure (more permissive) or an app-breaking change (more restrictive, the service user may no longer be able to read its own file). Investigate, don't just chmod back blindly.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "secrets"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /etc/NetworkManager/system-connections/rmm-static.nmconnection",
+                    "expression": "last(/TacticalRMM (Example Music)/vfs.file.exists[/etc/NetworkManager/system-connections/rmm-static.nmconnection])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "bb44b6d0e7ed44889b5c6e4ae1f5fbb0",
+            "name": "File exists: /home/ansible/.tacticalrmm_totp_backup.txt",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/home/ansible/.tacticalrmm_totp_backup.txt]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /home/ansible/.tacticalrmm_totp_backup.txt exists. Contains: Django superuser TOTP secret + rendered barcode. EXISTS-ONLY, contents never read by this template.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "secrets"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "2f11643a04d742c2a7a43baad0919c87",
+                "expression": "last(/TacticalRMM (Example Music)/vfs.file.exists[/home/ansible/.tacticalrmm_totp_backup.txt])=0",
+                "name": "Hey! {HOST.NAME} is missing /home/ansible/.tacticalrmm_totp_backup.txt",
+                "priority": "WARNING",
+                "description": "Re-run tacticalrmm_server.yml -- or investigate why a previously-written secret-bearing file has disappeared, don't assume a re-run alone is always the safe fix here.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "secrets"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "4c783a65ca8247138d23fa2816f730fa",
+            "name": "Mode: /home/ansible/.tacticalrmm_totp_backup.txt",
+            "type": "ZABBIX_ACTIVE",
+            "key": "system.run[stat -c %a /home/ansible/.tacticalrmm_totp_backup.txt,wait]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "stat -c %a on /home/ansible/.tacticalrmm_totp_backup.txt, compared against the expected 600 (tacticalrmm_server.yml's own write task).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "secrets"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "ec8b8ba4aabb47e5b5bbc534e3b881a6",
+                "expression": "last(/TacticalRMM (Example Music)/system.run[stat -c %a /home/ansible/.tacticalrmm_totp_backup.txt,wait])<>\"600\"",
+                "name": "Hey! {HOST.NAME} - /home/ansible/.tacticalrmm_totp_backup.txt has drifted from mode 600",
+                "priority": "WARNING",
+                "description": "/home/ansible/.tacticalrmm_totp_backup.txt's real mode no longer matches the expected 600 -- could be a security exposure (more permissive) or an app-breaking change (more restrictive, the service user may no longer be able to read its own file). Investigate, don't just chmod back blindly.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "secrets"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing /home/ansible/.tacticalrmm_totp_backup.txt",
+                    "expression": "last(/TacticalRMM (Example Music)/vfs.file.exists[/home/ansible/.tacticalrmm_totp_backup.txt])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "ca7f448e1bed461ea1a1bcd7925269ea",
+            "name": "Install marker present: /meshcentral/meshcentral-data/.trmm_admin_setup_done",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/meshcentral/meshcentral-data/.trmm_admin_setup_done]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /meshcentral/meshcentral-data/.trmm_admin_setup_done exists -- marks that MeshCentral admin account + TacticalRMM device group setup (Section 19) has completed at least once.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "markers"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "aa2334c0b27c4e278fad69720dbabd5b",
+                "expression": "last(/TacticalRMM (Example Music)/vfs.file.exists[/meshcentral/meshcentral-data/.trmm_admin_setup_done])=0",
+                "name": "{HOST.NAME} - install marker missing: /meshcentral/meshcentral-data/.trmm_admin_setup_done",
+                "priority": "INFORMATION",
+                "description": "MeshCentral admin account + TacticalRMM device group setup (Section 19) has not completed (or this marker was removed after it had). If this host is supposed to be fully installed, re-run tacticalrmm_server.yml and investigate why -- this is informational severity, not an active-outage signal.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "markers"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "f6ccb29345a3476092764568738ea446",
+            "name": "Install marker present: /rmm/api/tacticalrmm/nats-rmm.conf",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/rmm/api/tacticalrmm/nats-rmm.conf]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /rmm/api/tacticalrmm/nats-rmm.conf exists -- marks that NATS init -- initial_db_setup/reload_nats/sync_mesh_with_trmm (Section 20) has completed at least once.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "markers"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "ffe03fd1768e433a8f07dbdbd651176a",
+                "expression": "last(/TacticalRMM (Example Music)/vfs.file.exists[/rmm/api/tacticalrmm/nats-rmm.conf])=0",
+                "name": "{HOST.NAME} - install marker missing: /rmm/api/tacticalrmm/nats-rmm.conf",
+                "priority": "INFORMATION",
+                "description": "NATS init -- initial_db_setup/reload_nats/sync_mesh_with_trmm (Section 20) has not completed (or this marker was removed after it had). If this host is supposed to be fully installed, re-run tacticalrmm_server.yml and investigate why -- this is informational severity, not an active-outage signal.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "markers"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "8205fb04966445b9af66f1ae8ae2cb6f",
+            "name": "Install marker present: /var/www/rmm/dist/env-config.js",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/var/www/rmm/dist/env-config.js]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /var/www/rmm/dist/env-config.js exists -- marks that Frontend SPA build downloaded + extracted (Section 18) has completed at least once.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "markers"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "2fdf47a19552497e9a1f6aec37c6d074",
+                "expression": "last(/TacticalRMM (Example Music)/vfs.file.exists[/var/www/rmm/dist/env-config.js])=0",
+                "name": "{HOST.NAME} - install marker missing: /var/www/rmm/dist/env-config.js",
+                "priority": "INFORMATION",
+                "description": "Frontend SPA build downloaded + extracted (Section 18) has not completed (or this marker was removed after it had). If this host is supposed to be fully installed, re-run tacticalrmm_server.yml and investigate why -- this is informational severity, not an active-outage signal.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "markers"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "0eef14e22db64c2ea0413d1d971b5b1d",
+            "name": "TLS certificate expiry (epoch seconds)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "system.run[openssl x509 -enddate -noout -in /etc/ssl/tactical/cert.pem | cut -d= -f2 | xargs -I{} date -d {} +%s,wait]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "UNIX epoch of /etc/ssl/tactical/cert.pem's own notAfter date (the one self-signed cert shared by all 3 vhosts, 3650-day validity from Section 15). No native classic-agent key for this -- web.certificate.get is Zabbix Agent 2 only, not usable under this estate's classic-agent-only policy.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "tls"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "4167eaeb4cef4131979c66ba58f299ed",
+                "expression": "last(/TacticalRMM (Example Music)/system.run[openssl x509 -enddate -noout -in /etc/ssl/tactical/cert.pem | cut -d= -f2 | xargs -I{} date -d {} +%s,wait])-now()<{$TACTICALRMM.CERT_WARN_DAYS}*86400",
+                "name": "Hey! {HOST.NAME} - TLS certificate expires within {$TACTICALRMM.CERT_WARN_DAYS} days",
+                "priority": "WARNING",
+                "description": "The shared self-signed cert is approaching expiry. Re-run tacticalrmm_server.yml's Section 15 cert-generation task (or regenerate manually) well before it lapses -- an expired cert breaks all 3 vhosts' TLS handshakes at once.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "tls"
+                  }
+                ]
+              },
+              {
+                "uuid": "5a40797ad61d4bfdb90bb62b136ff9b1",
+                "expression": "last(/TacticalRMM (Example Music)/system.run[openssl x509 -enddate -noout -in /etc/ssl/tactical/cert.pem | cut -d= -f2 | xargs -I{} date -d {} +%s,wait])-now()<{$TACTICALRMM.CERT_HIGH_DAYS}*86400",
+                "name": "Hey! {HOST.NAME} - TLS certificate expires within {$TACTICALRMM.CERT_HIGH_DAYS} days (critical)",
+                "priority": "HIGH",
+                "description": "The shared self-signed cert is in its final critical window before expiry -- regenerate it now.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "tls"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} - TLS certificate expires within {$TACTICALRMM.CERT_WARN_DAYS} days",
+                    "expression": "last(/TacticalRMM (Example Music)/system.run[openssl x509 -enddate -noout -in /etc/ssl/tactical/cert.pem | cut -d= -f2 | xargs -I{} date -d {} +%s,wait])-now()<{$TACTICALRMM.CERT_WARN_DAYS}*86400"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "498d5109d347461f98e220f2103668c4",
+            "name": "UFW: number of ALLOW rules present",
+            "type": "ZABBIX_ACTIVE",
+            "key": "system.run[ufw status | grep -c ALLOW,wait]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "Count of lines containing ALLOW in `ufw status` output -- expected >=3 (SSH/22, HTTPS/443, HTTP/80 from Section 4). Count-based, not matched against exact column formatting (not independently confirmed live).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "firewall"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "8e822c5a4dc5466cb92b5032bc088a0d",
+                "expression": "last(/TacticalRMM (Example Music)/system.run[ufw status | grep -c ALLOW,wait])<3",
+                "name": "Hey! {HOST.NAME} - fewer UFW ALLOW rules than expected",
+                "priority": "WARNING",
+                "description": "Fewer than 3 UFW ALLOW rules -- re-run tacticalrmm_server.yml's Section 4, or check ufw status manually for what's actually missing.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "firewall"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "a28e29fa3ec5450ebe55599aad50b1b2",
+            "name": "Git branch: /rmm",
+            "type": "ZABBIX_ACTIVE",
+            "key": "system.run[git -C /rmm rev-parse --abbrev-ref HEAD,wait]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Current branch of the /rmm clone -- expected 'master' (Section 12's own version: pin).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "git"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "a6b693eab57f40e69e1a2bf5c711d5de",
+                "expression": "last(/TacticalRMM (Example Music)/system.run[git -C /rmm rev-parse --abbrev-ref HEAD,wait])<>\"master\"",
+                "name": "Hey! {HOST.NAME} - /rmm is not on the expected branch",
+                "priority": "WARNING",
+                "description": "/rmm isn't on 'master' -- someone checked out a different branch manually. Investigate before re-running tacticalrmm_server.yml (git module won't fix this by itself if it's dirty too).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "git"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "9dc3e4cd4c4047d3b16c000d7d6d7bc0",
+            "name": "Git dirty file count: /rmm",
+            "type": "ZABBIX_ACTIVE",
+            "key": "system.run[git -C /rmm status --porcelain | wc -l,wait]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "Count of modified/untracked files in /rmm (git status --porcelain). Expected 0 -- this is a deployed clone, not a working copy.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "git"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "94801c993c0e46d19149807cf619d018",
+                "expression": "last(/TacticalRMM (Example Music)/system.run[git -C /rmm status --porcelain | wc -l,wait])>0",
+                "name": "Hey! {HOST.NAME} - /rmm has uncommitted local changes",
+                "priority": "WARNING",
+                "description": "/rmm has local modifications -- someone edited files directly on the box. Investigate before assuming a re-run is safe.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "git"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "2c21e3d3e94e451b9ae7532d281872e4",
+            "name": "Git branch: /opt/trmm-community-scripts",
+            "type": "ZABBIX_ACTIVE",
+            "key": "system.run[git -C /opt/trmm-community-scripts rev-parse --abbrev-ref HEAD,wait]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Current branch of the /opt/trmm-community-scripts clone -- expected 'main' (Section 12's own version: pin).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "git"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "add2796126ce4690aa54fab5dbb5ed7f",
+                "expression": "last(/TacticalRMM (Example Music)/system.run[git -C /opt/trmm-community-scripts rev-parse --abbrev-ref HEAD,wait])<>\"main\"",
+                "name": "Hey! {HOST.NAME} - /opt/trmm-community-scripts is not on the expected branch",
+                "priority": "WARNING",
+                "description": "/opt/trmm-community-scripts isn't on 'main' -- someone checked out a different branch manually. Investigate before re-running tacticalrmm_server.yml (git module won't fix this by itself if it's dirty too).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "git"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "0fe1a2dc60d941d18650411e79b876b4",
+            "name": "Git dirty file count: /opt/trmm-community-scripts",
+            "type": "ZABBIX_ACTIVE",
+            "key": "system.run[git -C /opt/trmm-community-scripts status --porcelain | wc -l,wait]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "Count of modified/untracked files in /opt/trmm-community-scripts (git status --porcelain). Expected 0 -- this is a deployed clone, not a working copy.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "git"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "24d85cb1228140bdb1cd32161ae53726",
+                "expression": "last(/TacticalRMM (Example Music)/system.run[git -C /opt/trmm-community-scripts status --porcelain | wc -l,wait])>0",
+                "name": "Hey! {HOST.NAME} - /opt/trmm-community-scripts has uncommitted local changes",
+                "priority": "WARNING",
+                "description": "/opt/trmm-community-scripts has local modifications -- someone edited files directly on the box. Investigate before assuming a re-run is safe.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "git"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "82091dd9e1c24383a38d0dc06240b8c3",
+            "name": "File exists: /rmm/api/env/bin/python (backend venv)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/rmm/api/env/bin/python]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if the backend venv's own python binary exists (Section 15's venv creation).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "python"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "47107b4f07f446d4a6b3affa1859e53f",
+                "expression": "last(/TacticalRMM (Example Music)/vfs.file.exists[/rmm/api/env/bin/python])=0",
+                "name": "Hey! {HOST.NAME} is missing the backend venv (/rmm/api/env/bin/python)",
+                "priority": "HIGH",
+                "description": "The backend venv is gone or was never created -- rmm/daphne/celery/celerybeat all depend on it directly. Re-run tacticalrmm_server.yml's Section 15.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "python"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "fc47684c10d54396b480e19950a4e973",
+            "name": "Celery worker process count",
+            "type": "ZABBIX_ACTIVE",
+            "key": "proc.num[,tacticalrmm,,\"celery.*(multi|worker)\"]",
+            "delay": "5m",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "proc.num count of tacticalrmm-owned processes with 'celery' + ('multi'|'worker') in their cmdline. Pattern not independently confirmed against a live box -- adjust the regex if real process names look different.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "celery"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "c6ab58e7fa4f40ab90736d19fb4171a7",
+                "expression": "last(/TacticalRMM (Example Music)/proc.num[,tacticalrmm,,\"celery.*(multi|worker)\"])<1",
+                "name": "Hey! {HOST.NAME} - no celery worker processes found",
+                "priority": "HIGH",
+                "description": "celery.service may report active while no actual worker process exists underneath it. Check: ps -U tacticalrmm -f | grep celery.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "celery"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "90ab906ae4a541dbb241f33c69cc2295",
+            "name": "Celery beat process count",
+            "type": "ZABBIX_ACTIVE",
+            "key": "proc.num[,tacticalrmm,,\"celery.*beat\"]",
+            "delay": "5m",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "proc.num count of tacticalrmm-owned processes with 'celery' + 'beat' in their cmdline. Pattern not independently confirmed against a live box.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "celery"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "3030d72b9cad441ea4a1f647866b5e7b",
+                "expression": "last(/TacticalRMM (Example Music)/proc.num[,tacticalrmm,,\"celery.*beat\"])<1",
+                "name": "Hey! {HOST.NAME} - no celerybeat process found",
+                "priority": "HIGH",
+                "description": "celerybeat.service may report active while no actual beat scheduler process exists underneath it. Check: ps -U tacticalrmm -f | grep beat.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "celery"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "7d8f1d6a596141ba970c25b2fc0764af",
+            "name": "File exists: /rmm/api/tacticalrmm/w1.pid (celery worker pidfile)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/rmm/api/tacticalrmm/w1.pid]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /rmm/api/tacticalrmm/w1.pid exists. Baseline sanity only -- a stale pidfile from a crashed-and-restarted process can still exist, proc.num above is the real liveness signal, not this.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "celery"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "9a9ad5eeeca84774b25d8078008fa0f3",
+                "expression": "last(/TacticalRMM (Example Music)/vfs.file.exists[/rmm/api/tacticalrmm/w1.pid])=0",
+                "name": "{HOST.NAME} - missing /rmm/api/tacticalrmm/w1.pid (celery worker pidfile)",
+                "priority": "WARNING",
+                "description": "/rmm/api/tacticalrmm/w1.pid is missing -- celery/celerybeat may not have started correctly.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "celery"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "8b7738d1e8414daa9198c0d5af449805",
+            "name": "File exists: /rmm/api/tacticalrmm/beat.pid (celerybeat pidfile)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/rmm/api/tacticalrmm/beat.pid]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /rmm/api/tacticalrmm/beat.pid exists. Baseline sanity only -- a stale pidfile from a crashed-and-restarted process can still exist, proc.num above is the real liveness signal, not this.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "celery"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "a51f0cbd417445fcaa0352f52e30300c",
+                "expression": "last(/TacticalRMM (Example Music)/vfs.file.exists[/rmm/api/tacticalrmm/beat.pid])=0",
+                "name": "{HOST.NAME} - missing /rmm/api/tacticalrmm/beat.pid (celerybeat pidfile)",
+                "priority": "WARNING",
+                "description": "/rmm/api/tacticalrmm/beat.pid is missing -- celery/celerybeat may not have started correctly.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "celery"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "33ad661634d34e0ebf1d1ffe742825d7",
+            "name": "Directory size: /var/log/celery (celery/celerybeat logs)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.dir.size[/var/log/celery,,,apparent,0]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "Apparent size in bytes of /var/log/celery (celery/celerybeat logs). A logrotate stanza covering this path was added 2026-10-20 (none existed before) -- this item is the ongoing guard on top of that fix, not instead of it.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "logs"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "d00ac8d8b7714541a5b803ccd17af57f",
+                "expression": "last(/TacticalRMM (Example Music)/vfs.dir.size[/var/log/celery,,,apparent,0])>{$TACTICALRMM.LOG_WARN_BYTES}",
+                "name": "Hey! {HOST.NAME} - /var/log/celery exceeds {$TACTICALRMM.LOG_WARN_BYTES} bytes",
+                "priority": "WARNING",
+                "description": "/var/log/celery (celery/celerybeat logs) has grown past the warn threshold. Check logrotate is actually running (logrotate -d on the relevant /etc/logrotate.d stanza) rather than just raising the threshold.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "logs"
+                  }
+                ]
+              },
+              {
+                "uuid": "efe28aef76ea4bb1bf2e574d154bebc6",
+                "expression": "last(/TacticalRMM (Example Music)/vfs.dir.size[/var/log/celery,,,apparent,0])>({$TACTICALRMM.LOG_WARN_BYTES}*2)",
+                "name": "Hey! {HOST.NAME} - /var/log/celery exceeds DOUBLE {$TACTICALRMM.LOG_WARN_BYTES} bytes (critical)",
+                "priority": "HIGH",
+                "description": "/var/log/celery (celery/celerybeat logs) is at double the warn threshold -- disk exhaustion risk is now real, not theoretical.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "logs"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} - /var/log/celery exceeds {$TACTICALRMM.LOG_WARN_BYTES} bytes",
+                    "expression": "last(/TacticalRMM (Example Music)/vfs.dir.size[/var/log/celery,,,apparent,0])>{$TACTICALRMM.LOG_WARN_BYTES}"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "7126436f1b944a4aa0d74d28d7e3c37d",
+            "name": "Directory size: /rmm/api/tacticalrmm/tacticalrmm/private/log (nginx access/error logs for the backend vhost)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.dir.size[/rmm/api/tacticalrmm/tacticalrmm/private/log,,,apparent,0]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "Apparent size in bytes of /rmm/api/tacticalrmm/tacticalrmm/private/log (nginx access/error logs for the backend vhost). A logrotate stanza covering this path was added 2026-10-20 (none existed before) -- this item is the ongoing guard on top of that fix, not instead of it.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "logs"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "1350a8d47dae495e9c7c87a926a0119e",
+                "expression": "last(/TacticalRMM (Example Music)/vfs.dir.size[/rmm/api/tacticalrmm/tacticalrmm/private/log,,,apparent,0])>{$TACTICALRMM.LOG_WARN_BYTES}",
+                "name": "Hey! {HOST.NAME} - /rmm/api/tacticalrmm/tacticalrmm/private/log exceeds {$TACTICALRMM.LOG_WARN_BYTES} bytes",
+                "priority": "WARNING",
+                "description": "/rmm/api/tacticalrmm/tacticalrmm/private/log (nginx access/error logs for the backend vhost) has grown past the warn threshold. Check logrotate is actually running (logrotate -d on the relevant /etc/logrotate.d stanza) rather than just raising the threshold.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "logs"
+                  }
+                ]
+              },
+              {
+                "uuid": "8141dc0eec5a463f9570777d146bce1d",
+                "expression": "last(/TacticalRMM (Example Music)/vfs.dir.size[/rmm/api/tacticalrmm/tacticalrmm/private/log,,,apparent,0])>({$TACTICALRMM.LOG_WARN_BYTES}*2)",
+                "name": "Hey! {HOST.NAME} - /rmm/api/tacticalrmm/tacticalrmm/private/log exceeds DOUBLE {$TACTICALRMM.LOG_WARN_BYTES} bytes (critical)",
+                "priority": "HIGH",
+                "description": "/rmm/api/tacticalrmm/tacticalrmm/private/log (nginx access/error logs for the backend vhost) is at double the warn threshold -- disk exhaustion risk is now real, not theoretical.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "tacticalrmm"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "logs"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} - /rmm/api/tacticalrmm/tacticalrmm/private/log exceeds {$TACTICALRMM.LOG_WARN_BYTES} bytes",
+                    "expression": "last(/TacticalRMM (Example Music)/vfs.dir.size[/rmm/api/tacticalrmm/tacticalrmm/private/log,,,apparent,0])>{$TACTICALRMM.LOG_WARN_BYTES}"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "84719f9135a84948b3aa3791d5b2dfa7",
+            "name": "nodeinfo: static_ip (tacticalrmm-specific)",
+            "type": "DEPENDENT",
+            "key": "examplemusic.nodeinfo.static_ip",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's static_ip field -- a tacticalrmm-specific nodeinfo_extra. Visibility only, no trigger. Master item (vfs.file.contents[/etc/example-music/nodeinfo.json]) is deliberately NOT declared in this template -- see this template's own top-level description for why.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.static_ip"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          }
+        ],
+        "triggers": [
+          {
+            "uuid": "9730e8c7fd084504a02d657604c280b3",
+            "expression": "last(/TacticalRMM (Example Music)/web.test.fail[TacticalRMM frontend])>0",
+            "name": "Hey! {HOST.NAME} - web check failed: TacticalRMM frontend",
+            "priority": "HIGH",
+            "description": "The 'TacticalRMM frontend' web scenario failed its step. Covers nginx + the backing service + TLS handshake + DNS resolution for this vhost all at once -- check web.test.error[TacticalRMM frontend] for the actual error text. Static SPA served directly by nginx (try_files ... /index.html) -- the most deterministic of the 3, hence the tight status_codes.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "webcheck"
+              }
+            ]
+          },
+          {
+            "uuid": "d6630aa7d47e481492e2e5ba1de0b22c",
+            "expression": "last(/TacticalRMM (Example Music)/web.test.fail[TacticalRMM API backend])>0",
+            "name": "Hey! {HOST.NAME} - web check failed: TacticalRMM API backend",
+            "priority": "HIGH",
+            "description": "The 'TacticalRMM API backend' web scenario failed its step. Covers nginx + the backing service + TLS handshake + DNS resolution for this vhost all at once -- check web.test.error[TacticalRMM API backend] for the actual error text. Django REST API root -- exact expected response not live-verified, range excludes 5xx (upstream uwsgi dead) and connection failure.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "webcheck"
+              }
+            ]
+          },
+          {
+            "uuid": "46f9826456e4477ea24e163ed8b50d04",
+            "expression": "last(/TacticalRMM (Example Music)/web.test.fail[MeshCentral])>0",
+            "name": "Hey! {HOST.NAME} - web check failed: MeshCentral",
+            "priority": "HIGH",
+            "description": "The 'MeshCentral' web scenario failed its step. Covers nginx + the backing service + TLS handshake + DNS resolution for this vhost all at once -- check web.test.error[MeshCentral] for the actual error text. Reverse-proxied to 127.0.0.1:4430 -- exact expected response not live-verified, tolerates a redirect.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "webcheck"
+              }
+            ]
+          }
+        ],
+        "httptests": [
+          {
+            "uuid": "e0b5ae1c43f34158a14fd9fa33c13261",
+            "name": "TacticalRMM frontend",
+            "delay": "10m",
+            "agent": "Zabbix",
+            "status": "ENABLED",
+            "steps": [
+              {
+                "uuid": "c80121eb5b234fe18b11189d75a9fc78",
+                "name": "Load /",
+                "url": "https://{$TACTICALRMM.FRONTEND_SUBDOMAIN}.{$TACTICALRMM.DOMAIN}/",
+                "no": "1",
+                "status_codes": "200",
+                "timeout": "15s",
+                "follow_redirects": "YES"
+              }
+            ]
+          },
+          {
+            "uuid": "423641c908e941b2827931b95f583480",
+            "name": "TacticalRMM API backend",
+            "delay": "10m",
+            "agent": "Zabbix",
+            "status": "ENABLED",
+            "steps": [
+              {
+                "uuid": "19925a8a829749eea15777bb1f9bcabc",
+                "name": "Load /",
+                "url": "https://{$TACTICALRMM.BACKEND_SUBDOMAIN}.{$TACTICALRMM.DOMAIN}/",
+                "no": "1",
+                "status_codes": "200-499",
+                "timeout": "15s",
+                "follow_redirects": "YES"
+              }
+            ]
+          },
+          {
+            "uuid": "fc8cafa234634eef84df767037d15f75",
+            "name": "MeshCentral",
+            "delay": "10m",
+            "agent": "Zabbix",
+            "status": "ENABLED",
+            "steps": [
+              {
+                "uuid": "c2bcf5ce94184c8497f71be8860b9332",
+                "name": "Load /",
+                "url": "https://{$TACTICALRMM.MESH_SUBDOMAIN}.{$TACTICALRMM.DOMAIN}/",
+                "no": "1",
+                "status_codes": "200-399",
+                "timeout": "15s",
+                "follow_redirects": "YES"
+              }
+            ]
+          }
+        ],
+        "macros": [
+          {
+            "macro": "{$TACTICALRMM.DOMAIN}",
+            "value": "jukebox.internal",
+            "description": "Root domain (tacticalrmm_servers group_vars' rmm_domain, derived from benarbejde/ad_forest.json). Used to build the 3 vhost URLs for the web scenarios."
+          },
+          {
+            "macro": "{$TACTICALRMM.FRONTEND_SUBDOMAIN}",
+            "value": "rmm",
+            "description": "Frontend vhost subdomain (group_vars' rmm_frontend_subdomain)."
+          },
+          {
+            "macro": "{$TACTICALRMM.BACKEND_SUBDOMAIN}",
+            "value": "api",
+            "description": "Backend/API vhost subdomain (group_vars' rmm_backend_subdomain)."
+          },
+          {
+            "macro": "{$TACTICALRMM.MESH_SUBDOMAIN}",
+            "value": "mesh",
+            "description": "MeshCentral vhost subdomain (group_vars' rmm_mesh_subdomain)."
+          },
+          {
+            "macro": "{$TACTICALRMM.NATS_PORT}",
+            "value": "4222",
+            "description": "NATS client port -- UNCONFIRMED against this box's real, dynamically-generated nats-rmm.conf. Default is NATS's own documented default. Confirm live and correct if different."
+          },
+          {
+            "macro": "{$TACTICALRMM.CERT_WARN_DAYS}",
+            "value": "30",
+            "description": "Days before the shared self-signed cert's expiry to raise a WARNING."
+          },
+          {
+            "macro": "{$TACTICALRMM.CERT_HIGH_DAYS}",
+            "value": "7",
+            "description": "Days before the shared self-signed cert's expiry to escalate to HIGH."
+          },
+          {
+            "macro": "{$TACTICALRMM.LOG_WARN_BYTES}",
+            "value": "2147483648",
+            "description": "WARNING threshold (bytes) for /var/log/celery and the backend vhost's nginx private log directory. HIGH fires at double this value."
+          },
+          {
+            "macro": "{$NGINXCONF}",
+            "value": "3714063139",
+            "description": "Expected cksum of /etc/nginx/nginx.conf (663 bytes -- computed by parsing tacticalrmm_server.yml's own real YAML, rendering rmm_service_user=tacticalrmm). Update this macro's value if that file's own source content ever changes."
+          },
+          {
+            "macro": "{$CELERYCONF}",
+            "value": "4156308549",
+            "description": "Expected cksum of /etc/conf.d/celery.conf (376 bytes -- computed by parsing tacticalrmm_server.yml's own real YAML, rendering rmm_service_user=tacticalrmm). Update this macro's value if that file's own source content ever changes."
+          },
+          {
+            "macro": "{$RMMSERVICE}",
+            "value": "4200253370",
+            "description": "Expected cksum of /etc/systemd/system/rmm.service (377 bytes -- computed by parsing tacticalrmm_server.yml's own real YAML, rendering rmm_service_user=tacticalrmm). Update this macro's value if that file's own source content ever changes."
+          },
+          {
+            "macro": "{$DAPHNESERVICE}",
+            "value": "327507170",
+            "description": "Expected cksum of /etc/systemd/system/daphne.service (493 bytes -- computed by parsing tacticalrmm_server.yml's own real YAML, rendering rmm_service_user=tacticalrmm). Update this macro's value if that file's own source content ever changes."
+          },
+          {
+            "macro": "{$NATSSERVICE}",
+            "value": "368666581",
+            "description": "Expected cksum of /etc/systemd/system/nats.service (371 bytes -- computed by parsing tacticalrmm_server.yml's own real YAML, rendering rmm_service_user=tacticalrmm). Update this macro's value if that file's own source content ever changes."
+          },
+          {
+            "macro": "{$NATSAPISERVICE}",
+            "value": "2089494372",
+            "description": "Expected cksum of /etc/systemd/system/nats-api.service (221 bytes -- computed by parsing tacticalrmm_server.yml's own real YAML, rendering rmm_service_user=tacticalrmm). Update this macro's value if that file's own source content ever changes."
+          },
+          {
+            "macro": "{$CELERYSERVICE}",
+            "value": "1647044332",
+            "description": "Expected cksum of /etc/systemd/system/celery.service (810 bytes -- computed by parsing tacticalrmm_server.yml's own real YAML, rendering rmm_service_user=tacticalrmm). Update this macro's value if that file's own source content ever changes."
+          },
+          {
+            "macro": "{$CELERYBEATSERVICE}",
+            "value": "469311373",
+            "description": "Expected cksum of /etc/systemd/system/celerybeat.service (573 bytes -- computed by parsing tacticalrmm_server.yml's own real YAML, rendering rmm_service_user=tacticalrmm). Update this macro's value if that file's own source content ever changes."
+          },
+          {
+            "macro": "{$MESHCENTRALSERVICE}",
+            "value": "542597736",
+            "description": "Expected cksum of /etc/systemd/system/meshcentral.service (348 bytes -- computed by parsing tacticalrmm_server.yml's own real YAML, rendering rmm_service_user=tacticalrmm). Update this macro's value if that file's own source content ever changes."
+          }
+        ],
+        "tags": [
+          {
+            "tag": "target",
+            "value": "tacticalrmm"
+          }
+        ]
+      }
+    ]
+  }
+}
