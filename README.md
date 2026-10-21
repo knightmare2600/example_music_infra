@@ -195,7 +195,7 @@ ansible/
 | `proxmox/site.yml` | Onboard a new Proxmox VE node — Zabbix, packages, SSH, sudoers, `/etc/example-music/`, per-site Proxmox pool + `vmbr1` VLAN bridge, [proxmorph](https://github.com/IT-BAER/proxmorph) UI themes + sensor monitoring. Re-run safe: only refreshes packages/example-music/scripts/pools/vmbr1 on an already-onboarded node unless `-e pve_force_full_onboard=true` |
 | `windows_bootstrap/site.yml` | Full Windows host PostOOBE bootstrap — rename, static IP, domain join, packages, wallpaper |
 | `windows_dc/site.yml` | Promote a Windows Server to domain controller |
-| `windows_adschema/ad_schema.yml` | Create AD OUs, groups, computers and users from TDF data |
+| `windows_adschema/site.yml` | Create AD OUs, groups, computers and users from TDF data |
 
 ---
 
@@ -377,7 +377,12 @@ The vRACK (`VRK`) is an OVH product providing 256 statically routed IPs. Treat t
 
 | IP | Hostname | Role |
 |----|----------|------|
+| `192.168.139.3` | `EXABMCVRK001` | BMC for `EXAPVEVRK001` |
+| `192.168.139.4` | `EXABMCVRK002` | BMC for `EXAPVEVRK002` |
+| `192.168.139.5` | `EXAPVEVRK001` | Proxmox VE node |
+| `192.168.139.6` | `EXAPVEVRK002` | Proxmox VE node |
 | `192.168.139.8` | `EXADNSVRK001` | BIND9 — authoritative DNS for `jukebox.internal` |
+| `192.168.139.10` | `EXADCSVRK001` | Domain Controller — live and Ansible-managed on the provisioning network |
 | `192.168.139.50` | — (bootstrap-only, no formal hostname) | Provisioning / PXE server |
 | `192.168.139.69` | `EXAFWLVRK001` | Firewall WAN face — same physical firewall as `EXAFWLCLD001`, LAN face at `192.168.69.253` |
 | `192.168.139.254` | — | vRACK gateway (OVH infrastructure, not a site device) |
@@ -390,9 +395,14 @@ The vRACK (`VRK`) is an OVH product providing 256 statically routed IPs. Treat t
 | `192.168.69.10` | `EXADCSCLD001` | Domain Controller — primary, forest root |
 | `192.168.69.11` | `EXADCSCLD002` | Domain Controller — secondary |
 | `192.168.69.12` | `EXARUDCLD001` | Rudder configuration management |
+| `192.168.69.13` | `EXAZABCLD001` | Zabbix monitoring server |
+| `192.168.69.14` | `EXARMMCLD001` | TacticalRMM |
 | `192.168.69.20` | `EXASVRCLD002` | Windows Admin Centre |
+| `192.168.69.22` | `EXASLTCLD001` | Salt master |
+| `192.168.69.40` | `EXACLPCLD001` | CloudPanel |
 | `192.168.69.48` | `EXAPBXCLD001` | Central 3CX PBX — all site SBCs trunk here |
 | `192.168.69.82` | `EXAUFCCLD001` | UniFi Network Controller — manages every site's WAPs. CLD itself has no physical WiFi; `.82` is WAP1's reserved octet elsewhere (see [Addressing](#addressing)) — putting the controller at the same octet the devices it manages use, at the one site that has none of them itself, is deliberate |
+| `192.168.69.250` | `EXASWICLD001` | 48-port switch (SNMP-managed) |
 | `192.168.69.253` | `EXAFWLCLD001` (LAN) | Firewall LAN face / gateway — WAN face (`EXAFWLVRK001`) at `192.168.139.69` |
 
 **`FRD` (`172.16.124.0/24`) — Fredericia Havn, the vRACK's standby provisioning network.** Not to be confused with `FRE`, the real Fredericia office. See `docs/ExampleMusic_Beginners_Guide.md` §4.2 for the full picture.
