@@ -1593,10 +1593,23 @@ class IdentityScreen(WizardScreen):
     def commit(self):
         name_input = self.query_one("#name", Input)
         vmid_input = self.query_one("#vmid", Input)
-        if not name_input.is_valid:
-            return "Fix the VM Name before continuing."
-        if not vmid_input.is_valid:
-            return "Fix the VM ID before continuing."
+        # Re-run the validators here (cheap, idempotent) rather than trusting
+        # the cached is_valid + a generic message -- real confusion, caught
+        # live: a name that LOOKS right (format-wise) but collides with an
+        # already-existing VM fails for a completely different reason
+        # ("Name X already exists.", from VMNameValidator's own 2nd check),
+        # and the old generic "Fix the VM Name before continuing." gave no
+        # hint which of the validator's 2 checks (format vs already-taken)
+        # actually failed, or what the real name/ID even conflicts with.
+        # Surfacing the validator's own failure_descriptions instead -- it
+        # already computed the specific reason, no need to re-derive it or
+        # hide it behind a generic wrapper.
+        name_result = name_input.validate(name_input.value)
+        if name_result is not None and not name_result.is_valid:
+            return " ".join(name_result.failure_descriptions) or "Fix the VM Name before continuing."
+        vmid_result = vmid_input.validate(vmid_input.value)
+        if vmid_result is not None and not vmid_result.is_valid:
+            return " ".join(vmid_result.failure_descriptions) or "Fix the VM ID before continuing."
         try:
             sockets = int(self.query_one("#sockets", Input).value)
             cores = int(self.query_one("#cores", Input).value)
