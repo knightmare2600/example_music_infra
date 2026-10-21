@@ -174,6 +174,9 @@
 
     { "dest": "ipxe/arm64/ipxe-arm64-sb.iso", "source_type": "github_release", "repo": "ipxe/ipxe", "tag": "v2.0.0", "asset_name": "ipxe-arm64-sb.iso" },
 
+    { "_comment": "Projekt opbevaring (github.com/knightmare2600/opbevaring) -- menu.ipxe's own :opbevaring/:opbevaring-s entries, added v2.15. Only the hook fetches cleanly via this mechanism -- the release's own notes say so directly ('TrueNAS's own files aren't included -- extract them from the official ISO with build/extract-iso.sh'), confirmed by reading that script: it needs an already-downloaded official TrueNAS SCALE ISO (doesn't fetch one), extracts a *.update file whose name isn't fixed, and names its own output folder from a version string read out of the squashfs at run time -- none of that fits this manifest's fixed archive_path/dest 'archives' mechanism, so vmlinuz/initrd.img/filesystem.squashfs/the *.update payload stay a documented MANUAL step (see menu.ipxe's own v2.15 changelog entry), not an entry here. dest's '25.10.2.1' is TrueNAS's own version, independent of opbevaring's -- same drift risk already accepted elsewhere in this file for a versioned dest path (see the Debian mini.iso entries' own 'trixie' dest comment): if TrueNAS bumps versions without a matching opbevaring release, this dest will need updating by hand." },
+    { "dest": "opbevaring/25.10.2.1/opbevaring-hook.cpio", "source_type": "github_release", "repo": "knightmare2600/opbevaring", "tag": "latest", "asset_name": "opbevaring-hook.cpio" },
+
     { "dest": "openbsd/7.9/x86_64/bsd.rd", "source_type": "url_with_checksum_file",
       "url": "https://cdn.openbsd.org/pub/OpenBSD/7.9/amd64/bsd.rd",
       "checksum_file_url": "https://cdn.openbsd.org/pub/OpenBSD/7.9/amd64/SHA256",

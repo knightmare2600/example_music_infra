@@ -17,6 +17,43 @@
 #
 # Version history:
 #
+#   v2.15  Added TrueNAS SCALE as a menu-selectable install, via Projekt opbevaring --
+#          Robert's own separate PXE delivery project (github.com/knightmare2600/opbevaring,
+#          same "separate GitHub repo" pattern as Projekt klargoring). Two entries:
+#          :opbevaring (console) and :opbevaring-s (ttyS0 serial, 115200n8) -- both stream the
+#          stock TrueNAS SCALE 25.10.2.1 kernel/initrd/live squashfs plus
+#          opbevaring-hook.cpio as a second initrd; the hook fetches update_url= into /cdrom
+#          before the stock installer TUI/JSON-RPC server starts. Confirmed end-to-end on real
+#          hardware, BIOS & UEFI (opbevaring 1.0.1, 2026-10-21) -- see this section's own
+#          comment, below, for the full detail including payload sha256 verification
+#          (default-on since opbevaring 1.1.0, the version this manifest now fetches).
+#
+#          A `truenas` entry (a third, hook-less variant) was drafted alongside these two but
+#          never implemented -- no :truenas label existed, so selecting it would have hit
+#          iPXE's "no such label" error. Robert's call: dropped, not built -- opbevaring/
+#          opbevaring-s are the only two TrueNAS paths this menu offers.
+#
+#          benarbejde/asset_manifest.json gained one new github_release entry for
+#          opbevaring-hook.cpio (repo knightmare2600/opbevaring, tag latest -- same convention
+#          as klargoring/Spejder, so this tracks whatever Robert publishes next without a
+#          manifest edit). The other 4 files this section references (vmlinuz/initrd.img/
+#          filesystem.squashfs/the *.update payload, under bootstrap/web/opbevaring/<version>/)
+#          are NOT fetchable by any automated mechanism this repo has -- confirmed by reading
+#          opbevaring's own build/extract-iso.sh directly (not guessed): it requires an
+#          already-downloaded official TrueNAS SCALE ISO as input (doesn't fetch one itself),
+#          extracts /vmlinuz, /initrd.img, /live/filesystem.squashfs, and whichever *.update
+#          file sits at the ISO's root (the filename isn't fixed -- varies per TrueNAS build),
+#          and names the output folder from a version string read out of the squashfs itself at
+#          run time, not from the ISO's filename. All three of those (a wildcard filename match,
+#          a runtime-discovered destination folder, no fixed upstream URL to fetch the ISO from
+#          in the first place) are real mismatches with asset_manifest.json's existing
+#          "archives" mechanism, which only knows fixed archive_path -> dest pairs against one
+#          fixed, fetchable source URL. Left as a documented MANUAL step for now (download the
+#          official ISO, run `build/extract-iso.sh <iso> bootstrap/web/opbevaring/`) rather than
+#          force-fitting it into "archives" or inventing a new source_type unprompted --
+#          extending the manifest schema to cover this properly is a real, separate piece of
+#          work, flagged here as a backlog item rather than done silently.
+#
 #   v2.14  CORRECTION to v2.13's diagnosis, 2026-09-18: v2.13's arm64 guard (below) was based on
 #          a wrong root cause. Robert manually dropped genuinely checksum-verified Bookworm arm64
 #          netboot media (matching Debian's own published SHA256SUMS) into place and it STILL
@@ -335,6 +372,10 @@ item --gap --         -- 3CX Phone System --
 item 3cx-install         3CX Phone System  Auto install  (Debian Bookworm base -- vendor-confirmed)
 item 3cx-install-trixie  3CX Phone System  Auto install  (Debian Trixie base -- UNTESTED)
 item --gap --
+item --gap --         -- TrueNAS --
+item opbevaring       TrueNAS SCALE 25.10.2.1  Auto install  (opbevaring)
+item opbevaring-s     TrueNAS SCALE 25.10.2.1  Auto install  (opbevaring, ttyS0 serial)
+item --gap --
 item --gap --         -- OpenBSD --
 item openbsd-auto     OpenBSD 7.9  Auto install
 item openbsd-auto-s   OpenBSD 7.9  Auto install  (ttyS0 serial)
@@ -490,6 +531,44 @@ boot
 iseq ${arch} arm64 && goto noarch-msg ||
 kernel ${boot-url}/debian/trixie/x86_64/linux vga=788 ipv6.disable=1 auto=true priority=high url=${boot-url}/3cx/preseed_12.5.0_a29bc3d.txt --- quiet THREECXMARKER=DEBIAN-3CX-ISO
 initrd ${boot-url}/3cx/initrd.gz
+boot
+
+# ===========================================================================
+# PROJEKT opbevaring -- TrueNAS SCALE over PXE
+# Stock TrueNAS kernel/initrd/live squashfs (extracted unmodified from the official ISO by
+# opbevaring's own build/extract-iso.sh, run manually -- see this file's own v2.15 changelog
+# entry for why that step can't be automated via benarbejde/asset_manifest.json yet), plus
+# opbevaring-hook.cpio (fetched via that manifest, github_release/knightmare2600/opbevaring)
+# appended as a second initrd. The hook fetches update_url= into /cdrom before the stock
+# installer TUI (tty1/ttyS0) or its JSON-RPC server (port 8080) start.
+#
+# Confirmed end-to-end on real hardware, BIOS & UEFI (Robert, 2026-10-21, TrueNAS 25.10.2.1,
+# opbevaring 1.0.1): PXE boot -> payload fetch -> stock installer -> truenas_admin password
+# prompt -> install -> reboot. :opbevaring-s confirmed on the serial console the same day
+# (Dell NAS). Menu stanzas are unchanged since 1.0.1 (confirmed against opbevaring's own 1.1.0
+# release notes) -- the hardware confirmation above still applies even though the manifest now
+# fetches 1.1.0's hook.
+#
+# Payload sha256 verification is ON by default (opbevaring 1.1.0+): the hook looks the
+# .update up in the SHA256SUMS served in the same version folder (written by
+# extract-iso.sh), so no hash needs copying into this menu. To pin a hash explicitly, add
+# update_sha256=<hex>; to turn verification off, add update_sha256=off. See
+# github.com/knightmare2600/opbevaring#payload-verification for the full mechanism.
+#
+# Web layout is bootstrap/web/opbevaring/<version>/, i.e.
+# ${boot-url}/opbevaring/<version>/ -- fully literal per-version paths, same reasoning as
+# :klargoring's literal per-arch paths.
+# ===========================================================================
+:opbevaring
+kernel ${boot-url}/opbevaring/25.10.2.1/vmlinuz boot=live fetch=${boot-url}/opbevaring/25.10.2.1/filesystem.squashfs update_url=${boot-url}/opbevaring/25.10.2.1/TrueNAS-SCALE.update nomodeset console=tty0
+initrd ${boot-url}/opbevaring/25.10.2.1/initrd.img
+initrd ${boot-url}/opbevaring/25.10.2.1/opbevaring-hook.cpio
+boot
+
+:opbevaring-s
+kernel ${boot-url}/opbevaring/25.10.2.1/vmlinuz boot=live fetch=${boot-url}/opbevaring/25.10.2.1/filesystem.squashfs update_url=${boot-url}/opbevaring/25.10.2.1/TrueNAS-SCALE.update nomodeset console=tty0 console=ttyS0,115200n8
+initrd ${boot-url}/opbevaring/25.10.2.1/initrd.img
+initrd ${boot-url}/opbevaring/25.10.2.1/opbevaring-hook.cpio
 boot
 
 # ===========================================================================
