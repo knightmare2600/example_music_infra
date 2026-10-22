@@ -34,6 +34,16 @@
 # and never will.
 # =============================================================================
 # Changelog:
+#   2026-10-22  Added an early nodeinfo.json write to Play 2 (site lookup), right after
+#               nas_environment is resolved -- Robert's ask: make sure nodeinfo.json
+#               genuinely gets written, not just assumed. Previously the ONLY write in this
+#               whole module lived in 10-access.yml, a separate later stage; if that ever
+#               failed/was skipped, nodeinfo.json never got written at all. Matches this
+#               estate's standing "write early, post-hostname-resolution, keep any existing
+#               late write too" convention, which this module had never actually followed.
+#               10-access.yml's own later write is unchanged. Deliberately NOT surfaced as a
+#               Zabbix check (Robert's explicit call, same session) -- purely for a human who
+#               SSHes in directly to have something accurate to read.
 #   2026-07-28  Robert, live against EXANASFAL001: the "PRESUMPTION, not verified" note above
 #               resolved -- root SSH was never usable (no root password ever set on these
 #               boxes), truenas_admin is the correct first-touch account. Confirmed, not just
@@ -111,6 +121,48 @@
       ansible.builtin.set_fact:
         nas_environment: "{{ resolved_environment }}"
       tags: preflight
+
+    # ── Early nodeinfo.json write ────────────────────────────────────────────
+    # Robert's ask, 2026-10-22: make sure nodeinfo.json genuinely gets written/
+    # kept current, not just assumed -- matches this estate's standing rule
+    # (every module writes nodeinfo as early as possible, post-hostname-
+    # resolution, keeping any existing later write too) that this file was
+    # never actually following: the ONLY nodeinfo write in this whole module
+    # used to live in 10-access.yml, a separate, LATER stage -- if that stage
+    # ever failed or was skipped (e.g. someone runs 00-preflight.yml standalone,
+    # or a later task errors out before reaching it), nodeinfo.json would never
+    # get written at all. Everything needed (host_role/host_site/host_num from
+    # hostname_facts.yml above, nas_city/country/entity/nas_environment from
+    # this same play) is already resolved by this point, so there's no reason
+    # to wait for 10-access.yml. 10-access.yml's own later write is UNCHANGED
+    # and still runs -- nodeinfo.yml's own preserve-existing-extra logic makes
+    # writing it twice safe, same pattern every other multi-stage module in
+    # this estate already uses. Deliberately not surfaced as a Zabbix check
+    # (Robert's explicit call) -- this is purely so a human SSHed into the box
+    # directly has an accurate file to read, nothing monitors it.
+    - name: "[Preflight] Set nas_hostname fact (EXANAS<SITE>NNN, needed for the early nodeinfo.json write below)"
+      ansible.builtin.set_fact:
+        nas_hostname: "EXA{{ host_role }}{{ host_site }}{{ host_num }}"
+      tags: [preflight, always]
+
+    - name: "[Preflight] Write /etc/example-music/nodeinfo.json (early -- see comment above)"
+      tags: [preflight, always]
+      ansible.builtin.include_tasks: ../../../tasks/nodeinfo.yml
+      vars:
+        nodeinfo_hostname: "{{ nas_hostname }}"
+        nodeinfo_role: "truenas"
+        nodeinfo_site: "{{ host_site }}"
+        nodeinfo_city: "{{ nas_city }}"
+        nodeinfo_country: "{{ nas_country }}"
+        nodeinfo_country_code: "{{ nas_country_code | default('') }}"
+        nodeinfo_entity: "{{ nas_entity }}"
+        nodeinfo_office_name: "{{ nas_office_name | default('') }}"
+        nodeinfo_street_address: "{{ nas_street | default('') }}"
+        nodeinfo_postal_code: "{{ nas_postal_code | default('') }}"
+        nodeinfo_environment: "{{ nas_environment | default('production') }}"
+        nodeinfo_bootstrapped_by: "truenas/playbooks/00-preflight.yml"
+        nodeinfo_extra:
+          role_note: "Site NAS/SAN, .19 standard slot"
 
     - name: Show preflight summary
       debug:
