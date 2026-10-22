@@ -79,6 +79,12 @@
 # .iso rather than .zip (currently just the debian/ mini.iso entries).
 # ==============================================================================
 # Changelog:
+#   2026-10-22  Added 'PVEPS' to install_pwsh_modules()'s module list -- PowerShell module for
+#               managing Proxmox VE via its REST API (github.com/knightmare2600/PVEPS,
+#               published to the PowerShell Gallery), itself born out of this repo -- Robert's
+#               ask, same addition made in lockstep to setup-workstation-linux.sh and
+#               ansible/playbooks/windows_bootstrap/tasks/ps7_setup.yml's own copies of this
+#               same list.
 #   2026-10-07  LIVE-CONFIRMED on real macOS, both iTerm2 and Terminal.app -- Robert tested
 #               and confirmed the font actually renders correctly in each, same as the
 #               MATE Terminal confirmation on the Linux sibling earlier the same day. Added
@@ -796,7 +802,9 @@ install_workstation_tools() {
 # PSWindowsUpdate is Windows-only (wraps Windows Update's own COM APIs) -- left
 # in the list anyway rather than special-cased out, because Install-Module's
 # existing -ErrorAction SilentlyContinue already degrades it to a harmless no-op
-# on a platform it doesn't support; same mechanism, no new logic needed.
+# on a platform it doesn't support; same mechanism, no new logic needed. PVEPS
+# (added 2026-10-22) is NOT Windows-only -- a pure REST API client
+# (github.com/knightmare2600/PVEPS) -- so it's a genuinely useful install here.
 install_pwsh_modules() {
   if ! command -v pwsh &>/dev/null; then
     msg_info "pwsh not found on PATH -- skipping PS7 module install."
@@ -812,7 +820,8 @@ install_pwsh_modules() {
       "PSReadLine",
       "Terminal-Icons",
       "CompletionPredictor",
-      "NerdFonts"
+      "NerdFonts",
+      "PVEPS"
     )
     foreach ($m in $modules) {
       if (-not (Get-Module -ListAvailable -Name $m)) {

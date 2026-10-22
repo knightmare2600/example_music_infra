@@ -9,6 +9,11 @@
 # Reworking Live Conventions" section.
 # =============================================================================
 # Changelog:
+#   2026-10-22  Added 'PVEPS' to Stage 20's module list -- PowerShell module for managing
+#               Proxmox VE via its REST API (github.com/knightmare2600/PVEPS, published to the
+#               PowerShell Gallery), itself born out of this repo -- Robert's ask, same addition
+#               made in lockstep to bootstrap/setup-workstation-linux.sh and
+#               setup-workstation-macos.sh's own copies of this same 7-module (now 8) list.
 #   2026-10-04  Robert's catch: PS7 itself is cross-platform, so the banner's nodeinfo.json
 #               path should branch on $IsWindows/$IsLinux rather than hardcode the Windows
 #               path -- real automatic PS7 variables, not something invented for this file.
@@ -72,7 +77,8 @@
         'PSReadLine',
         'Terminal-Icons',
         'CompletionPredictor',
-        'NerdFonts'
+        'NerdFonts',
+        'PVEPS'
       )
       foreach ($m in $modules) {
         if (-not (Get-Module -ListAvailable -Name $m)) {
