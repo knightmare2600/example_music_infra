@@ -48,6 +48,16 @@
 # middleware daemon.
 # =============================================================================
 # Changelog:
+#   2026-10-22  Added task 1a -- locks SSH password login back down for truenas_admin
+#               (00-rest-bootstrap.yml's own steps 3a/3b opened it, scoped to that one
+#               account, for the bootstrap window only) now that the real, permanent
+#               ansible key-based account above is confirmed in place. Real finding, live
+#               against EXANASVRK001: TrueNAS SCALE's SSH *service* being enabled doesn't
+#               mean a user can log in with a password -- that's a separate per-user field
+#               (ssh_password_enabled), off by default. REST, not arensb.truenas -- checked
+#               directly against the installed collection's own argspec that its user
+#               module has no such parameter. Robert's explicit go-ahead to build this
+#               properly rather than just flip the field by hand once.
 #   2026-07-28  Robert, live against EXANASFAL001: corrected the "root + password" first-run
 #               convention to truenas_admin -- root SSH was an unverified presumption, now
 #               confirmed wrong (no root password is ever set on these boxes; the web-UI/API
@@ -85,6 +95,45 @@
         sudo: true
         sudo_nopasswd: true
         state: present
+
+    # ── Lock SSH password auth back down (opened by 00-rest-bootstrap.yml's steps
+    # 3a/3b, scoped to truenas_admin only) now that task 1 above has confirmed the
+    # real, permanent ansible key-based account is in place. REST, not
+    # arensb.truenas -- confirmed directly against the installed collection's own
+    # argspec (ansible-doc -j arensb.truenas.user) that its user module has no
+    # ssh_password_enabled parameter at all (only password/password_disabled/
+    # ssh_authorized_keys), so the module that creates the ansible account above
+    # genuinely cannot also flip this field -- REST is the only mechanism that
+    # can, same as turning it on. truenas_rest_bootstrap_user/_password/
+    # truenas_target_ip/_truenas_bootstrap_user_id are facts already resolved by
+    # 00-rest-bootstrap.yml earlier in this same site.yml run and persist across
+    # its chained plays -- not re-prompted/re-resolved here.
+    #
+    # Guarded on ansible_user == truenas_rest_bootstrap_user (i.e. THIS run
+    # actually authenticated as truenas_admin, the genuine first-ever-bootstrap
+    # case) rather than a remote `whoami`-style check -- this play runs under
+    # become: true throughout, so a remote whoami would read back "root" via
+    # become regardless of which account the SSH connection itself used,
+    # silently never matching and never firing. ansible_user is the connection
+    # fact for THIS run, not affected by become.
+    - name: "1a | Lock SSH password login back down for truenas_admin (bootstrap window closed)"
+      ansible.builtin.uri:
+        url: "https://{{ truenas_target_ip | default(ansible_host) }}/api/v2.0/user/id/{{ _truenas_bootstrap_user_id }}"
+        method: PUT
+        user: "{{ truenas_rest_bootstrap_user }}"
+        password: "{{ truenas_rest_bootstrap_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ truenas_rest_validate_certs | default(false) }}"
+        body_format: json
+        body:
+          ssh_password_enabled: false
+        status_code: 200
+      when:
+        - ansible_user == truenas_rest_bootstrap_user
+        - not ansible_check_mode
+      delegate_to: localhost
+      vars:
+        ansible_connection: local
 
     - name: "2 | Set hostname fact (EXANAS<SITE>NNN, parsed by 00-preflight's hostname_facts.yml)"
       ansible.builtin.set_fact:
