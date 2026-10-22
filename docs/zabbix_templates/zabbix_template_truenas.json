@@ -1,0 +1,931 @@
+{
+  "zabbix_export": {
+    "version": "7.0",
+    "template_groups": [
+      {
+        "uuid": "ccb6f6556776402c84ee18b8b9c87c10",
+        "name": "Templates/Example Music"
+      }
+    ],
+    "templates": [
+      {
+        "uuid": "6976a694e7d94bd1a22c07ff04f221f6",
+        "template": "truenas_examplemusic",
+        "name": "TrueNAS (Example Music)",
+        "description": "Companion template for ansible/playbooks/truenas/. REST/HTTP-agent ONLY -- NO classic zabbix-agent on the box at all, Robert's explicit call, 2026-10-22: TrueNAS SCALE is an appliance OS, and installing zabbix-agent via apt would carry the exact same unresolved boot-environment-rollback-persistence risk this module's own README already flags for nodeinfo.json. nodeinfo.json itself is DELIBERATELY NOT a Zabbix item in this template either (Robert's explicit call, same conversation) -- it's now written early by 00-preflight.yml (fixed the same session, see that file's own 2026-10-22 changelog entry) purely so a human who SSHes into the box directly has something accurate to read, not something Zabbix monitors.\n\nFirst template in this series built entirely on HTTP_AGENT master items + DEPENDENT items -- no ZABBIX_ACTIVE items anywhere. Every HTTP_AGENT item authenticates via HTTP Basic against TrueNAS's own REST API (the same one 00-rest-bootstrap.yml already uses), with a dedicated TrueNAS API key as the password ({$TRUENAS.API_KEY}) -- NOT the truenas_admin account's own bootstrap password. That API key is NOT YET auto-provisioned by the playbook (create one manually via the TrueNAS web UI or POST /api_key, then file it into this macro) -- a real follow-up item if Robert wants it automated later (e.g. a new step in 10-access.yml, same REST mechanism already proven this session). {$TRUENAS.API_KEY} ships as a plain-text macro, not type SECRET -- confirmed real Zabbix exports never carry a value for secret macros at all, so declaring it SECRET with a placeholder risked the import dropping or rejecting it; flip it to 'Secret text' yourself in the Zabbix UI after import instead (one click).\n\nSECTIONS\n  A. Alerts: TrueNAS's own aggregated /alert/list, filtered to non-dismissed via JSONPATH (no server-side filter param exists for this endpoint) -- the single most valuable, comprehensive check available, catches pool/disk/cert concerns without independently re-deriving each one.\n  B. Pool health: /pool?name=, confirmed real fields (healthy/status/warning/free_str). The name= query filter is NOT independently confirmed for this endpoint -- used on the same precedent as /user's own equivalent filter, which WAS confirmed live this session.\n  C. Dataset existence: the one placeholder dataset 20-storage.yml creates, same unconfirmed-but-precedented id= filter approach as section B.\n  D. SSH service state: /service has no filter param at all (confirmed) -- fetched unfiltered, JSONPath array-filter + property chain client-side in Zabbix instead.\n  E. ssh_password_enabled drift: real finding from this same session -- 00-rest-bootstrap.yml flips it on for the bootstrap window only, 10-access.yml flips it back off once the real ansible account exists. A persistent true reading outside an active bootstrap run is a genuine security-relevant drift signal.\n  F. The ansible automation account: sudo/sudo_nopasswd/password_disabled/locked all checked against 10-access.yml's own expected values.\n  G. System info: hostname drift (against {$TRUENAS.HOSTNAME}) + version (informational).\n\nusername= filters CONFIRMED working live (2026-10-22, EXANASVRK001) for /user specifically -- the equivalent name=/id= filters on /pool and /pool/dataset are used on that same precedent but NOT independently re-confirmed for those two endpoints. Every JSONPath array-filter expression (sections A/D) is standard JSONPath syntax, not independently live-tested against a real Zabbix 7.0 install this round either -- double-check these specifically on first import, same spirit as this series' own httptests-block caveat on the tacticalrmm template.\n\nNo nodeinfo.json master item or base schema declared here at all (unlike every other template in this series) -- this template has NO agent-based items whatsoever, so the whole duplicate-master-item concern ([[feedback_zabbix_duplicate_item_keys_across_templates]]) doesn't apply -- not an oversight, genuinely inapplicable.\n\nNOT YET LIVE-IMPORTED OR LIVE-TESTED against a real Zabbix server -- same status as every other template in this series. The HTTP_AGENT item type and every JSONPath expression above are this template's own first-time use of both, on top of the not-independently-confirmed query filters noted per-section above -- treat this one as needing MORE scrutiny on first import than the agent-based templates that came before it, not less.\n\nIMPORT: configuration.import, rules: createMissing+updateExisting+deleteMissing on items/triggers, createMissing+updateExisting on template_groups/templates.",
+        "groups": [
+          {
+            "name": "Templates/Example Music"
+          }
+        ],
+        "items": [
+          {
+            "uuid": "1c905746ebb5401f9f519ac1b3d25613",
+            "name": "TrueNAS alerts (raw)",
+            "type": "HTTP_AGENT",
+            "key": "truenas.alerts.raw",
+            "delay": "5m",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Full /alert/list response -- TrueNAS's own aggregated health/alert system (pool degraded, disk failing, cert expiring, etc. all surface here). Master item for the non-dismissed-count dependent below.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "truenas"
+              },
+              {
+                "tag": "scope",
+                "value": "alerts"
+              }
+            ],
+            "url": "https://{$TRUENAS.IP}/api/v2.0/alert/list",
+            "authtype": "BASIC",
+            "username": "{$TRUENAS.API_USERNAME}",
+            "password": "{$TRUENAS.API_KEY}",
+            "request_method": "GET",
+            "output_format": "JSON",
+            "timeout": "10s"
+          },
+          {
+            "uuid": "97f7f86b1cfe406293431858abac893c",
+            "name": "TrueNAS alerts: active (non-dismissed)",
+            "type": "DEPENDENT",
+            "key": "truenas.alerts.active",
+            "delay": "0",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Non-dismissed alerts, filtered server-side in Zabbix via JSONPATH (not TrueNAS's own API -- confirmed no server-side filter query param exists for /alert/list). Empty result renders as the literal string '[]'. JSONPath array-filter syntax -- standard JSONPath capability, NOT independently live-tested against a real Zabbix 7.0 install this round.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "truenas"
+              },
+              {
+                "tag": "scope",
+                "value": "alerts"
+              }
+            ],
+            "master_item": {
+              "key": "truenas.alerts.raw"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$[?(@.dismissed==false)]"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "677626daa93c4d219ad784a049f80797",
+                "expression": "last(/TrueNAS (Example Music)/truenas.alerts.active)<>\"[]\"",
+                "name": "Hey! {HOST.NAME} has active TrueNAS alerts",
+                "priority": "HIGH",
+                "description": "TrueNAS's own alert system has at least one active, non-dismissed alert. Check the TrueNAS web UI (Alerts) or GET /alert/list directly for the real text -- this item only proves non-empty, doesn't surface the message itself.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "truenas"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "alerts"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "886d2424acbd4c348f79903318025ab1",
+            "name": "TrueNAS pool (raw)",
+            "type": "HTTP_AGENT",
+            "key": "truenas.pool.raw",
+            "delay": "5m",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Full /pool response, filtered to {$TRUENAS.POOL_NAME} via a name= query param -- confirmed working for the equivalent /user?username= filter this session, NOT independently re-confirmed for /pool specifically (undocumented in the OpenAPI spec's own declared parameters either way). Master item for the dependents below.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "truenas"
+              },
+              {
+                "tag": "scope",
+                "value": "storage"
+              }
+            ],
+            "url": "https://{$TRUENAS.IP}/api/v2.0/pool?name={$TRUENAS.POOL_NAME}",
+            "authtype": "BASIC",
+            "username": "{$TRUENAS.API_USERNAME}",
+            "password": "{$TRUENAS.API_KEY}",
+            "request_method": "GET",
+            "output_format": "JSON",
+            "timeout": "10s"
+          },
+          {
+            "uuid": "4d43e92638894624a68868e21f6e3f45",
+            "name": "TrueNAS pool: healthy",
+            "type": "DEPENDENT",
+            "key": "truenas.pool.healthy",
+            "delay": "0",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Pool's own healthy boolean (true/false) -- the simplest single field to trigger on, confirmed real in the schema.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "truenas"
+              },
+              {
+                "tag": "scope",
+                "value": "storage"
+              }
+            ],
+            "master_item": {
+              "key": "truenas.pool.raw"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$[0].healthy"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "279006a18da34343bfa8d587e5487296",
+                "expression": "last(/TrueNAS (Example Music)/truenas.pool.healthy)<>\"true\"",
+                "name": "Hey! {HOST.NAME} - pool {$TRUENAS.POOL_NAME} is not healthy",
+                "priority": "HIGH",
+                "description": "Pool {$TRUENAS.POOL_NAME}'s own healthy field is not true. Check the TrueNAS web UI (Storage) or GET /pool/id/{id} directly for the real status/scan detail -- likely a degraded/offline disk.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "truenas"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "storage"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "73e5c95b91c740e188032fdfb36ec2b1",
+            "name": "TrueNAS pool: status",
+            "type": "DEPENDENT",
+            "key": "truenas.pool.status",
+            "delay": "0",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Pool's own status string (ONLINE/DEGRADED/etc, confirmed real enum values in the schema) -- visibility only alongside the healthy-boolean trigger above, no separate trigger (would be redundant).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "truenas"
+              },
+              {
+                "tag": "scope",
+                "value": "storage"
+              }
+            ],
+            "master_item": {
+              "key": "truenas.pool.raw"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$[0].status"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "29afd89b525241969f8ca1da4d289fd5",
+            "name": "TrueNAS pool: warning flag",
+            "type": "DEPENDENT",
+            "key": "truenas.pool.warning",
+            "delay": "0",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Pool's own warning boolean -- a softer signal than healthy=false, e.g. approaching capacity or a non-critical condition.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "truenas"
+              },
+              {
+                "tag": "scope",
+                "value": "storage"
+              }
+            ],
+            "master_item": {
+              "key": "truenas.pool.raw"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$[0].warning"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "4cacbd13bbb74c8baa7766415737f74e",
+                "expression": "last(/TrueNAS (Example Music)/truenas.pool.warning)==\"true\"",
+                "name": "{HOST.NAME} - pool {$TRUENAS.POOL_NAME} has a warning flag set",
+                "priority": "WARNING",
+                "description": "Pool {$TRUENAS.POOL_NAME}'s own warning field is true -- check the TrueNAS web UI for the real condition. Softer than the healthy=false trigger above.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "truenas"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "storage"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "694ab174d49d499794f9709c1fd486fb",
+            "name": "TrueNAS pool: free space (human-readable)",
+            "type": "DEPENDENT",
+            "key": "truenas.pool.free_str",
+            "delay": "0",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Pool's own free_str field (human-readable, e.g. '1.2 TiB') -- informational only, no numeric percent-full trigger here. The raw numeric used/free/size fields are typed as opaque objects in the real schema (TrueNAS's own wrapped-property shape, likely {{parsed, rawvalue, ...}}) -- which exact sub-field to extract wasn't confirmed live this round, so this stays a visibility-only string rather than a guessed numeric trigger.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "truenas"
+              },
+              {
+                "tag": "scope",
+                "value": "storage"
+              }
+            ],
+            "master_item": {
+              "key": "truenas.pool.raw"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$[0].free_str"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "ead5e6fbfc0542b4ab091220524e7943",
+            "name": "TrueNAS dataset (raw)",
+            "type": "HTTP_AGENT",
+            "key": "truenas.dataset.raw",
+            "delay": "15m",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Full /pool/dataset response, filtered to {$TRUENAS.POOL_NAME}/{$TRUENAS.DATASET_NAME} via an id= query param -- same unconfirmed-but-precedented filter approach as section B.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "truenas"
+              },
+              {
+                "tag": "scope",
+                "value": "storage"
+              }
+            ],
+            "url": "https://{$TRUENAS.IP}/api/v2.0/pool/dataset?id={$TRUENAS.POOL_NAME}/{$TRUENAS.DATASET_NAME}",
+            "authtype": "BASIC",
+            "username": "{$TRUENAS.API_USERNAME}",
+            "password": "{$TRUENAS.API_KEY}",
+            "request_method": "GET",
+            "output_format": "JSON",
+            "timeout": "10s"
+          },
+          {
+            "uuid": "ebaa5419f76f445ab494537c611a4ee1",
+            "name": "TrueNAS dataset: {$TRUENAS.POOL_NAME}/{$TRUENAS.DATASET_NAME} exists",
+            "type": "DEPENDENT",
+            "key": "truenas.dataset.exists",
+            "delay": "0",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Echoes back the dataset's own id field if found -- empty/discarded if the filter matched nothing (20-storage.yml's own placeholder dataset is gone or never created).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "truenas"
+              },
+              {
+                "tag": "scope",
+                "value": "storage"
+              }
+            ],
+            "master_item": {
+              "key": "truenas.dataset.raw"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$[0].id"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "98562f9ca9cc4206a28a748406089803",
+                "expression": "length(last(/TrueNAS (Example Music)/truenas.dataset.exists))=0",
+                "name": "{HOST.NAME} - dataset {$TRUENAS.POOL_NAME}/{$TRUENAS.DATASET_NAME} not found",
+                "priority": "WARNING",
+                "description": "20-storage.yml's own placeholder dataset doesn't exist (or was never created). Re-run that stage, or confirm {$TRUENAS.POOL_NAME}/{$TRUENAS.DATASET_NAME} still match this host's real setup.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "truenas"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "storage"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "3dfc24700037488db33c3369783465e5",
+            "name": "TrueNAS services (raw)",
+            "type": "HTTP_AGENT",
+            "key": "truenas.service.raw",
+            "delay": "5m",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Full, unfiltered /service list (short, bounded) -- no server-side filter param documented for this endpoint at all, so filtering happens client-side via JSONPath on the dependent below instead.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "truenas"
+              },
+              {
+                "tag": "scope",
+                "value": "ssh"
+              }
+            ],
+            "url": "https://{$TRUENAS.IP}/api/v2.0/service",
+            "authtype": "BASIC",
+            "username": "{$TRUENAS.API_USERNAME}",
+            "password": "{$TRUENAS.API_KEY}",
+            "request_method": "GET",
+            "output_format": "JSON",
+            "timeout": "10s"
+          },
+          {
+            "uuid": "30d208e18c0640d28930f2d40264102c",
+            "name": "TrueNAS SSH service: state",
+            "type": "DEPENDENT",
+            "key": "truenas.service.ssh.state",
+            "delay": "0",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "The ssh service entry's own state field, found via a JSONPath array filter + property chain -- standard JSONPath capability, not independently live-tested against a real Zabbix 7.0 install this round.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "truenas"
+              },
+              {
+                "tag": "scope",
+                "value": "ssh"
+              }
+            ],
+            "master_item": {
+              "key": "truenas.service.raw"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$[?(@.service=='ssh')].state"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "755e88a622f443ff82062c6fe02cb8f8",
+                "expression": "last(/TrueNAS (Example Music)/truenas.service.ssh.state)<>\"RUNNING\"",
+                "name": "Hey! {HOST.NAME} - SSH service is not running",
+                "priority": "HIGH",
+                "description": "sshd isn't running -- 00-rest-bootstrap.yml's own SSH-enable step may need re-running, or something stopped it after the fact. Every later Ansible stage for this host depends on SSH working.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "truenas"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "ssh"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "9ee8b1302bd343fd896acb6e35abd5c8",
+            "name": "TrueNAS admin user (raw)",
+            "type": "HTTP_AGENT",
+            "key": "truenas.user.admin.raw",
+            "delay": "15m",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Full /user response for {$TRUENAS.API_USERNAME} (the bootstrap admin account) -- username= filter CONFIRMED working live this session (2026-10-22, EXANASVRK001), not a guess.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "truenas"
+              },
+              {
+                "tag": "scope",
+                "value": "security"
+              }
+            ],
+            "url": "https://{$TRUENAS.IP}/api/v2.0/user?username={$TRUENAS.API_USERNAME}",
+            "authtype": "BASIC",
+            "username": "{$TRUENAS.API_USERNAME}",
+            "password": "{$TRUENAS.API_KEY}",
+            "request_method": "GET",
+            "output_format": "JSON",
+            "timeout": "10s"
+          },
+          {
+            "uuid": "fb10e63b42ee4a7182cef02e646aa4b7",
+            "name": "TrueNAS admin user: ssh_password_enabled",
+            "type": "DEPENDENT",
+            "key": "truenas.user.admin.ssh_password_enabled",
+            "delay": "0",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Should read false in steady state -- 00-rest-bootstrap.yml flips it true only for the bootstrap window, 10-access.yml flips it back false once the real ansible key-based account exists. A brief true reading while a bootstrap run is actively in progress against this host is expected, not a real alert -- the trigger fires on it anyway since Zabbix has no way to distinguish that from a genuine drift; use judgement before escalating a single reading.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "truenas"
+              },
+              {
+                "tag": "scope",
+                "value": "security"
+              }
+            ],
+            "master_item": {
+              "key": "truenas.user.admin.raw"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$[0].ssh_password_enabled"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "ca3eb62c98164b42b9e824b6e9e02fd0",
+                "expression": "last(/TrueNAS (Example Music)/truenas.user.admin.ssh_password_enabled)==\"true\"",
+                "name": "{HOST.NAME} - ssh_password_enabled is true on the bootstrap admin account",
+                "priority": "WARNING",
+                "description": "{$TRUENAS.API_USERNAME}'s ssh_password_enabled is true outside the expected bootstrap window (00-rest-bootstrap.yml/10-access.yml should leave it false once bootstrap completes). Confirm no bootstrap run is actively in progress against this host before treating this as a real drift.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "truenas"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "security"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "3d6d0de9e2bc486981c396d1c605df66",
+            "name": "TrueNAS ansible account (raw)",
+            "type": "HTTP_AGENT",
+            "key": "truenas.user.ansible.raw",
+            "delay": "15m",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Full /user response for the dedicated 'ansible' automation account 10-access.yml creates. Same username= filter approach confirmed live for the admin account above.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "truenas"
+              },
+              {
+                "tag": "scope",
+                "value": "access"
+              }
+            ],
+            "url": "https://{$TRUENAS.IP}/api/v2.0/user?username=ansible",
+            "authtype": "BASIC",
+            "username": "{$TRUENAS.API_USERNAME}",
+            "password": "{$TRUENAS.API_KEY}",
+            "request_method": "GET",
+            "output_format": "JSON",
+            "timeout": "10s"
+          },
+          {
+            "uuid": "fbe5b1ea288e41cc9b3b3fdb018449c4",
+            "name": "TrueNAS ansible account: sudo",
+            "type": "DEPENDENT",
+            "key": "truenas.user.ansible.sudo",
+            "delay": "0",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Expected true -- matches 10-access.yml's own arensb.truenas.user task (sudo: true).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "truenas"
+              },
+              {
+                "tag": "scope",
+                "value": "access"
+              }
+            ],
+            "master_item": {
+              "key": "truenas.user.ansible.raw"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$[0].sudo"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "7e1dafc0e087476bb72890fccc4a1942",
+                "expression": "last(/TrueNAS (Example Music)/truenas.user.ansible.sudo)<>\"true\"",
+                "name": "{HOST.NAME} - ansible account's sudo has drifted from true",
+                "priority": "HIGH",
+                "description": "The ansible automation account's sudo field no longer reads true -- re-run 10-access.yml, or check whether the account was hand-edited.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "truenas"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "access"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "4fd65614f3d04c0e826703322daad45b",
+            "name": "TrueNAS ansible account: sudo_nopasswd",
+            "type": "DEPENDENT",
+            "key": "truenas.user.ansible.sudo_nopasswd",
+            "delay": "0",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Expected true -- matches 10-access.yml's own arensb.truenas.user task (sudo_nopasswd: true).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "truenas"
+              },
+              {
+                "tag": "scope",
+                "value": "access"
+              }
+            ],
+            "master_item": {
+              "key": "truenas.user.ansible.raw"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$[0].sudo_nopasswd"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "3e5c477499674103a27d0f6310c99f0c",
+                "expression": "last(/TrueNAS (Example Music)/truenas.user.ansible.sudo_nopasswd)<>\"true\"",
+                "name": "{HOST.NAME} - ansible account's sudo_nopasswd has drifted from true",
+                "priority": "HIGH",
+                "description": "The ansible automation account's sudo_nopasswd field no longer reads true -- re-run 10-access.yml, or check whether the account was hand-edited.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "truenas"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "access"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "dd1811feb9854b2b87eebe50a3d9c9dc",
+            "name": "TrueNAS ansible account: password_disabled",
+            "type": "DEPENDENT",
+            "key": "truenas.user.ansible.password_disabled",
+            "delay": "0",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Expected true -- matches 10-access.yml's own arensb.truenas.user task (password_disabled: true).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "truenas"
+              },
+              {
+                "tag": "scope",
+                "value": "access"
+              }
+            ],
+            "master_item": {
+              "key": "truenas.user.ansible.raw"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$[0].password_disabled"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "a9a6399ef6e1435fb5226989a30e5c1c",
+                "expression": "last(/TrueNAS (Example Music)/truenas.user.ansible.password_disabled)<>\"true\"",
+                "name": "{HOST.NAME} - ansible account's password_disabled has drifted from true",
+                "priority": "WARNING",
+                "description": "The ansible automation account's password_disabled field no longer reads true -- re-run 10-access.yml, or check whether the account was hand-edited.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "truenas"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "access"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "6136ce092cfa4cf6913bf92e813a8759",
+            "name": "TrueNAS ansible account: locked",
+            "type": "DEPENDENT",
+            "key": "truenas.user.ansible.locked",
+            "delay": "0",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Expected false -- matches 10-access.yml's own arensb.truenas.user task (locked: false).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "truenas"
+              },
+              {
+                "tag": "scope",
+                "value": "access"
+              }
+            ],
+            "master_item": {
+              "key": "truenas.user.ansible.raw"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$[0].locked"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "400a0c7918424313a35f83e6b88e7b45",
+                "expression": "last(/TrueNAS (Example Music)/truenas.user.ansible.locked)<>\"false\"",
+                "name": "{HOST.NAME} - ansible account's locked has drifted from false",
+                "priority": "WARNING",
+                "description": "The ansible automation account's locked field no longer reads false -- re-run 10-access.yml, or check whether the account was hand-edited.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "truenas"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "access"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "73fe96160d944e6197598dfdbe7d0f2e",
+            "name": "TrueNAS system info (raw)",
+            "type": "HTTP_AGENT",
+            "key": "truenas.system_info.raw",
+            "delay": "15m",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Full /system/info response -- no query params at all on this endpoint (confirmed in the OpenAPI spec), always returns this one box's own info.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "truenas"
+              },
+              {
+                "tag": "scope",
+                "value": "system"
+              }
+            ],
+            "url": "https://{$TRUENAS.IP}/api/v2.0/system/info",
+            "authtype": "BASIC",
+            "username": "{$TRUENAS.API_USERNAME}",
+            "password": "{$TRUENAS.API_KEY}",
+            "request_method": "GET",
+            "output_format": "JSON",
+            "timeout": "10s"
+          },
+          {
+            "uuid": "f4a1d4ab47614393ae31f842050c9bad",
+            "name": "TrueNAS system info: hostname",
+            "type": "DEPENDENT",
+            "key": "truenas.system_info.hostname",
+            "delay": "0",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "This box's own reported hostname -- expected to match {$TRUENAS.HOSTNAME} (set by 10-access.yml's arensb.truenas.hostname task, lowercased).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "truenas"
+              },
+              {
+                "tag": "scope",
+                "value": "system"
+              }
+            ],
+            "master_item": {
+              "key": "truenas.system_info.raw"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.hostname"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "61fc773afbc14be79ab2e80e832bcf3d",
+                "expression": "last(/TrueNAS (Example Music)/truenas.system_info.hostname)<>{$TRUENAS.HOSTNAME}",
+                "name": "{HOST.NAME} - reported hostname doesn't match {$TRUENAS.HOSTNAME}",
+                "priority": "WARNING",
+                "description": "This box's own /system/info hostname no longer matches {$TRUENAS.HOSTNAME} -- re-run 10-access.yml, or confirm the macro still matches this host's real EXANAS<SITE>NNN identity.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "truenas"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "system"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "b41a455e871c48138d4aa7f9c2bfbf1a",
+            "name": "TrueNAS system info: version",
+            "type": "DEPENDENT",
+            "key": "truenas.system_info.version",
+            "delay": "0",
+            "history": "30d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "TrueNAS version string -- informational only, no trigger. Matches this series' own convention of surfacing version info elsewhere (e.g. the tacticalrmm template's own TrueNAS-adjacent version tracking).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "truenas"
+              },
+              {
+                "tag": "scope",
+                "value": "system"
+              }
+            ],
+            "master_item": {
+              "key": "truenas.system_info.raw"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.version"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          }
+        ],
+        "macros": [
+          {
+            "macro": "{$TRUENAS.IP}",
+            "value": "192.168.139.19",
+            "description": "This TrueNAS box's own reachable IP (its standard .19 slot). Default is EXANASVRK001's real test address -- override per host."
+          },
+          {
+            "macro": "{$TRUENAS.API_USERNAME}",
+            "value": "truenas_admin",
+            "description": "Basic-auth username slot. TrueNAS's own convention treats this as effectively ignored when the password is an API key (per 00-rest-bootstrap.yml's own header comment) -- not independently re-verified this round, kept as truenas_admin for clarity regardless."
+          },
+          {
+            "macro": "{$TRUENAS.API_KEY}",
+            "value": "CHANGE_ME",
+            "description": "A DEDICATED TrueNAS API key for Zabbix polling -- NOT the truenas_admin account's own bootstrap password. Create via the TrueNAS web UI or POST /api_key, then set this macro. Shipped as a plain-text macro deliberately, NOT type SECRET -- confirmed real Zabbix exports never carry a value for secret macros at all, so declaring it SECRET here with a placeholder value risks the import dropping or rejecting it. After import, change this macro's own type to 'Secret text' in the Zabbix UI yourself (one click) and set the real key -- safer than guessing at untested export/import behaviour for a type this series has never used before. NOT yet auto-provisioned by the playbook (a real follow-up item, not done)."
+          },
+          {
+            "macro": "{$TRUENAS.POOL_NAME}",
+            "value": "CHANGE_ME",
+            "description": "The pool name this host's own nas_pool_name host_vars points at (no sensible default exists -- same reasoning 20-storage.yml's own assert already uses). Must be set per host before this template is useful."
+          },
+          {
+            "macro": "{$TRUENAS.DATASET_NAME}",
+            "value": "general",
+            "description": "The one placeholder dataset 20-storage.yml creates under {$TRUENAS.POOL_NAME}."
+          },
+          {
+            "macro": "{$TRUENAS.HOSTNAME}",
+            "value": "exanasvrk001",
+            "description": "This host's own expected hostname, lowercase (matches arensb.truenas.hostname's own lowercased convention in 10-access.yml). Default is EXANASVRK001's -- override per host."
+          }
+        ],
+        "tags": [
+          {
+            "tag": "target",
+            "value": "truenas"
+          }
+        ]
+      }
+    ]
+  }
+}
