@@ -48,6 +48,18 @@
 # middleware daemon.
 # =============================================================================
 # Changelog:
+#   2026-10-22  Added a TrueNAS API key provisioning section (for the Zabbix companion
+#               template's own REST/HTTP_AGENT items, docs/zabbix_templates/
+#               zabbix_template_truenas.json) -- Robert's ask: automate creating it and
+#               filing it into KeePass, rather than a manual web-UI step. Idempotent via
+#               KeePass check-first + TrueNAS-side orphan detection (the raw key value is
+#               only ever shown once, at creation -- an orphan from a prior partial run
+#               can't be recovered, only deleted and recreated). Real finding, confirmed
+#               live against EXANASVRK001 the same day: TrueNAS API keys authenticate via
+#               an Authorization: Bearer header, NOT HTTP Basic auth -- a wrong assumption
+#               that used to sit in 00-rest-bootstrap.yml's own header comment, corrected
+#               there too. Doesn't affect how THIS task creates the key (still
+#               truenas_admin + Basic auth, unaffected), only how Zabbix uses the result.
 #   2026-10-22  Added task 1a -- locks SSH password login back down for truenas_admin
 #               (00-rest-bootstrap.yml's own steps 3a/3b opened it, scoped to that one
 #               account, for the bootstrap window only) now that the real, permanent
@@ -167,6 +179,143 @@
         nodeinfo_bootstrapped_by: "truenas/playbooks/10-access.yml"
         nodeinfo_extra:
           role_note: "Site NAS/SAN, .19 standard slot"
+
+    # ── TrueNAS API key for Zabbix monitoring (REST, created + filed into KeePass) ──
+    # Robert's ask, 2026-10-22: automate creating the dedicated TrueNAS API key the
+    # Zabbix companion template (docs/zabbix_templates/zabbix_template_truenas.json)
+    # needs, and automate filing it into KeePass -- rather than Robert minting one by
+    # hand in the TrueNAS web UI every time. Real finding, confirmed live against
+    # EXANASVRK001 same day: TrueNAS API keys authenticate via an Authorization:
+    # Bearer header, NOT HTTP Basic auth (an earlier assumption in
+    # 00-rest-bootstrap.yml's own header comment was wrong, corrected the same day) --
+    # doesn't affect how THIS task creates the key (that part is unaffected, still
+    # truenas_admin + Basic auth, same as every other REST call in this module), only
+    # how the resulting key gets USED later, by Zabbix.
+    #
+    # Idempotent in three layers, in order:
+    #   1. Check KeePass first (check-and-defer, same shared task every other
+    #      credential in this module already uses) -- if a key for this host is
+    #      already filed there, use it, make NO TrueNAS-side changes at all. API keys
+    #      don't expire by default and this module never rotates them automatically,
+    #      so an existing KeePass entry is always still valid.
+    #   2. Only if KeePass has nothing: check whether a key with this host's own
+    #      expected name already exists on TrueNAS. If it does, it's an ORPHAN from a
+    #      prior run that died before reaching the KeePass-filing step -- the raw key
+    #      VALUE is only ever shown once, at creation time (confirmed in
+    #      docs/api2.txt's own return_schema_of_api_key_create vs
+    #      return_schema_of_api_key_query -- the `key` field only exists on the
+    #      former), so there is no way to recover it. Delete the orphan and fall
+    #      through to step 3 rather than leaving two keys for the same purpose or
+    #      silently failing.
+    #   3. Create a fresh key via POST /api_key, tied to the SAME truenas_admin
+    #      account this whole bootstrap already authenticates as (so the Zabbix
+    #      polling key can read everything truenas_admin can -- alerts/pool/
+    #      user/service/system-info, exactly what the Zabbix template's own items
+    #      need), then file the raw value into KeePass via the same shared
+    #      check-defer-write task, this time WITH a value to write (branch 5 of that
+    #      file's own documented logic: "not found, caller already has a value ->
+    #      first filing").
+    #
+    # Deliberately NOT gated the same way task 1a's ssh_password_enabled lock-down
+    # is (ansible_user == truenas_rest_bootstrap_user) -- that gate exists because
+    # locking password SSH back down is itself the thing a re-run as the ansible
+    # user should NEVER repeat (it already happened once). This key, once created,
+    # simply continues to exist regardless of which account a later run
+    # authenticates as -- the KeePass check in step 1 is what makes repeat runs a
+    # no-op, not an authentication-method gate.
+    - name: "[Zabbix API key] Check KeePass for an existing key first (check-and-defer)"
+      include_tasks: ../../../tasks/keepass_credential_sync.yml
+      vars:
+        kcs_repo_root:              "{{ playbook_dir }}/../../../.."
+        kcs_keepass_path:           "Infrastructure/{{ host_site }}/{{ inventory_hostname | upper }}-zabbix-api-key"
+        kcs_username:               "zabbix-monitoring"
+        kcs_current_value:          ""
+        kcs_can_generate:           false
+        kcs_credentials_json_role:  "TRUENAS_ZABBIX_API_KEY"
+        kcs_result_var:             "truenas_zabbix_api_key"
+      no_log: true
+
+    - name: "[Zabbix API key] List existing TrueNAS API keys (only if KeePass had nothing)"
+      ansible.builtin.uri:
+        url: "https://{{ truenas_target_ip | default(ansible_host) }}/api/v2.0/api_key"
+        method: GET
+        user: "{{ truenas_rest_bootstrap_user }}"
+        password: "{{ truenas_rest_bootstrap_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ truenas_rest_validate_certs | default(false) }}"
+        status_code: 200
+      register: _truenas_zbx_key_list
+      delegate_to: localhost
+      check_mode: false
+      when: truenas_zabbix_api_key | default('') == ''
+      vars:
+        ansible_connection: local
+
+    - name: "[Zabbix API key] Identify an orphaned key with this host's expected name, if any"
+      ansible.builtin.set_fact:
+        _truenas_zbx_orphan_key: "{{ _truenas_zbx_key_list.json | selectattr('name', 'equalto', 'zabbix-monitoring') | list | first | default({}) }}"
+      when: truenas_zabbix_api_key | default('') == ''
+
+    - name: "[Zabbix API key] Delete the orphaned key (its real value can never be recovered -- the raw key is only ever returned once, at creation)"
+      ansible.builtin.uri:
+        url: "https://{{ truenas_target_ip | default(ansible_host) }}/api/v2.0/api_key/id/{{ _truenas_zbx_orphan_key.id }}"
+        method: DELETE
+        user: "{{ truenas_rest_bootstrap_user }}"
+        password: "{{ truenas_rest_bootstrap_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ truenas_rest_validate_certs | default(false) }}"
+        status_code: 200
+      when:
+        - truenas_zabbix_api_key | default('') == ''
+        - _truenas_zbx_orphan_key | default({}) != {}
+      delegate_to: localhost
+      vars:
+        ansible_connection: local
+
+    - name: "[Zabbix API key] Create a fresh key, tied to the same truenas_admin account this bootstrap already authenticates as"
+      ansible.builtin.uri:
+        url: "https://{{ truenas_target_ip | default(ansible_host) }}/api/v2.0/api_key"
+        method: POST
+        user: "{{ truenas_rest_bootstrap_user }}"
+        password: "{{ truenas_rest_bootstrap_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ truenas_rest_validate_certs | default(false) }}"
+        body_format: json
+        body:
+          name: "zabbix-monitoring"
+          username: "{{ truenas_rest_bootstrap_user }}"
+        status_code: 200
+      register: _truenas_zbx_key_create
+      when: truenas_zabbix_api_key | default('') == ''
+      delegate_to: localhost
+      no_log: true
+      vars:
+        ansible_connection: local
+
+    - name: "[Zabbix API key] File the new key into KeePass"
+      include_tasks: ../../../tasks/keepass_credential_sync.yml
+      vars:
+        kcs_repo_root:              "{{ playbook_dir }}/../../../.."
+        kcs_keepass_path:           "Infrastructure/{{ host_site }}/{{ inventory_hostname | upper }}-zabbix-api-key"
+        kcs_username:               "zabbix-monitoring"
+        kcs_current_value:          "{{ _truenas_zbx_key_create.json.key }}"
+        kcs_can_generate:           false
+        kcs_credentials_json_role:  "TRUENAS_ZABBIX_API_KEY"
+        kcs_result_var:             "truenas_zabbix_api_key"
+      when: truenas_zabbix_api_key | default('') == ''
+      no_log: true
+
+    - name: "[Zabbix API key] Credentials banner -- new key created and filed into KeePass this run"
+      ansible.builtin.debug:
+        msg:
+          - "  ════════════════════════════════════════════════════════════════"
+          - "  TrueNAS API key for Zabbix monitoring created THIS RUN"
+          - "  ════════════════════════════════════════════════════════════════"
+          - "  Filed into KeePass at: Infrastructure/{{ host_site }}/{{ inventory_hostname | upper }}-zabbix-api-key"
+          - "  Set docs/zabbix_templates/zabbix_template_truenas.json's own {{ '{$TRUENAS.API_KEY}' }}"
+          - "  macro to this value (flip its type to 'Secret text' in the Zabbix UI first)."
+          - "  ════════════════════════════════════════════════════════════════"
+      when: _truenas_zbx_key_create is defined
 
     - name: "Summary"
       debug:

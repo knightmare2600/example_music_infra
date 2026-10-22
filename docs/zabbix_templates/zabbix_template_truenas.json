@@ -9,10 +9,10 @@
     ],
     "templates": [
       {
-        "uuid": "6976a694e7d94bd1a22c07ff04f221f6",
+        "uuid": "ee0f0ae4c28d41cb87c0340a72324d14",
         "template": "truenas_examplemusic",
         "name": "TrueNAS (Example Music)",
-        "description": "Companion template for ansible/playbooks/truenas/. REST/HTTP-agent ONLY -- NO classic zabbix-agent on the box at all, Robert's explicit call, 2026-10-22: TrueNAS SCALE is an appliance OS, and installing zabbix-agent via apt would carry the exact same unresolved boot-environment-rollback-persistence risk this module's own README already flags for nodeinfo.json. nodeinfo.json itself is DELIBERATELY NOT a Zabbix item in this template either (Robert's explicit call, same conversation) -- it's now written early by 00-preflight.yml (fixed the same session, see that file's own 2026-10-22 changelog entry) purely so a human who SSHes into the box directly has something accurate to read, not something Zabbix monitors.\n\nFirst template in this series built entirely on HTTP_AGENT master items + DEPENDENT items -- no ZABBIX_ACTIVE items anywhere. Every HTTP_AGENT item authenticates via HTTP Basic against TrueNAS's own REST API (the same one 00-rest-bootstrap.yml already uses), with a dedicated TrueNAS API key as the password ({$TRUENAS.API_KEY}) -- NOT the truenas_admin account's own bootstrap password. That API key is NOT YET auto-provisioned by the playbook (create one manually via the TrueNAS web UI or POST /api_key, then file it into this macro) -- a real follow-up item if Robert wants it automated later (e.g. a new step in 10-access.yml, same REST mechanism already proven this session). {$TRUENAS.API_KEY} ships as a plain-text macro, not type SECRET -- confirmed real Zabbix exports never carry a value for secret macros at all, so declaring it SECRET with a placeholder risked the import dropping or rejecting it; flip it to 'Secret text' yourself in the Zabbix UI after import instead (one click).\n\nSECTIONS\n  A. Alerts: TrueNAS's own aggregated /alert/list, filtered to non-dismissed via JSONPATH (no server-side filter param exists for this endpoint) -- the single most valuable, comprehensive check available, catches pool/disk/cert concerns without independently re-deriving each one.\n  B. Pool health: /pool?name=, confirmed real fields (healthy/status/warning/free_str). The name= query filter is NOT independently confirmed for this endpoint -- used on the same precedent as /user's own equivalent filter, which WAS confirmed live this session.\n  C. Dataset existence: the one placeholder dataset 20-storage.yml creates, same unconfirmed-but-precedented id= filter approach as section B.\n  D. SSH service state: /service has no filter param at all (confirmed) -- fetched unfiltered, JSONPath array-filter + property chain client-side in Zabbix instead.\n  E. ssh_password_enabled drift: real finding from this same session -- 00-rest-bootstrap.yml flips it on for the bootstrap window only, 10-access.yml flips it back off once the real ansible account exists. A persistent true reading outside an active bootstrap run is a genuine security-relevant drift signal.\n  F. The ansible automation account: sudo/sudo_nopasswd/password_disabled/locked all checked against 10-access.yml's own expected values.\n  G. System info: hostname drift (against {$TRUENAS.HOSTNAME}) + version (informational).\n\nusername= filters CONFIRMED working live (2026-10-22, EXANASVRK001) for /user specifically -- the equivalent name=/id= filters on /pool and /pool/dataset are used on that same precedent but NOT independently re-confirmed for those two endpoints. Every JSONPath array-filter expression (sections A/D) is standard JSONPath syntax, not independently live-tested against a real Zabbix 7.0 install this round either -- double-check these specifically on first import, same spirit as this series' own httptests-block caveat on the tacticalrmm template.\n\nNo nodeinfo.json master item or base schema declared here at all (unlike every other template in this series) -- this template has NO agent-based items whatsoever, so the whole duplicate-master-item concern ([[feedback_zabbix_duplicate_item_keys_across_templates]]) doesn't apply -- not an oversight, genuinely inapplicable.\n\nNOT YET LIVE-IMPORTED OR LIVE-TESTED against a real Zabbix server -- same status as every other template in this series. The HTTP_AGENT item type and every JSONPath expression above are this template's own first-time use of both, on top of the not-independently-confirmed query filters noted per-section above -- treat this one as needing MORE scrutiny on first import than the agent-based templates that came before it, not less.\n\nIMPORT: configuration.import, rules: createMissing+updateExisting+deleteMissing on items/triggers, createMissing+updateExisting on template_groups/templates.",
+        "description": "Companion template for ansible/playbooks/truenas/. REST/HTTP-agent ONLY -- NO classic zabbix-agent on the box at all, Robert's explicit call, 2026-10-22: TrueNAS SCALE is an appliance OS, and installing zabbix-agent via apt would carry the exact same unresolved boot-environment-rollback-persistence risk this module's own README already flags for nodeinfo.json. nodeinfo.json itself is DELIBERATELY NOT a Zabbix item in this template either (Robert's explicit call, same conversation) -- it's now written early by 00-preflight.yml (fixed the same session, see that file's own 2026-10-22 changelog entry) purely so a human who SSHes into the box directly has something accurate to read, not something Zabbix monitors.\n\nFirst template in this series built entirely on HTTP_AGENT master items + DEPENDENT items -- no ZABBIX_ACTIVE items anywhere. Every HTTP_AGENT item authenticates against TrueNAS's own REST API (the same one 00-rest-bootstrap.yml already uses) via an Authorization: Bearer header carrying a dedicated TrueNAS API key ({$TRUENAS.API_KEY}) -- NOT the truenas_admin account's own bootstrap password, and NOT HTTP Basic auth either. authtype is NONE, not BASIC -- confirmed live against EXANASVRK001, 2026-10-22, that TrueNAS API keys do not work as a Basic-auth password at all (401 every time, regardless of which username is paired with it); the real, confirmed mechanism is a bearer token, nothing else. This template's own first draft got this wrong (authtype BASIC + username/password macros) -- caught and fixed before it shipped for real, same live-testing session that also corrected the identical wrong assumption sitting in 00-rest-bootstrap.yml's own header comment. The API key itself IS now auto-provisioned: 10-access.yml gained a new section (same day) that creates it via POST /api_key (idempotent -- checks KeePass first, only mints a fresh key if nothing's there, deletes-and-recreates an orphaned TrueNAS-side key it can't recover the value of) and files it into KeePass automatically. {$TRUENAS.API_KEY} ships as a plain-text macro, not type SECRET -- confirmed real Zabbix exports never carry a value for secret macros at all, so declaring it SECRET with a placeholder risked the import dropping or rejecting it; read the real value from KeePass and flip this macro to 'Secret text' yourself in the Zabbix UI after import (one click).\n\nSECTIONS\n  A. Alerts: TrueNAS's own aggregated /alert/list, filtered to non-dismissed via JSONPATH (no server-side filter param exists for this endpoint) -- the single most valuable, comprehensive check available, catches pool/disk/cert concerns without independently re-deriving each one.\n  B. Pool health: /pool?name=, confirmed real fields (healthy/status/warning/free_str). The name= query filter is NOT independently confirmed for this endpoint -- used on the same precedent as /user's own equivalent filter, which WAS confirmed live this session.\n  C. Dataset existence: the one placeholder dataset 20-storage.yml creates, same unconfirmed-but-precedented id= filter approach as section B.\n  D. SSH service state: /service has no filter param at all (confirmed) -- fetched unfiltered, JSONPath array-filter + property chain client-side in Zabbix instead.\n  E. ssh_password_enabled drift: real finding from this same session -- 00-rest-bootstrap.yml flips it on for the bootstrap window only, 10-access.yml flips it back off once the real ansible account exists. A persistent true reading outside an active bootstrap run is a genuine security-relevant drift signal.\n  F. The ansible automation account: sudo/sudo_nopasswd/password_disabled/locked all checked against 10-access.yml's own expected values.\n  G. System info: hostname drift (against {$TRUENAS.HOSTNAME}) + version (informational).\n\nusername= filters CONFIRMED working live (2026-10-22, EXANASVRK001) for /user specifically -- the equivalent name=/id= filters on /pool and /pool/dataset are used on that same precedent but NOT independently re-confirmed for those two endpoints. Every JSONPath array-filter expression (sections A/D) is standard JSONPath syntax, not independently live-tested against a real Zabbix 7.0 install this round either -- double-check these specifically on first import, same spirit as this series' own httptests-block caveat on the tacticalrmm template.\n\nNo nodeinfo.json master item or base schema declared here at all (unlike every other template in this series) -- this template has NO agent-based items whatsoever, so the whole duplicate-master-item concern ([[feedback_zabbix_duplicate_item_keys_across_templates]]) doesn't apply -- not an oversight, genuinely inapplicable.\n\nNOT YET LIVE-IMPORTED OR LIVE-TESTED against a real Zabbix server -- same status as every other template in this series. The HTTP_AGENT item type and every JSONPath expression above are this template's own first-time use of both, on top of the not-independently-confirmed query filters noted per-section above -- treat this one as needing MORE scrutiny on first import than the agent-based templates that came before it, not less.\n\nIMPORT: configuration.import, rules: createMissing+updateExisting+deleteMissing on items/triggers, createMissing+updateExisting on template_groups/templates.",
         "groups": [
           {
             "name": "Templates/Example Music"
@@ -20,7 +20,7 @@
         ],
         "items": [
           {
-            "uuid": "1c905746ebb5401f9f519ac1b3d25613",
+            "uuid": "3be4cf748f0844b68111b06bca3aafa0",
             "name": "TrueNAS alerts (raw)",
             "type": "HTTP_AGENT",
             "key": "truenas.alerts.raw",
@@ -40,15 +40,19 @@
               }
             ],
             "url": "https://{$TRUENAS.IP}/api/v2.0/alert/list",
-            "authtype": "BASIC",
-            "username": "{$TRUENAS.API_USERNAME}",
-            "password": "{$TRUENAS.API_KEY}",
+            "authtype": "NONE",
+            "headers": [
+              {
+                "name": "Authorization",
+                "value": "Bearer {$TRUENAS.API_KEY}"
+              }
+            ],
             "request_method": "GET",
             "output_format": "JSON",
             "timeout": "10s"
           },
           {
-            "uuid": "97f7f86b1cfe406293431858abac893c",
+            "uuid": "bc53783ac724410296c7c2173aab5ce5",
             "name": "TrueNAS alerts: active (non-dismissed)",
             "type": "DEPENDENT",
             "key": "truenas.alerts.active",
@@ -81,7 +85,7 @@
             ],
             "triggers": [
               {
-                "uuid": "677626daa93c4d219ad784a049f80797",
+                "uuid": "c80cb68747ff47219f90f5f25009aec9",
                 "expression": "last(/TrueNAS (Example Music)/truenas.alerts.active)<>\"[]\"",
                 "name": "Hey! {HOST.NAME} has active TrueNAS alerts",
                 "priority": "HIGH",
@@ -100,7 +104,7 @@
             ]
           },
           {
-            "uuid": "886d2424acbd4c348f79903318025ab1",
+            "uuid": "23e708ecc40d4fa69935208722d4fe78",
             "name": "TrueNAS pool (raw)",
             "type": "HTTP_AGENT",
             "key": "truenas.pool.raw",
@@ -120,15 +124,19 @@
               }
             ],
             "url": "https://{$TRUENAS.IP}/api/v2.0/pool?name={$TRUENAS.POOL_NAME}",
-            "authtype": "BASIC",
-            "username": "{$TRUENAS.API_USERNAME}",
-            "password": "{$TRUENAS.API_KEY}",
+            "authtype": "NONE",
+            "headers": [
+              {
+                "name": "Authorization",
+                "value": "Bearer {$TRUENAS.API_KEY}"
+              }
+            ],
             "request_method": "GET",
             "output_format": "JSON",
             "timeout": "10s"
           },
           {
-            "uuid": "4d43e92638894624a68868e21f6e3f45",
+            "uuid": "80cfa3b0c931462da82a8ac1bb89366b",
             "name": "TrueNAS pool: healthy",
             "type": "DEPENDENT",
             "key": "truenas.pool.healthy",
@@ -161,7 +169,7 @@
             ],
             "triggers": [
               {
-                "uuid": "279006a18da34343bfa8d587e5487296",
+                "uuid": "a44224f5fabc4468aff70413b36bdd42",
                 "expression": "last(/TrueNAS (Example Music)/truenas.pool.healthy)<>\"true\"",
                 "name": "Hey! {HOST.NAME} - pool {$TRUENAS.POOL_NAME} is not healthy",
                 "priority": "HIGH",
@@ -180,7 +188,7 @@
             ]
           },
           {
-            "uuid": "73e5c95b91c740e188032fdfb36ec2b1",
+            "uuid": "4c23cc14617146b89f1b1d14900622d8",
             "name": "TrueNAS pool: status",
             "type": "DEPENDENT",
             "key": "truenas.pool.status",
@@ -213,7 +221,7 @@
             ]
           },
           {
-            "uuid": "29afd89b525241969f8ca1da4d289fd5",
+            "uuid": "602ce0f8c8904d7d96980c23919b05e9",
             "name": "TrueNAS pool: warning flag",
             "type": "DEPENDENT",
             "key": "truenas.pool.warning",
@@ -246,7 +254,7 @@
             ],
             "triggers": [
               {
-                "uuid": "4cacbd13bbb74c8baa7766415737f74e",
+                "uuid": "f8975cbe5a4343b3b769f55a39eb55a5",
                 "expression": "last(/TrueNAS (Example Music)/truenas.pool.warning)==\"true\"",
                 "name": "{HOST.NAME} - pool {$TRUENAS.POOL_NAME} has a warning flag set",
                 "priority": "WARNING",
@@ -265,7 +273,7 @@
             ]
           },
           {
-            "uuid": "694ab174d49d499794f9709c1fd486fb",
+            "uuid": "1b94a71fb6bc4d918fa56fbe7a97103a",
             "name": "TrueNAS pool: free space (human-readable)",
             "type": "DEPENDENT",
             "key": "truenas.pool.free_str",
@@ -298,7 +306,7 @@
             ]
           },
           {
-            "uuid": "ead5e6fbfc0542b4ab091220524e7943",
+            "uuid": "f1e2e67685c241cebdfc5654ec35e3fc",
             "name": "TrueNAS dataset (raw)",
             "type": "HTTP_AGENT",
             "key": "truenas.dataset.raw",
@@ -318,15 +326,19 @@
               }
             ],
             "url": "https://{$TRUENAS.IP}/api/v2.0/pool/dataset?id={$TRUENAS.POOL_NAME}/{$TRUENAS.DATASET_NAME}",
-            "authtype": "BASIC",
-            "username": "{$TRUENAS.API_USERNAME}",
-            "password": "{$TRUENAS.API_KEY}",
+            "authtype": "NONE",
+            "headers": [
+              {
+                "name": "Authorization",
+                "value": "Bearer {$TRUENAS.API_KEY}"
+              }
+            ],
             "request_method": "GET",
             "output_format": "JSON",
             "timeout": "10s"
           },
           {
-            "uuid": "ebaa5419f76f445ab494537c611a4ee1",
+            "uuid": "4bc56ca7d40546d799388a840037cf15",
             "name": "TrueNAS dataset: {$TRUENAS.POOL_NAME}/{$TRUENAS.DATASET_NAME} exists",
             "type": "DEPENDENT",
             "key": "truenas.dataset.exists",
@@ -359,7 +371,7 @@
             ],
             "triggers": [
               {
-                "uuid": "98562f9ca9cc4206a28a748406089803",
+                "uuid": "259371ff1e534f0e8c3046e811a943e5",
                 "expression": "length(last(/TrueNAS (Example Music)/truenas.dataset.exists))=0",
                 "name": "{HOST.NAME} - dataset {$TRUENAS.POOL_NAME}/{$TRUENAS.DATASET_NAME} not found",
                 "priority": "WARNING",
@@ -378,7 +390,7 @@
             ]
           },
           {
-            "uuid": "3dfc24700037488db33c3369783465e5",
+            "uuid": "105267bd9dcf4ba384fede0376443af5",
             "name": "TrueNAS services (raw)",
             "type": "HTTP_AGENT",
             "key": "truenas.service.raw",
@@ -398,15 +410,19 @@
               }
             ],
             "url": "https://{$TRUENAS.IP}/api/v2.0/service",
-            "authtype": "BASIC",
-            "username": "{$TRUENAS.API_USERNAME}",
-            "password": "{$TRUENAS.API_KEY}",
+            "authtype": "NONE",
+            "headers": [
+              {
+                "name": "Authorization",
+                "value": "Bearer {$TRUENAS.API_KEY}"
+              }
+            ],
             "request_method": "GET",
             "output_format": "JSON",
             "timeout": "10s"
           },
           {
-            "uuid": "30d208e18c0640d28930f2d40264102c",
+            "uuid": "78e9d101f4d64c27ab30657b9ed8a527",
             "name": "TrueNAS SSH service: state",
             "type": "DEPENDENT",
             "key": "truenas.service.ssh.state",
@@ -439,7 +455,7 @@
             ],
             "triggers": [
               {
-                "uuid": "755e88a622f443ff82062c6fe02cb8f8",
+                "uuid": "ce87cea97da84096ba6fbed5badcbbe1",
                 "expression": "last(/TrueNAS (Example Music)/truenas.service.ssh.state)<>\"RUNNING\"",
                 "name": "Hey! {HOST.NAME} - SSH service is not running",
                 "priority": "HIGH",
@@ -458,7 +474,7 @@
             ]
           },
           {
-            "uuid": "9ee8b1302bd343fd896acb6e35abd5c8",
+            "uuid": "2008729148544c88a5204924f82b742e",
             "name": "TrueNAS admin user (raw)",
             "type": "HTTP_AGENT",
             "key": "truenas.user.admin.raw",
@@ -466,7 +482,7 @@
             "history": "30d",
             "trends": "0",
             "value_type": "TEXT",
-            "description": "Full /user response for {$TRUENAS.API_USERNAME} (the bootstrap admin account) -- username= filter CONFIRMED working live this session (2026-10-22, EXANASVRK001), not a guess.",
+            "description": "Full /user response for {$TRUENAS.ADMIN_USERNAME} (the bootstrap admin account) -- username= filter CONFIRMED working live this session (2026-10-22, EXANASVRK001), not a guess.",
             "tags": [
               {
                 "tag": "component",
@@ -477,16 +493,20 @@
                 "value": "security"
               }
             ],
-            "url": "https://{$TRUENAS.IP}/api/v2.0/user?username={$TRUENAS.API_USERNAME}",
-            "authtype": "BASIC",
-            "username": "{$TRUENAS.API_USERNAME}",
-            "password": "{$TRUENAS.API_KEY}",
+            "url": "https://{$TRUENAS.IP}/api/v2.0/user?username={$TRUENAS.ADMIN_USERNAME}",
+            "authtype": "NONE",
+            "headers": [
+              {
+                "name": "Authorization",
+                "value": "Bearer {$TRUENAS.API_KEY}"
+              }
+            ],
             "request_method": "GET",
             "output_format": "JSON",
             "timeout": "10s"
           },
           {
-            "uuid": "fb10e63b42ee4a7182cef02e646aa4b7",
+            "uuid": "bc1ed98b122f4468a5d527be12d483b1",
             "name": "TrueNAS admin user: ssh_password_enabled",
             "type": "DEPENDENT",
             "key": "truenas.user.admin.ssh_password_enabled",
@@ -519,11 +539,11 @@
             ],
             "triggers": [
               {
-                "uuid": "ca3eb62c98164b42b9e824b6e9e02fd0",
+                "uuid": "776f8dae37bc4377960897f7c223c02a",
                 "expression": "last(/TrueNAS (Example Music)/truenas.user.admin.ssh_password_enabled)==\"true\"",
                 "name": "{HOST.NAME} - ssh_password_enabled is true on the bootstrap admin account",
                 "priority": "WARNING",
-                "description": "{$TRUENAS.API_USERNAME}'s ssh_password_enabled is true outside the expected bootstrap window (00-rest-bootstrap.yml/10-access.yml should leave it false once bootstrap completes). Confirm no bootstrap run is actively in progress against this host before treating this as a real drift.",
+                "description": "{$TRUENAS.ADMIN_USERNAME}'s ssh_password_enabled is true outside the expected bootstrap window (00-rest-bootstrap.yml/10-access.yml should leave it false once bootstrap completes). Confirm no bootstrap run is actively in progress against this host before treating this as a real drift.",
                 "tags": [
                   {
                     "tag": "component",
@@ -538,7 +558,7 @@
             ]
           },
           {
-            "uuid": "3d6d0de9e2bc486981c396d1c605df66",
+            "uuid": "0be83647ad7e49518b058f7d5281b053",
             "name": "TrueNAS ansible account (raw)",
             "type": "HTTP_AGENT",
             "key": "truenas.user.ansible.raw",
@@ -558,15 +578,19 @@
               }
             ],
             "url": "https://{$TRUENAS.IP}/api/v2.0/user?username=ansible",
-            "authtype": "BASIC",
-            "username": "{$TRUENAS.API_USERNAME}",
-            "password": "{$TRUENAS.API_KEY}",
+            "authtype": "NONE",
+            "headers": [
+              {
+                "name": "Authorization",
+                "value": "Bearer {$TRUENAS.API_KEY}"
+              }
+            ],
             "request_method": "GET",
             "output_format": "JSON",
             "timeout": "10s"
           },
           {
-            "uuid": "fbe5b1ea288e41cc9b3b3fdb018449c4",
+            "uuid": "43ad220aa52049c6a0503b90898fe9aa",
             "name": "TrueNAS ansible account: sudo",
             "type": "DEPENDENT",
             "key": "truenas.user.ansible.sudo",
@@ -599,7 +623,7 @@
             ],
             "triggers": [
               {
-                "uuid": "7e1dafc0e087476bb72890fccc4a1942",
+                "uuid": "1113631c93b947df95168a8003600ed3",
                 "expression": "last(/TrueNAS (Example Music)/truenas.user.ansible.sudo)<>\"true\"",
                 "name": "{HOST.NAME} - ansible account's sudo has drifted from true",
                 "priority": "HIGH",
@@ -618,7 +642,7 @@
             ]
           },
           {
-            "uuid": "4fd65614f3d04c0e826703322daad45b",
+            "uuid": "172e207ebede4e258acec08290b70608",
             "name": "TrueNAS ansible account: sudo_nopasswd",
             "type": "DEPENDENT",
             "key": "truenas.user.ansible.sudo_nopasswd",
@@ -651,7 +675,7 @@
             ],
             "triggers": [
               {
-                "uuid": "3e5c477499674103a27d0f6310c99f0c",
+                "uuid": "88fe7b8505cb4cbab0b4804d5f9932d4",
                 "expression": "last(/TrueNAS (Example Music)/truenas.user.ansible.sudo_nopasswd)<>\"true\"",
                 "name": "{HOST.NAME} - ansible account's sudo_nopasswd has drifted from true",
                 "priority": "HIGH",
@@ -670,7 +694,7 @@
             ]
           },
           {
-            "uuid": "dd1811feb9854b2b87eebe50a3d9c9dc",
+            "uuid": "effbdbf5b3434623958a3073031061a2",
             "name": "TrueNAS ansible account: password_disabled",
             "type": "DEPENDENT",
             "key": "truenas.user.ansible.password_disabled",
@@ -703,7 +727,7 @@
             ],
             "triggers": [
               {
-                "uuid": "a9a6399ef6e1435fb5226989a30e5c1c",
+                "uuid": "859a3912625b471c8d1f185b4fc88756",
                 "expression": "last(/TrueNAS (Example Music)/truenas.user.ansible.password_disabled)<>\"true\"",
                 "name": "{HOST.NAME} - ansible account's password_disabled has drifted from true",
                 "priority": "WARNING",
@@ -722,7 +746,7 @@
             ]
           },
           {
-            "uuid": "6136ce092cfa4cf6913bf92e813a8759",
+            "uuid": "e91bfb3b8f88401e912d75d2ddc387f2",
             "name": "TrueNAS ansible account: locked",
             "type": "DEPENDENT",
             "key": "truenas.user.ansible.locked",
@@ -755,7 +779,7 @@
             ],
             "triggers": [
               {
-                "uuid": "400a0c7918424313a35f83e6b88e7b45",
+                "uuid": "7f7346458ebe438ca482d7755f87928f",
                 "expression": "last(/TrueNAS (Example Music)/truenas.user.ansible.locked)<>\"false\"",
                 "name": "{HOST.NAME} - ansible account's locked has drifted from false",
                 "priority": "WARNING",
@@ -774,7 +798,7 @@
             ]
           },
           {
-            "uuid": "73fe96160d944e6197598dfdbe7d0f2e",
+            "uuid": "3a41b84ab07a4643a812d7fc3e41802a",
             "name": "TrueNAS system info (raw)",
             "type": "HTTP_AGENT",
             "key": "truenas.system_info.raw",
@@ -794,15 +818,19 @@
               }
             ],
             "url": "https://{$TRUENAS.IP}/api/v2.0/system/info",
-            "authtype": "BASIC",
-            "username": "{$TRUENAS.API_USERNAME}",
-            "password": "{$TRUENAS.API_KEY}",
+            "authtype": "NONE",
+            "headers": [
+              {
+                "name": "Authorization",
+                "value": "Bearer {$TRUENAS.API_KEY}"
+              }
+            ],
             "request_method": "GET",
             "output_format": "JSON",
             "timeout": "10s"
           },
           {
-            "uuid": "f4a1d4ab47614393ae31f842050c9bad",
+            "uuid": "13197ccec41e4ebfadf007266c984d1e",
             "name": "TrueNAS system info: hostname",
             "type": "DEPENDENT",
             "key": "truenas.system_info.hostname",
@@ -835,7 +863,7 @@
             ],
             "triggers": [
               {
-                "uuid": "61fc773afbc14be79ab2e80e832bcf3d",
+                "uuid": "bf387206e5b24881bef1d2f01209051f",
                 "expression": "last(/TrueNAS (Example Music)/truenas.system_info.hostname)<>{$TRUENAS.HOSTNAME}",
                 "name": "{HOST.NAME} - reported hostname doesn't match {$TRUENAS.HOSTNAME}",
                 "priority": "WARNING",
@@ -854,7 +882,7 @@
             ]
           },
           {
-            "uuid": "b41a455e871c48138d4aa7f9c2bfbf1a",
+            "uuid": "e09a70ad61d54bceb58d35349a70693e",
             "name": "TrueNAS system info: version",
             "type": "DEPENDENT",
             "key": "truenas.system_info.version",
@@ -894,14 +922,14 @@
             "description": "This TrueNAS box's own reachable IP (its standard .19 slot). Default is EXANASVRK001's real test address -- override per host."
           },
           {
-            "macro": "{$TRUENAS.API_USERNAME}",
+            "macro": "{$TRUENAS.ADMIN_USERNAME}",
             "value": "truenas_admin",
-            "description": "Basic-auth username slot. TrueNAS's own convention treats this as effectively ignored when the password is an API key (per 00-rest-bootstrap.yml's own header comment) -- not independently re-verified this round, kept as truenas_admin for clarity regardless."
+            "description": "Purely an identifier for WHICH /user record to look up (section E's own ssh_password_enabled check) -- has nothing to do with authenticating these items, which all use {$TRUENAS.API_KEY} as a bearer token instead (see that macro's own description)."
           },
           {
             "macro": "{$TRUENAS.API_KEY}",
             "value": "CHANGE_ME",
-            "description": "A DEDICATED TrueNAS API key for Zabbix polling -- NOT the truenas_admin account's own bootstrap password. Create via the TrueNAS web UI or POST /api_key, then set this macro. Shipped as a plain-text macro deliberately, NOT type SECRET -- confirmed real Zabbix exports never carry a value for secret macros at all, so declaring it SECRET here with a placeholder value risks the import dropping or rejecting it. After import, change this macro's own type to 'Secret text' in the Zabbix UI yourself (one click) and set the real key -- safer than guessing at untested export/import behaviour for a type this series has never used before. NOT yet auto-provisioned by the playbook (a real follow-up item, not done)."
+            "description": "A DEDICATED TrueNAS API key for Zabbix polling -- NOT the truenas_admin account's own bootstrap password. Sent as an Authorization: Bearer header on every HTTP_AGENT item in this template (authtype is NONE, not BASIC -- confirmed live against EXANASVRK001, 2026-10-22, that TrueNAS API keys do NOT work as a Basic-auth password at all, a wrong guess that used to sit in 00-rest-bootstrap.yml's own header comment before this same finding corrected it there too; the real, confirmed mechanism is a bearer token, nothing else). Auto-provisioned by 10-access.yml's own new API-key section (added the same day) and filed into KeePass automatically -- read it from there (Infrastructure/<SITE>/<hostname>-zabbix-api-key) rather than typing a fresh one in by hand. Shipped as a plain-text macro deliberately, NOT type SECRET -- confirmed real Zabbix exports never carry a value for secret macros at all, so declaring it SECRET here with a placeholder value risks the import dropping or rejecting it. After import, change this macro's own type to 'Secret text' in the Zabbix UI yourself (one click) and paste in the real key from KeePass."
           },
           {
             "macro": "{$TRUENAS.POOL_NAME}",
