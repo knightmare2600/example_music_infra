@@ -1038,6 +1038,7 @@ class VMDraft:
         self.bios_type = "seabios"
         self.bios_rom = None
         self.pool = None
+        self._last_auto_pool = None  # see NetworkScreen._initial_pool_value()
         self.driver_disk = None
         self.virtio_iso = None
         self.bulk_total = 1
@@ -1703,6 +1704,26 @@ class NetworkScreen(WizardScreen):
     STEP_NUM = 3
     STEP_TITLE = "Network"
 
+    def _initial_pool_value(self) -> str:
+        """Resource Pool defaults to the site parsed on Identity (e.g. typing
+        EXAFWLABD001 suggests pool ABD) and keeps tracking a later site change
+        too -- Robert's bug report, 2026-10-22: typing a name there left this
+        field blank instead of defaulting to the matching pool, and a stale
+        value also needs to reset if the operator goes Back to Identity and
+        picks a different site. Same "re-suggest until the operator
+        deliberately overrides" pattern IdentityScreen's name/VMID
+        auto-suggestion already uses (_last_auto_name/_suppress_name_sync),
+        but tracked on the draft itself (_last_auto_pool), not this screen
+        instance -- NetworkScreen is a brand-new instance every time
+        Identity's Next is pressed (see WizardScreen._try_next/push_screen),
+        so a screen-instance attribute wouldn't survive a site change made
+        after going Back."""
+        auto_candidate = self.draft.site if self.draft.site in self.ctx.pool_options else ""
+        if not self.draft.pool or self.draft.pool == self.draft._last_auto_pool:
+            self.draft._last_auto_pool = auto_candidate
+            return auto_candidate
+        return self.draft.pool
+
     def compose_fields(self) -> ComposeResult:
         default_count = len(self.draft.nics) or (2 if self.draft.role in DUAL_NIC_ROLES else 1)
         with Horizontal(classes="field-row"):
@@ -1747,7 +1768,7 @@ class NetworkScreen(WizardScreen):
             yield Label("Resource Pool (optional):", classes="field-label")
             yield Select(
                 [("(none)", "")] + [(p, p) for p in self.ctx.pool_options],
-                id="pool", allow_blank=False, value=self.draft.pool or "",
+                id="pool", allow_blank=False, value=self._initial_pool_value(),
             )
         with Horizontal(classes="field-row"):
             yield Label("Number of VMs to create (bulk mode — this one counts as #1):", classes="field-label")
