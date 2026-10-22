@@ -152,7 +152,15 @@
     "            vm.py's select_iso() picks it up -- see that function's own 2026-10-01",
     "            changelog entry for why it's excluded from auto-pre-select there (a real,",
     "            not just cosmetic, functional difference from the non-SB build, not safe to",
-    "            silently default to)."
+    "            silently default to).",
+    "2026-10-22  Added saekkevogn (github.com/knightmare2600/saekkevogn, klargoring's companion",
+    "            for Proxmox Backup Server) -- menu.ipxe v2.16's :saekkevogn. amd64 only (no",
+    "            arm64 PBS packages exist upstream), so three entries mirroring klargoring's",
+    "            amd64 ones exactly. Asset names taken from saekkevogn's own",
+    "            .github/workflows/build.yml publish step, NOT yet checked against a real",
+    "            release -- none existed when these were added. Until the first release is",
+    "            published these three will fail to fetch; re-check the names against the",
+    "            live release once it lands."
   ],
 
   "assets": [
@@ -167,6 +175,9 @@
     { "dest": "proxmox/klargoring/arm64/vmlinuz-arm64", "source_type": "github_release", "repo": "knightmare2600/klargoring", "tag": "latest", "asset_name": "vmlinuz-arm64" },
     { "dest": "proxmox/klargoring/arm64/installer-initrd-arm64.img", "source_type": "github_release", "repo": "knightmare2600/klargoring", "tag": "latest", "asset_name": "installer-initrd-arm64.img" },
     { "dest": "proxmox/klargoring/arm64/KERNEL_VERSION-arm64", "source_type": "github_release", "repo": "knightmare2600/klargoring", "tag": "latest", "asset_name": "KERNEL_VERSION-arm64" },
+    { "dest": "proxmox/saekkevogn/amd64/vmlinuz", "source_type": "github_release", "repo": "knightmare2600/saekkevogn", "tag": "latest", "asset_name": "vmlinuz-amd64" },
+    { "dest": "proxmox/saekkevogn/amd64/installer-initrd.img", "source_type": "github_release", "repo": "knightmare2600/saekkevogn", "tag": "latest", "asset_name": "installer-initrd-amd64.img" },
+    { "dest": "proxmox/saekkevogn/amd64/KERNEL_VERSION", "source_type": "github_release", "repo": "knightmare2600/saekkevogn", "tag": "latest", "asset_name": "KERNEL_VERSION-amd64" },
 
     { "dest": "winpe/x86_64/wimboot", "source_type": "github_release", "repo": "ipxe/wimboot", "tag": "v2.9.0", "asset_name": "wimboot" },
     { "dest": "winpe/x86_64/wimboot.i386", "source_type": "github_release", "repo": "ipxe/wimboot", "tag": "v2.9.0", "asset_name": "wimboot.i386" },

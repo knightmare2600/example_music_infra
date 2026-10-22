@@ -50,17 +50,36 @@
 # Tags: pools
 #
 # NOT YET TESTED against a real Proxmox node -- pvesh's exact CLI behaviour
-# (JSON shape from `pvesh get /pools`, exact accepted flag spelling for
-# `pvesh create /pools`) is inferred from manage-pool.py's own confirmed-
-# correct proxmoxer field names (poolid) and this repo's two other existing,
-# real pvesh/pveum invocations, not independently verified live. Confirm on
-# a real PVE node before trusting this for a real onboarding run.
+# (JSON shape from `pvesh get /pools` including the `comment` field, exact accepted flag
+# spelling for `pvesh create /pools` and `pvesh set /pools/<id>`) is inferred from
+# manage-pool.py's own confirmed-correct proxmoxer field names (poolid, comment) and this
+# repo's two other existing, real pvesh/pveum invocations, not independently verified live.
+# Confirm on a real PVE node before trusting this for a real onboarding run.
 # =============================================================================
 # Changelog:
 #   2026-07-19  Initial file.
 #   2026-07-22  Reworked to read pool IDs from generate_inventory.py --emit-sites-json instead
 #               of sites.csv directly (this file's own header previously deferred that). The
 #               uppercase-site-code derivation now lives in the generator, not re-derived here.
+#   2026-10-22  Pool --comment changed from the generic "Example Music Limited -- <SITE> site
+#               pool, Ansible-managed (...)" to the real per-site identity: city -- legal entity
+#               -- country code (e.g. "Beirut -- Example Music (Lebanon) SAL -- LB"), Robert's
+#               ask. --emit-sites-json widened accordingly from bare poolid strings to full
+#               {poolid, city, entity, country_code} objects (generate_inventory.py owns the
+#               derivation, not re-read from sites.csv here, matching this file's existing SSOT
+#               pattern). _missing_pools is now a list of those objects, not bare poolid
+#               strings -- filtered with rejectattr(poolid in existing) instead of difference().
+#               Also added a genuinely new "Update comment on existing pools" task -- the
+#               original file only ever created missing pools, so a site whose pool already
+#               existed (even under the old generic wording) would never have had its comment
+#               refreshed at all; that would have silently defeated this whole change for any
+#               site with a pool already created. Existing pool comments are now compared
+#               against the freshly-derived desired comment per pool and updated via
+#               `pvesh set /pools/<id>` when they differ. The missing-vs-pvesh.get('comment')
+#               comparison and the create/update task split were exercised end-to-end against
+#               the real generator output with mocked pvesh JSON (3 cases: already-correct,
+#               stale, missing) before trusting this -- real pvesh create/set CLI behaviour
+#               itself is still inferred, not independently confirmed live (see header above).
 # =============================================================================
 
 - name: Proxmox VE — ensure one pool per site
@@ -75,7 +94,7 @@
 
   tasks:
 
-    - name: Compute desired pool IDs via generate_inventory.py --emit-sites-json
+    - name: Compute desired pools (poolid + city/entity/country_code) via generate_inventory.py --emit-sites-json
       delegate_to: localhost
       become: false
       ansible.builtin.command: >
@@ -84,7 +103,7 @@
       changed_when: false
       tags: pools
 
-    - name: Parse desired pool IDs
+    - name: Parse desired pools
       ansible.builtin.set_fact:
         _desired_pools: "{{ _desired_pools_raw.stdout | from_json }}"
       tags: pools
@@ -95,31 +114,72 @@
       changed_when: false
       tags: pools
 
-    - name: Derive existing pool IDs (uppercase)
+    - name: Derive existing pool IDs + current comments (uppercase-keyed)
+      # comment default('') -- Proxmox omits the key entirely on a pool created with no
+      # --comment at all, so an uncommented pre-existing pool still compares as "outdated"
+      # against any real desired comment below, instead of erroring on a missing dict key.
+      # Live-tested in isolation with mocked pvesh JSON before trusting this expression
+      # (zip+dict pairing, default() on a missing key) -- 2026-10-22.
       ansible.builtin.set_fact:
         _existing_pools: "{{ (_existing_pools_raw.stdout | from_json) | map(attribute='poolid') | map('upper') | list }}"
+        _existing_comments: >-
+          {{ dict((_existing_pools_raw.stdout | from_json) | map(attribute='poolid') | map('upper') | list
+             | zip((_existing_pools_raw.stdout | from_json) | map(attribute='comment', default='') | list)) }}
       tags: pools
 
-    - name: Determine missing pools
+    - name: Determine missing pools (desired poolid not yet in Proxmox)
       ansible.builtin.set_fact:
-        _missing_pools: "{{ _desired_pools | difference(_existing_pools) }}"
+        _missing_pools: "{{ _desired_pools | rejectattr('poolid', 'in', _existing_pools) | list }}"
+      tags: pools
+
+    - name: Determine existing pools whose comment needs refreshing
+      # Comment is city -- entity -- country_code (e.g. "Beirut -- Example Music (Lebanon)
+      # SAL -- LB"), sourced from sites.csv via generate_inventory.py --emit-sites-json --
+      # replaces the old generic "<SITE> site pool, Ansible-managed" wording (Robert's ask,
+      # 2026-10-22, including a self-healing refresh for pools that already existed under the
+      # old wording -- a create-only check would silently never touch those). No "Example
+      # Music" prefix on the city: entity already carries it (or is "Example Music Limited"
+      # for the three Entity-less infra sites -- CLD/VRK/FRD). country_code prints literally
+      # as "N/A" for the two sites with no fixed country (CLD/VRK). Deliberately a per-item
+      # when: on the update task below rather than a pre-filtered list -- selectattr/
+      # rejectattr can't compare an item's own computed value against a dict lookup keyed by
+      # that same item, only against a fixed value -- live-tested both ways in isolation
+      # before picking this one, 2026-10-22.
+      ansible.builtin.set_fact:
+        _existing_desired_pools: "{{ _desired_pools | selectattr('poolid', 'in', _existing_pools) | list }}"
       tags: pools
 
     - name: Report pool sync status
       ansible.builtin.debug:
-        msg: >-
-          {{ (_c.G + '[+]' + _c.NC + ' All ' + (_desired_pools | length | string) + ' site pool(s) already exist -- nothing to do.')
-             if (_missing_pools | length == 0) else
-             (_c.C + '[*]' + _c.NC + ' Creating ' + (_missing_pools | length | string) + ' missing pool(s): ' + (_missing_pools | join(', '))) }}
+        msg:
+          - >-
+            {{ (_c.C + '[*]' + _c.NC + ' Creating ' + (_missing_pools | length | string) + ' missing pool(s): ' + (_missing_pools | map(attribute='poolid') | join(', ')))
+               if (_missing_pools | length > 0) else (_c.G + '[+]' + _c.NC + ' No missing pools to create.') }}
+          - >-
+            {{ (_c.C + '[*]' + _c.NC + ' Checking ' + (_existing_desired_pools | length | string) + ' existing pool(s) for a stale comment...') }}
       tags: pools
 
     - name: Create missing site pools
       ansible.builtin.command: >-
-        pvesh create /pools --poolid {{ item }}
-        --comment {{ ('Example Music Limited -- ' + item + ' site pool, Ansible-managed (playbooks/proxmox/playbooks/35-pools.yml)') | quote }}
+        pvesh create /pools --poolid {{ item.poolid }}
+        --comment {{ (item.city + ' -- ' + item.entity + ' -- ' + item.country_code) | quote }}
       loop: "{{ _missing_pools }}"
       loop_control:
-        label: "{{ item }}"
+        label: "{{ item.poolid }}"
       register: _pool_create
       changed_when: _pool_create.rc == 0
+      tags: pools
+
+    - name: Update comment on existing pools whose comment is out of date
+      ansible.builtin.command: >-
+        pvesh set /pools/{{ item.poolid }}
+        --comment {{ (item.city + ' -- ' + item.entity + ' -- ' + item.country_code) | quote }}
+      loop: "{{ _existing_desired_pools }}"
+      loop_control:
+        label: "{{ item.poolid }}"
+      when: >-
+        (_existing_comments[item.poolid] | default(''))
+        != (item.city + ' -- ' + item.entity + ' -- ' + item.country_code)
+      register: _pool_update
+      changed_when: _pool_update.rc == 0
       tags: pools
