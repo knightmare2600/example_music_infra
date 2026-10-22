@@ -45,8 +45,21 @@
 # (docs/api2.txt, fetched by Robert and pasted in — 610 real paths, not
 # hand-coded from training data or rendered docs):
 #   - securitySchemes: HTTP Basic only (no bearer/API-key scheme declared) —
-#     an API key, if used instead of the admin password, is presented AS the
-#     Basic-auth password.
+#     this play always uses a real admin password here, never an API key, so
+#     the gap below never mattered to IT specifically, but flagging it since
+#     it directly corrects a wrong guess that used to sit in this exact
+#     comment: an API key is NOT presented as the Basic-auth password.
+#     CORRECTED 2026-10-22, confirmed live against EXANASVRK001 (not
+#     guessed): a Basic-auth attempt using an API key as the password --
+#     with the key's own owning username, an arbitrary one, or blank --
+#     returns 401 "Bad username or password" every time. The real mechanism
+#     is a bearer token: `Authorization: Bearer <key>` header, no
+#     username/password at all, confirmed working (GET /system/info
+#     succeeded with that header and nothing else). The OpenAPI spec's own
+#     securitySchemes section simply doesn't document this -- a real gap in
+#     TrueNAS's own spec, not something inferable from reading it, only
+#     found by testing live. See playbooks/10-access.yml's own API-key
+#     provisioning section (added the same day) for where this matters.
 #   - GET/PUT /ssh has no `rootlogin` field in this TrueNAS version — root
 #     SSH login control isn't exposed here, consistent with recent SCALE
 #     releases moving away from direct root login. Not touched by this play.
