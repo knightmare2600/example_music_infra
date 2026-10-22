@@ -51,6 +51,12 @@
 # of these).
 # ==============================================================================
 # Changelog:
+#   2026-10-22  Added 'PVEPS' to install_pwsh_modules()'s module list -- PowerShell module for
+#               managing Proxmox VE via its REST API (github.com/knightmare2600/PVEPS,
+#               published to the PowerShell Gallery), itself born out of this repo -- Robert's
+#               ask, same addition made in lockstep to setup-workstation-macos.sh and
+#               ansible/playbooks/windows_bootstrap/tasks/ps7_setup.yml's own copies of this
+#               same list.
 #   2026-10-07  Robert's ask: print a closing note from main() when $DO_DEPS ran -- he had
 #               to restart mate-terminal (not just open a new window) for the font change
 #               to actually show, confirmed expected live. Same applies to a pwsh profile --
@@ -303,13 +309,15 @@ install_deps() {
            "see docs/ExampleMusic_Beginners_Guide.md §11)."
 }
 
-# Same 7-module list as ansible/playbooks/windows_bootstrap/tasks/ps7_setup.yml's Stage 20 and
+# Same 8-module list as ansible/playbooks/windows_bootstrap/tasks/ps7_setup.yml's Stage 20 and
 # bootstrap/setup-workstation-macos.sh's own install_pwsh_modules(), CurrentUser scope (single-
 # user machine, same reasoning as the macOS sibling). PSWindowsUpdate is Windows-only
 # (wraps Windows Update's own COM APIs) but left in the list anyway -- Install-Module's
 # -ErrorAction SilentlyContinue already degrades it to a harmless no-op on a platform it
 # doesn't support, confirmed live on macOS earlier today (it actually installed cleanly
-# there too, just wouldn't do anything useful if imported).
+# there too, just wouldn't do anything useful if imported). PVEPS (added 2026-10-22) is NOT
+# Windows-only -- it's a pure REST API client (github.com/knightmare2600/PVEPS), so it's a
+# genuinely useful install here, not just a harmless no-op like PSWindowsUpdate.
 install_pwsh_modules() {
   if ! command -v pwsh &>/dev/null; then
     msg_info "pwsh not found on PATH -- skipping PS7 module install."
@@ -325,7 +333,8 @@ install_pwsh_modules() {
       "PSReadLine",
       "Terminal-Icons",
       "CompletionPredictor",
-      "NerdFonts"
+      "NerdFonts",
+      "PVEPS"
     )
     foreach ($m in $modules) {
       if (-not (Get-Module -ListAvailable -Name $m)) {

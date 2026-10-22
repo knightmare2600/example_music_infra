@@ -1742,22 +1742,36 @@ def emit_site_grains_pillar(csv_path: Path) -> str:
 
 def emit_sites_json(csv_path: Path) -> str:
   """
-  Prints one Proxmox pool ID per sites.csv row (the site code itself, uppercased -- matches
+  Prints one object per sites.csv row -- poolid (the site code, uppercased -- matches
   bootstrap/web/proxmox/manage-pool.py's own SITE_CODES naming exactly, no prefix or other
-  transform) as a JSON array to stdout. Added 2026-07-22 so
+  transform), city, entity, country_code -- as a JSON array to stdout. Added 2026-07-22 so
   playbooks/proxmox/playbooks/35-pools.yml can stop reading sites.csv directly (deferred from
   2026-07-19 -- see that file's own header comment: "eventually this probably moves to reading
   from a benarbejde/*.json generated file instead of sites.csv directly"). The pool-ID
   derivation now lives here, the one place site-code-derived facts get computed, instead of
-  being re-derived ad hoc in the playbook's own Jinja (map('upper')). Deliberately just the pool
-  IDs, not the full row -- pool creation is the only consumer today and needs nothing else from
-  sites.csv; add fields here if a future consumer needs them, rather than shipping unused ones
-  now.
+  being re-derived ad hoc in the playbook's own Jinja (map('upper')).
+
+  2026-10-22: widened from bare poolid strings to full objects -- 35-pools.yml's pool comment
+  now needs city/entity/country_code too (Robert's ask: replace the old generic "<SITE> site
+  pool" comment with the real legal entity + country), so those fields are derived here rather
+  than reading sites.csv a second time from the playbook. Entity falls back to "Example Music
+  Limited" on blank, matching manage-pool.py's own existing fallback (its row.get(...) default)
+  for the Entity-less sites (CLD/VRK/FRD -- infra-only, no per-country subsidiary).
   """
   rows = list(csv.DictReader(csv_path.open()))
   validate_csv_structure(rows)
-  pool_ids = sorted({r["Site"].strip().upper() for r in rows if r["Site"].strip()})
-  return json.dumps(pool_ids)
+  seen = {}
+  for r in rows:
+    poolid = r["Site"].strip().upper()
+    if not poolid:
+      continue
+    seen[poolid] = {
+      "poolid": poolid,
+      "city": r["City"].strip(),
+      "entity": r["Entity"].strip() or "Example Music Limited",
+      "country_code": r["CountryCode"].strip(),
+    }
+  return json.dumps([seen[k] for k in sorted(seen)])
 
 # ==================================================================================================
 # Generator
@@ -1922,8 +1936,8 @@ def main():
   )
   parser.add_argument(
     "--emit-sites-json", action="store_true",
-    help="Print the list of Proxmox pool IDs (one per sites.csv row, site code uppercased) as a "
-         "JSON array to stdout — used by playbooks/proxmox/playbooks/35-pools.yml instead of "
+    help="Print one object per sites.csv row (poolid, city, entity, country_code) as a JSON "
+         "array to stdout — used by playbooks/proxmox/playbooks/35-pools.yml instead of "
          "reading sites.csv directly."
   )
   parser.add_argument(

@@ -17,6 +17,29 @@
 #
 # Version history:
 #
+#   v2.16  Added :saekkevogn -- Projekt Sækkevogn (github.com/knightmare2600/saekkevogn),
+#          klargoring's companion for Proxmox Backup Server: same initrd, same TOML answer-file
+#          contract (PBS's own automated installer uses the same kebab-case answer format as
+#          PVE -- pve.proxmox.com/wiki/Automated_Installation, which covers PBS 3.2+), PBS
+#          repo/packages instead of PVE's. x86_64 only: Proxmox publishes no arm64 PBS
+#          packages at all (the PBS trixie repo's own Release file lists "Architectures:
+#          amd64", binary-arm64/ is a 404 -- checked 2026-10-22), so unlike :klargoring there
+#          is no arm64 sublabel; an arm64 client gets a message and goes back to the menu,
+#          same echo/prompt/goto main pattern as :proxmox-ve. Literal paths, same reasoning as
+#          :klargoring's (check_bootstrap_assets.py's indirection resolver).
+#
+#          toml_url= points at ${site-prefix}-pbs-answer.toml, NOT ${site-prefix}-answer.toml
+#          -- that filename is already the PVE answer file :klargoring fetches, and a PBS box
+#          needs its own (different fqdn/disks). The "-pbs-" infix is a PRESUMPTION pending
+#          Robert's confirmation; no VRK-/FRD-pbs-answer.toml exists yet either.
+#
+#          UNTESTED. benarbejde/asset_manifest.json gained three github_release entries
+#          (vmlinuz-amd64 -> proxmox/saekkevogn/amd64/vmlinuz, installer-initrd-amd64.img ->
+#          .../installer-initrd.img, KERNEL_VERSION-amd64 -> .../KERNEL_VERSION), mirroring
+#          klargoring's amd64 entries exactly. Asset names confirmed 2026-10-22 against the
+#          real saekkevogn-20261022-trixie-1 release (gh release view --json assets) -- all
+#          three match exactly.
+#
 #   v2.15  Added TrueNAS SCALE as a menu-selectable install, via Projekt opbevaring --
 #          Robert's own separate PXE delivery project (github.com/knightmare2600/opbevaring,
 #          same "separate GitHub repo" pattern as Projekt klargoring). Two entries:
@@ -385,6 +408,7 @@ item --gap --         -- Hypervisors --
 item proxmox-ve       Proxmox VE 9   (x86_64 only)
 item proxmox-dcm      Proxmox DCM 9  (x86_64 only)
 item klargoring             Projekt klargoring  (custom live Proxmox installer, x86_64 or ARM64)
+item saekkevogn             Projekt Sækkevogn   (custom live Proxmox Backup Server installer, x86_64 only -- UNTESTED)
 item --gap --
 item --gap --         -- Utilities --
 item gparted          GParted Live
@@ -668,6 +692,34 @@ boot
 kernel ${boot-url}/proxmox/klargoring/arm64/vmlinuz-arm64 toml_url=${boot-url}/proxmox/${site-prefix}-answer.toml confirm-wipe no-reboot
 initrd ${boot-url}/proxmox/klargoring/arm64/installer-initrd-arm64.img
 boot
+
+# ===========================================================================
+# PROJEKT SÆKKEVOGN
+# klargoring's companion for Proxmox Backup Server (github.com/knightmare2600/
+# saekkevogn) -- same initrd design and cmdline contract as :klargoring above,
+# PBS repo/packages instead of PVE's. See v2.16 for the full detail.
+#
+# x86_64 only: Proxmox publishes no arm64 PBS packages (checked 2026-10-22).
+# Paths mirror klargoring's amd64 layout exactly (unsuffixed vmlinuz/
+# installer-initrd.img under proxmox/saekkevogn/amd64/), on the presumption
+# the same release-asset rename convention is used when it lands here.
+#
+# toml_url= uses ${site-prefix}-pbs-answer.toml, distinct from the PVE answer
+# file :klargoring fetches -- "-pbs-" infix presumed, pending confirmation.
+# ===========================================================================
+:saekkevogn
+iseq ${arch} arm64 && goto saekkevogn-arm64 || goto saekkevogn-amd64
+
+:saekkevogn-amd64
+kernel ${boot-url}/proxmox/saekkevogn/amd64/vmlinuz toml_url=${boot-url}/proxmox/${site-prefix}-pbs-answer.toml confirm-wipe no-reboot
+initrd ${boot-url}/proxmox/saekkevogn/amd64/installer-initrd.img
+boot
+
+:saekkevogn-arm64
+echo Proxmox Backup Server is x86_64 only -- Proxmox publishes no arm64 PBS
+echo packages, so Projekt Saekkevogn has no arm64 build.
+prompt Press any key to return to menu...
+goto main
 
 # ===========================================================================
 # GPARTED
