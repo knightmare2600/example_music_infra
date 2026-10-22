@@ -4,6 +4,29 @@
 #   ansible-playbook playbooks/linux/tools.yml -i configs/inventory
 #
 # Changelog:
+#   2026-10-22  NAS-safe mode (Robert's ask, found live while deliberately testing this
+#               playbook against a disposable TrueNAS box): truenas/README.md and
+#               10-access.yml's own header already said outright that this playbook's
+#               apt/user/dotfile/Zabbix-agent tasks must never touch a TrueNAS host (an
+#               appliance OS, middleware-tracked accounts/config, not plain /etc/passwd or
+#               general apt-managed packages) -- but nothing here actually enforced it, it
+#               would just run its full generic deployment against one like any other Linux
+#               box. New early play detects host_role==NAS (via hostname_facts.yml, wrapped
+#               in the same block/rescue pattern the existing nodeinfo block already uses,
+#               so a not-yet-EXA-conformant host degrades the same way it always has, not a
+#               new regression) and gates behind an explicit, default-NO confirmation --
+#               same mechanism firewallme/roles/firewall/tasks/00_preflight_5_confirm.yml's
+#               own reboot-confirmation already uses (pause with [y/N], set_fact comparing
+#               against 'y', fail if not confirmed). A NAS host now ONLY ever gets
+#               /etc/example-music/*.csv/*.json + nodeinfo.json from this playbook,
+#               regardless of the operator's answer -- there is no "full deployment" path
+#               for a NAS host at all, the confirmation only gates whether even that
+#               narrowed deployment proceeds. Every other task gated on tools_nas_mode;
+#               getent_passwd-dependent loops use a ternary guard in the loop expression
+#               itself (not just a when:), since the loop expression is evaluated before
+#               any per-item when and ansible_facts.getent_passwd is never gathered at all
+#               in NAS-safe mode -- a bare when: alone would still hit an undefined-variable
+#               error there.
 #   2026-10-17  BUG FIX, Robert's ask: nodeinfo_role used host_role | lower (e.g. "fwl")
 #               despite host_role itself already being uppercase at its own source
 #               (hostname_facts.yml's regex_search runs against an already-.upper()'d
@@ -268,6 +291,83 @@
       tags: always
       include_tasks: ../../tasks/nodeinfo_environment.yml
 
+# -------------------------------------------------------------------------------------------------
+# NAS-safe-mode gate (2026-10-22, Robert) — TrueNAS is an appliance OS, not a general-purpose
+# Debian box, even though it's Debian underneath. truenas/README.md and 10-access.yml's own
+# header already say outright that arensb.truenas-managed accounts/config must never be touched
+# by linux/tools.yml's own ansible.builtin.user/apt tasks — found live, same session, that this
+# playbook had never actually been TAUGHT that, it would just run its full generic deployment
+# (apt installs, shell/user changes on the SAME "ansible" account arensb.truenas.user already
+# manages, Zabbix agent onboarding) against a NAS host exactly like any other Linux box, the
+# precise thing those other files' own comments already warned against.
+#
+# Two separate things, not one: (1) a NAS host structurally only ever gets the
+# /etc/example-music/* deploy + nodeinfo.json from this playbook now, regardless of what the
+# operator answers below — there is no "full deployment" option for a NAS host, full stop; (2)
+# even that narrowed deployment requires an explicit, default-NO confirmation before anything
+# happens at all, same mechanism firewallme/roles/firewall/tasks/00_preflight_5_confirm.yml's own
+# reboot-confirmation already uses: pause with an explicit [y/N], register, set_fact comparing
+# user_input against 'y' (not blank/anything else), fail outright if not confirmed. A host that
+# fails here is automatically excluded from "Deploy common tools" below (and that play's own
+# vars_prompt, which fires once per play regardless of host facts and can't itself be
+# host_role-gated) — same "mark failed in an earlier play, Ansible skips it in later ones for
+# the same run" mechanism already relied on elsewhere in this estate, not a new one.
+#
+# Wrapped in its own block/rescue, matching the EXISTING nodeinfo block's own established
+# pattern below (NOT a new idea) — hostname_facts.yml's own hard assert fails outright for a
+# host that isn't yet EXA[ROLE][SITE][NNN]-conformant (e.g. still mid-bootstrap), and this now
+# runs unconditionally, earlier than that existing block used to be the only caller. Without the
+# same rescue safety net, this would newly break every "not yet renamed" host that previously
+# sailed through to "Deploy common tools" untouched. Rescue assumes NOT a NAS (the existing,
+# already-accepted behaviour for every other check that depends on a conformant hostname) rather
+# than guessing.
+# -------------------------------------------------------------------------------------------------
+- name: Detect NAS hosts and gate the narrowed deployment behind explicit confirmation
+  hosts: "{{ groups['all'] | difference(groups['ssh_preflight_skip'] | default([])) }}"
+  become: true
+  serial: 1
+
+  tasks:
+    - name: "[NAS gate] Resolve host_role/host_site, confirm NAS-safe mode"
+      block:
+        - include_tasks: ../../tasks/hostname_facts.yml
+
+        - name: "[NAS gate] Set tools_nas_mode fact"
+          ansible.builtin.set_fact:
+            tools_nas_mode: "{{ host_role | upper == 'NAS' }}"
+
+        - name: "[NAS gate] WARN + ask — this is a NAS host, deployment will be narrowed"
+          ansible.builtin.pause:
+            prompt: |-
+
+              {{ _c.Y }}[!]{{ _c.NC }} {{ inventory_hostname }} is a NAS host (TrueNAS) — an appliance OS,
+              {{ _c.Y }}[!]{{ _c.NC }} not a general-purpose Debian box, even though it's Debian underneath.
+              {{ _c.Y }}[!]{{ _c.NC }} truenas/README.md and 10-access.yml's own header both say outright that
+              {{ _c.Y }}[!]{{ _c.NC }} arensb.truenas-managed accounts/config must never be touched by this
+              {{ _c.Y }}[!]{{ _c.NC }} playbook's own apt/user/dotfile/Zabbix-agent tasks.
+              {{ _c.Y }}[!]{{ _c.NC }}
+              {{ _c.Y }}[!]{{ _c.NC }} Only /etc/example-music/*.csv/*.json (incl. nodeinfo.json) will be
+              {{ _c.Y }}[!]{{ _c.NC }} deployed — nothing else from this playbook runs against a NAS host,
+              {{ _c.Y }}[!]{{ _c.NC }} regardless of your answer here.
+
+              Proceed with that narrowed deployment? [y/N]
+          register: _tools_nas_confirm
+          when: tools_nas_mode
+
+        - name: "[NAS gate] ABORT — operator did not confirm"
+          ansible.builtin.fail:
+            msg: >-
+              {{ _c.R }}[ERROR]{{ _c.NC }} Aborted — {{ inventory_hostname }} is a NAS host and the narrowed
+              deployment was not confirmed. Nothing has been changed. Re-run and answer y at the
+              prompt above if you do want /etc/example-music/*.csv/*.json + nodeinfo.json deployed.
+          when:
+            - tools_nas_mode
+            - (_tools_nas_confirm.user_input | default('n') | lower | trim) != 'y'
+      rescue:
+        - name: "[NAS gate] Assume not a NAS — hostname not yet EXA-conformant (mid-bootstrap)"
+          ansible.builtin.set_fact:
+            tools_nas_mode: false
+
 - name: Deploy common tools
   hosts: "{{ groups['all'] | difference(groups['ssh_preflight_skip'] | default([])) }}"
   become: true
@@ -298,6 +398,7 @@
 
     - name: "[Preflight] Refresh SSH key + heal locked account"
       ansible.builtin.include_tasks: ../../tasks/refresh_ansible_ssh_key.yml
+      when: not (tools_nas_mode | default(false))
 
     - name: Install common packages
       apt:
@@ -305,6 +406,7 @@
         state: latest
         update_cache: true
         cache_valid_time: 3600
+      when: not (tools_nas_mode | default(false))
 
     - name: "Install the right fetch tool for this distro"
       # 2026-10-11, Robert found live: EXAANSFRD001 is Debian 12 (bookworm), where
@@ -320,6 +422,7 @@
         state: latest
         update_cache: true
         cache_valid_time: 3600
+      when: not (tools_nas_mode | default(false))
 
     # -------------------------------------------------------------------------
     # BUG FIX (2026-07-26, found live on EXAPVEVRK001): both tasks below used to run
@@ -337,6 +440,7 @@
     - name: Gather installed package facts
       ansible.builtin.package_facts:
         manager: apt
+      when: not (tools_nas_mode | default(false))
 
     # -------------------------------------------------------------------------
     # Ported 2026-07-21 while auditing a dropped-in Salt lintools.sls state,
@@ -363,7 +467,9 @@
         regexp: "{{ item.regexp }}"
         line:   "{{ item.line }}"
         state:  present
-      when: "'unattended-upgrades' in ansible_facts.packages"
+      when:
+        - not (tools_nas_mode | default(false))
+        - "'unattended-upgrades' in ansible_facts.packages"
       loop:
         - regexp: '^//?\s*Unattended-Upgrade::AutoFixInterruptedDpkg\s+".*'
           line:   'Unattended-Upgrade::AutoFixInterruptedDpkg "true";'
@@ -396,7 +502,9 @@
         line:   "{{ item.line }}"
         state:  present
         create: true
-      when: "'unattended-upgrades' in ansible_facts.packages"
+      when:
+        - not (tools_nas_mode | default(false))
+        - "'unattended-upgrades' in ansible_facts.packages"
       loop:
         - regexp: '^//?\s*APT::Periodic::Update-Package-Lists\s+".*'
           line:   'APT::Periodic::Update-Package-Lists "1";'
@@ -419,6 +527,7 @@
         owner: root
         group: root
         mode:  '0755'
+      when: not (tools_nas_mode | default(false))
 
     # BUG FIX (2026-07-26, found live on EXAPVEVRK001, --check --diff): this task's src is
     # the file the preceding "Deploy update-motd script" task creates -- under --check that
@@ -436,12 +545,15 @@
         src:   /usr/local/bin/update-motd
         dest:  /etc/update-motd.d/98-update-status
         state: link
-      when: not ansible_check_mode
+      when:
+        - not (tools_nas_mode | default(false))
+        - not ansible_check_mode
 
     - name: Set default shell to zsh for ansible user
       user:
         name: ansible
         shell: /bin/zsh
+      when: not (tools_nas_mode | default(false))
 
     - name: Ensure /etc/example-music exists
       ansible.builtin.file:
@@ -615,6 +727,7 @@
           include_tasks: ../../tasks/zabbix_agent_onboard.yml
           vars:
             zbx_kcs_repo_root: "{{ playbook_dir }}/../../.."
+          when: not (tools_nas_mode | default(false))
       rescue:
         - name: nodeinfo.json + Zabbix onboarding skipped — hostname not yet EXA-convention
           ansible.builtin.debug:
@@ -706,11 +819,13 @@
         create_home: true
         shell:       /bin/zsh
       loop: "{{ extra_users }}"
+      when: not (tools_nas_mode | default(false))
 
     # getent runs after user creation so newly created accounts are included
     - name: Get user account database
       ansible.builtin.getent:
         database: passwd
+      when: not (tools_nas_mode | default(false))
 
     # -------------------------------------------------------------------------
     # Robert, 2026-07-26 (live --check --diff, EXAPVEVRK001): the dotfile-deploy tasks
@@ -733,6 +848,7 @@
             {%- endif -%}
           {%- endfor -%}
           {{ result | join(', ') }}
+      when: not (tools_nas_mode | default(false))
 
     - name: "WARN — dotfiles will be maintained for account(s) not explicitly known to this playbook"
       ansible.builtin.debug:
@@ -742,7 +858,9 @@
           maintained (gitconfig/tmux.conf/vimrc/.vim/zshrc) the same as any known account.
           If this is a pre-existing, wanted account, no action needed. If it's unexpected,
           investigate before it's silently configured further.
-      when: _unexpected_home_accounts | length > 0
+      when:
+        - not (tools_nas_mode | default(false))
+        - _unexpected_home_accounts | length > 0
 
     - name: Deploy .gitconfig to all user home directories
       ansible.builtin.copy:
@@ -751,7 +869,7 @@
         owner: "{{ item.key }}"
         group: "{{ item.key }}"
         mode:  '0644'
-      loop: "{{ ansible_facts.getent_passwd | dict2items }}"
+      loop: "{{ ansible_facts.getent_passwd | dict2items if not (tools_nas_mode | default(false)) else [] }}"
       when: item.value[4] is match('^/home/')
       loop_control:
         label: "{{ item.key }}"
@@ -763,7 +881,7 @@
         owner: "{{ item.key }}"
         group: "{{ item.key }}"
         mode:  '0644'
-      loop: "{{ ansible_facts.getent_passwd | dict2items }}"
+      loop: "{{ ansible_facts.getent_passwd | dict2items if not (tools_nas_mode | default(false)) else [] }}"
       when: item.value[4] is match('^/home/')
       loop_control:
         label: "{{ item.key }}"
@@ -775,7 +893,7 @@
         owner: "{{ item.key }}"
         group: "{{ item.key }}"
         mode:  '0644'
-      loop: "{{ ansible_facts.getent_passwd | dict2items }}"
+      loop: "{{ ansible_facts.getent_passwd | dict2items if not (tools_nas_mode | default(false)) else [] }}"
       when: item.value[4] is match('^/home/')
       loop_control:
         label: "{{ item.key }}"
@@ -788,7 +906,7 @@
         group:          "{{ item.key }}"
         mode:           '0644'
         directory_mode: '0755'
-      loop: "{{ ansible_facts.getent_passwd | dict2items }}"
+      loop: "{{ ansible_facts.getent_passwd | dict2items if not (tools_nas_mode | default(false)) else [] }}"
       when: item.value[4] is match('^/home/')
       loop_control:
         label: "{{ item.key }}"
@@ -836,7 +954,7 @@
         group: "{{ item.key }}"
         mode:  '0644'
         force: false
-      loop: "{{ ansible_facts.getent_passwd | dict2items }}"
+      loop: "{{ ansible_facts.getent_passwd | dict2items if not (tools_nas_mode | default(false)) else [] }}"
       when: item.value[4] is match('^/home/')
       loop_control:
         label: "{{ item.key }}"
@@ -851,6 +969,7 @@
       loop:
         - server-prompts.zsh
         - server-prompts.sh
+      when: not (tools_nas_mode | default(false))
 
     - name: Configure systemd-journald — vacuum period and max size
       ansible.builtin.lineinfile:
@@ -862,6 +981,7 @@
         - { regexp: '^#?MaxRetentionSec=', line: 'MaxRetentionSec=30day' }
         - { regexp: '^#?SystemMaxUse=',    line: 'SystemMaxUse=500M' }
       notify: Restart journald
+      when: not (tools_nas_mode | default(false))
 
     # -------------------------------------------------------------------------
     # Zabbix companion status report (2026-10-16, Robert's ask — the first real
@@ -882,11 +1002,13 @@
         owner: root
         group: root
         mode: "0755"
+      when: not (tools_nas_mode | default(false))
 
     - name: "[Zabbix status] Check update-motd symlink health"
       ansible.builtin.stat:
         path: /etc/update-motd.d/98-update-status
       register: _tools_motd_link_stat
+      when: not (tools_nas_mode | default(false))
 
     - name: "[Zabbix status] Write linux_tools.json"
       ansible.builtin.copy:
@@ -901,6 +1023,7 @@
         owner: root
         group: root
         mode: "0644"
+      when: not (tools_nas_mode | default(false))
 
     # One item per package, not an Ansible-computed aggregate (Robert's original ask,
     # 2026-10-16 -- the first cut of this template wrongly substituted a single
@@ -921,6 +1044,7 @@
         owner: root
         group: root
         mode: "0644"
+      when: not (tools_nas_mode | default(false))
 
   handlers:
     - name: Restart journald
