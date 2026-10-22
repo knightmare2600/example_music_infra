@@ -193,6 +193,21 @@
 #   # DHCP address here; leave blank only if already on the target address.
 # =============================================================================
 # Changelog:
+#   2026-10-22  Added steps 3a/3b -- real live finding against EXANASVRK001 (TrueNAS 25.10.2.1,
+#               Robert's Projekt opbevaring automated install): enabling the SSH *service*
+#               (steps 2/3 above) does NOT mean truenas_admin can log in with a password --
+#               TrueNAS SCALE has a separate, per-user ssh_password_enabled field (confirmed
+#               against docs/api2.txt's /user schema), false by default, independent of the
+#               service's own state. Confirmed live with a raw ssh/sshpass test, no Ansible
+#               involved at all -- "Permission denied (publickey)" even with
+#               PubkeyAuthentication explicitly disabled client-side, proving the server was
+#               never offering password auth to begin with. Every later SSH-password-
+#               authenticated stage in this chain was blocked by this, not a bug in any of
+#               them. Flipped on here (scoped to truenas_admin only), flipped back off at the
+#               end of 10-access.yml once the real, permanent ansible key-based account
+#               exists -- a deliberate, temporary, self-closing exception for the bootstrap
+#               window only, not a permanent posture change. Robert's explicit go-ahead,
+#               2026-10-22, on building this rather than just flipping it by hand once.
 #   2026-07-28  Second follow-up, same day, real live re-run against EXANASFAL001 with the
 #               commit-before-gateway reorder in place: step 7 (commit) itself now timed out
 #               after 30s ("Connection failure: The read operation timed out") -- this earlier
@@ -452,6 +467,68 @@
         status_code: 200
       when:
         - not _truenas_ssh_service.enable
+        - not ansible_check_mode
+      delegate_to: localhost
+      vars:
+        ansible_connection: local
+
+    # ── Per-user SSH password auth (separate from the service enable/start above) ──
+    # Real live finding, 2026-10-22, EXANASVRK001 (TrueNAS 25.10.2.1): the SSH
+    # *service* being enabled/running does NOT mean truenas_admin can actually log
+    # in with a password over SSH -- TrueNAS SCALE has a SEPARATE, per-user
+    # `ssh_password_enabled` field (confirmed directly against docs/api2.txt's
+    # /user schema, not guessed), independent of the service state, and it was
+    # FALSE on this box despite the service running fine. Every later stage in
+    # this chain (00-preflight.yml's SSH connectivity check, 10-access.yml's
+    # account creation) connects as truenas_admin WITH A PASSWORD -- without this
+    # step, that connection is rejected outright (confirmed live: a raw `ssh`/
+    # `sshpass` test, no Ansible involved at all, got "Permission denied
+    # (publickey)" even with PubkeyAuthentication explicitly disabled client-side
+    # -- the server was never offering password as an option to begin with).
+    #
+    # Deliberately scoped to ONLY the truenas_admin account, flipped back to
+    # false at the end of 10-access.yml once the real, permanent `ansible`
+    # key-based account exists -- this estate's standing posture is key-only SSH
+    # access (same convention as every other host), and TrueNAS's own API
+    # description for this field agrees: "The established best practice is to
+    # use only key-based authentication for SSH servers." This is a deliberate,
+    # temporary, self-closing exception for the bootstrap window only, not a
+    # permanent posture change -- Robert's own explicit call (2026-10-22) on
+    # should-this-exist-at-all, not something flipped silently.
+    - name: "3a | Look up truenas_admin's own user record (for its id + current ssh_password_enabled state)"
+      ansible.builtin.uri:
+        url: "https://{{ truenas_current_ip }}/api/v2.0/user?username={{ truenas_rest_bootstrap_user }}"
+        method: GET
+        user: "{{ truenas_rest_bootstrap_user }}"
+        password: "{{ truenas_rest_bootstrap_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ truenas_rest_validate_certs }}"
+        status_code: 200
+      register: _truenas_bootstrap_user_lookup
+      delegate_to: localhost
+      check_mode: false
+      vars:
+        ansible_connection: local
+
+    - name: "3a | Set bootstrap user id/current ssh_password_enabled facts"
+      ansible.builtin.set_fact:
+        _truenas_bootstrap_user_id: "{{ _truenas_bootstrap_user_lookup.json[0].id }}"
+        _truenas_bootstrap_user_ssh_pw_enabled: "{{ _truenas_bootstrap_user_lookup.json[0].ssh_password_enabled }}"
+
+    - name: "3b | Enable SSH password login for {{ truenas_rest_bootstrap_user }} (temporary, bootstrap-window only)"
+      ansible.builtin.uri:
+        url: "https://{{ truenas_current_ip }}/api/v2.0/user/id/{{ _truenas_bootstrap_user_id }}"
+        method: PUT
+        user: "{{ truenas_rest_bootstrap_user }}"
+        password: "{{ truenas_rest_bootstrap_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ truenas_rest_validate_certs }}"
+        body_format: json
+        body:
+          ssh_password_enabled: true
+        status_code: 200
+      when:
+        - not _truenas_bootstrap_user_ssh_pw_enabled
         - not ansible_check_mode
       delegate_to: localhost
       vars:
