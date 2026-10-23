@@ -1,0 +1,60 @@
+---
+# =============================================================================
+# tasks/confirm_reboot.yml
+# Example Music Limited — Ask before rebooting, default No, remind if declined
+# =============================================================================
+# Robert, 2026-10-23: every win_reboot call in this playbook family just rebooted
+# outright, no questions asked -- "this is unacceptable, it's supposed to OFFER a
+# reboot, default to no, and then remind the user to do it." The one deliberate
+# exception is domain join (80-domainjoin.yml's own "Reboot after domain join") --
+# Robert's explicit call, a reboot genuinely is needed there, not gated by this
+# file. Every OTHER win_reboot call in this family (00-preflight.yml's hostname-
+# change reboot, 10-rename.yml's post-rename reboot, 85-finish.yml's final
+# pending-reboot check) now goes through this shared file instead of calling
+# ansible.windows.win_reboot directly -- same "ask, never auto-override the
+# operator's answer" philosophy already established on the Linux side
+# (firewallme/roles/firewall/tasks/06_network_manager.yml's own 2026-07-17
+# changelog: "an automatic, unannounced reboot... is not something to force
+# silently, however justified the correction is").
+#
+# Caller sets:
+#   confirm_reboot_reason       -- required, used in both the prompt and the msg
+#                                  passed to win_reboot itself
+#   confirm_reboot_timeout      -- optional, default 600 (seconds)
+#   confirm_reboot_post_delay   -- optional, default 30 (seconds)
+#
+# ansible.builtin.pause needs no delegate_to -- it's a control-node-side action
+# plugin regardless of the task's nominal (Windows) host, same as every other
+# pause prompt already in this repo (e.g. tasks/ou_selection.yml, firewallme's
+# own confirm-gate precedent).
+# =============================================================================
+# Changelog:
+#   2026-10-23  Initial file.
+# =============================================================================
+
+- name: "[Reboot] Prompt whether to reboot now ({{ confirm_reboot_reason }})"
+  ansible.builtin.pause:
+    prompt: |-
+
+      ── Reboot needed: {{ confirm_reboot_reason }} ──────────────────────────
+        A reboot is recommended now to apply this change. Nothing further in
+        this run depends on it having already happened -- it's safe to defer.
+      ─────────────────────────────────────────────────────────────────────
+      Reboot now? [y/N]
+  register: _confirm_reboot_answer
+
+- name: "[Reboot] Reboot now ({{ confirm_reboot_reason }})"
+  ansible.windows.win_reboot:
+    reboot_timeout:    "{{ confirm_reboot_timeout | default(600) }}"
+    post_reboot_delay: "{{ confirm_reboot_post_delay | default(30) }}"
+    msg:               "{{ confirm_reboot_reason }}"
+  when: _confirm_reboot_answer.user_input | default('') | trim | lower == 'y'
+
+- name: "[Reboot] NOTE — reboot declined, reminder"
+  ansible.builtin.debug:
+    msg: >-
+      [!] Reboot NOT performed ({{ confirm_reboot_reason }}) -- you said no (or
+      left it blank). Remember to reboot this host yourself before relying on
+      this change -- e.g. Restart-Computer -Force, run on the host or via
+      RDP/console.
+  when: _confirm_reboot_answer.user_input | default('') | trim | lower != 'y'
