@@ -55,6 +55,17 @@
 #               chronology, split into 00/10/20/etc stages as sensible.
 # =============================================================================
 
+# 2026-10-23, Robert's ask: unlike every other non-bootstrap Linux playbook family,
+# CloudPanel had no SSH connectivity fallback or baseline check at all before its own
+# 00-preflight.yml's first task (apt update, become: true) just assumed a working
+# connection already existed. Added both shared checks here, ahead of 00-preflight.yml --
+# a rejected key now gets the same password-fallback prompt firewallme/bind9/linux_tools/
+# truenas/salt already get, and a host missing its linux/tools.yml baseline now gets a
+# clear, early abort instead of failing confusingly partway through package installation.
+- import_playbook: ../ssh_preflight_with_fallback.yml
+
+- import_playbook: ../check_linux_baseline.yml
+
 - import_playbook: playbooks/00-preflight.yml
   tags: preflight
 

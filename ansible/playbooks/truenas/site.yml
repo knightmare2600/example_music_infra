@@ -89,6 +89,20 @@
 - import_playbook: playbooks/00-preflight.yml
   tags: preflight
 
+# 2026-10-23, Robert's ask: every other non-bootstrap Linux playbook family now runs
+# ssh_preflight_with_fallback.yml + check_linux_baseline.yml -- added here too, for
+# consistency, right after 00-preflight.yml's own connectivity check (tasks/
+# ssh_key_preflight.yml, which already auto-heals a missing ansible user/key/sudo via a
+# root-password prompt -- genuinely more capable than ssh_preflight_with_fallback.yml for
+# TrueNAS's real first-run gap, so left completely untouched, not replaced). By this point
+# in the chain a real connection is already guaranteed, so ssh_preflight_with_fallback.yml's
+# own key test here is a fast, harmless no-op in the normal case -- it exists purely to give
+# check_linux_baseline.yml the same proven, consistent insertion point every other family
+# uses, not to redo work 00-preflight.yml already did.
+- import_playbook: ../ssh_preflight_with_fallback.yml
+
+- import_playbook: ../check_linux_baseline.yml
+
 - import_playbook: playbooks/10-access.yml
   tags: access
 
