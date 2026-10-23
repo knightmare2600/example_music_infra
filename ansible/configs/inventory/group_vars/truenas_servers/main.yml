@@ -40,9 +40,27 @@
 # of the same run even after 10-access.yml's task 1a locks truenas_admin's own SSH
 # password login back down mid-run -- confirmed as the mechanism, not just presumed,
 # by reading ansible.cfg's own real ssh_args before relying on it.
+#
+# ansible_become_password -- second real failure, same run, right after the
+# ansible_user fix above got past "Permission denied": Gathering Facts (become: true)
+# then failed "Missing sudo password". Every OTHER family's own --user=root -k
+# first-run path never hits this at all -- root doesn't need become, it already IS
+# root, so this gap genuinely never existed anywhere else in the estate until now.
+# truenas_admin, unlike the 'ansible' account 10-access.yml creates (sudo_nopasswd:
+# true), needs an actual password for sudo -- confirmed live, not presumed (an
+# earlier reply here guessed truenas_admin might have NOPASSWD sudo like TrueNAS
+# SCALE's admin model is sometimes described; wrong, this box asked). Same
+# truenas_rest_bootstrap_password fact, same scoping logic as ansible_user above --
+# falls back to '' once out of scope (subsequent run, real passwordless 'ansible'
+# sudo, where an unused empty become-password is harmless: NOPASSWD sudo never
+# actually prompts for one).
 # =============================================================================
 # Changelog:
+#   2026-10-23  Added ansible_become_password -- second real failure, same EXANASFAL001
+#               run, right after the ansible_user fix above got past the connection
+#               itself. See comment above.
 #   2026-10-23  Initial file. Real live bug, EXANASFAL001 -- see comment above.
 # =============================================================================
 
-ansible_user: "{{ truenas_rest_bootstrap_user | default('ansible') }}"
+ansible_user:            "{{ truenas_rest_bootstrap_user | default('ansible') }}"
+ansible_become_password: "{{ truenas_rest_bootstrap_password | default('') }}"
