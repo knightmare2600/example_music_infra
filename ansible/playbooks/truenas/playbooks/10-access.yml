@@ -20,10 +20,14 @@
 # grants sudo for a literal command named "ALL", not blanket access; caught before it
 # shipped by checking the real module, not just the collection's rendered docs) grant
 # full passwordless sudo, matching every other host's "ansible has passwordless
-# sudo" convention in this estate exactly." Task 1 below now actually uses
-# sudo_commands_nopasswd: [ALL] -- "ALL" IS a documented wildcard there, not a literal
-# command name; whatever check produced the paragraph above either ran against a
-# different collection version or was simply mistaken.
+# sudo" convention in this estate exactly." "ALL" IS a documented wildcard there, not a
+# literal command name; whatever check produced the paragraph above either ran against
+# a different collection version or was simply mistaken. SECOND correction, same day:
+# the installed collection's own user.py has a genuine bug that silently drops
+# sudo_commands_nopasswd's real value and sends None as sudo_commands instead, crashing
+# with EINVAL -- no module parameter combination works around it. Task 1 below no
+# longer asks the module to set sudo at all; tasks 1b/1c grant it via REST directly
+# instead, bypassing the collection entirely for this one field.
 #
 # First run (before the ansible account exists, using truenas_admin + password --
 # root is never usable here, no root password is ever set on these boxes):
@@ -63,6 +67,24 @@
 #               ansible-doc -j arensb.truenas.user directly: sudo_commands_nopasswd's
 #               own docstring documents "ALL" as a real wildcard value, not a literal
 #               command name. Switched task 1 to sudo_commands_nopasswd: [ALL].
+#   2026-10-23  SAME DAY, immediately after the fix above: midclt rejected
+#               sudo_commands_nopasswd outright, "[EINVAL] user_create.sudo_commands:
+#               Input should be a valid list". Read the installed collection's own
+#               plugins/modules/user.py directly: its new-style-middleware branch has a
+#               genuine copy-paste bug (sets arg['sudo_commands'] = sudo_commands when
+#               sudo_commands_nopasswd is given, instead of
+#               arg['sudo_commands_nopasswd'] = sudo_commands_nopasswd) -- sudo_commands
+#               stays None since we never supply it, and that None is what crashes.
+#               Confirmed by reading the actual code path, not just retrying different
+#               arguments -- no combination of this module's parameters can set
+#               sudo_commands_nopasswd on this TrueNAS version at all. Robert's call
+#               (asked, didn't guess): REST bypass over the simpler
+#               sudo_commands:[ALL]-with-a-password alternative, to keep this estate's
+#               "ansible has passwordless sudo" convention intact. Task 1 no longer sets
+#               any sudo parameter; new tasks 1b/1c grant it via a direct REST PUT
+#               instead, after looking up the account's own id -- same pattern task 1a
+#               already uses for ssh_password_enabled, a different gap in the same
+#               collection.
 #   2026-10-22  Added a TrueNAS API key provisioning section (for the Zabbix companion
 #               template's own REST/HTTP_AGENT items, docs/zabbix_templates/
 #               zabbix_template_truenas.json) -- Robert's ask: automate creating it and
@@ -119,14 +141,28 @@
       # installed collection's argspec on 2026-07-22 (that check was apparently either
       # against a different collection version than what's on the real control node now,
       # or simply wrong -- not re-litigated here, the live error is the authority).
-      # Re-checked the module's real docstring directly (ansible-doc -j
-      # arensb.truenas.user) before fixing: sudo_commands_nopasswd's own description
-      # explicitly documents "ALL" as a special wildcard value ("allows executing any
-      # command"), not a literal command named "ALL" the way this file's header
-      # comment claims the "earlier draft" version wrongly assumed -- so that earlier,
-      # since-reverted version was actually closer to correct than the fix that replaced
-      # it. sudo_commands_nopasswd: ['ALL'] grants the same full, passwordless sudo this
-      # estate's "ansible has passwordless sudo" convention needs everywhere else.
+      #
+      # SECOND real failure, same run, immediately after switching to
+      # sudo_commands_nopasswd: midclt rejected it outright: "[EINVAL]
+      # user_create.sudo_commands: Input should be a valid list". Read the installed
+      # collection's own plugins/modules/user.py directly (not just ansible-doc) to find
+      # out why: its "new-style call, new-style middleware API" branch (the one that
+      # applies to this box's modern SCALE 25.10.2.1) has a genuine copy-paste bug --
+      #     if sudo_commands_nopasswd is not None:
+      #         arg['sudo_commands'] = sudo_commands
+      # (should read arg['sudo_commands_nopasswd'] = sudo_commands_nopasswd). Since we
+      # only ever supply sudo_commands_nopasswd, sudo_commands stays None, and that None
+      # gets sent to TrueNAS as sudo_commands itself -- not a valid list, hence the
+      # EINVAL. This branch can never actually forward sudo_commands_nopasswd to the API
+      # at all on this TrueNAS version; no combination of module parameters works around
+      # it, confirmed by reading the actual code path, not just retrying with different
+      # arguments.
+      #
+      # Fixed by no longer asking the module to set sudo at all -- it creates the
+      # account/key/shell/etc fine on its own -- and setting sudo_commands_nopasswd
+      # directly via REST instead (tasks 1b/1c below), the same bypass-the-collection-gap
+      # pattern task 1a already uses for ssh_password_enabled, which this same collection
+      # also has no parameter for.
       arensb.truenas.user:
         name: ansible
         comment: "Ansible automation account"
@@ -135,8 +171,6 @@
         ssh_authorized_keys:
           - "{{ exa_ansible_pub_key }}"
         password_disabled: true
-        sudo_commands_nopasswd:
-          - ALL
         state: present
 
     # ── Lock SSH password auth back down (opened by 00-rest-bootstrap.yml's steps
@@ -174,6 +208,50 @@
       when:
         - ansible_user == truenas_rest_bootstrap_user
         - not ansible_check_mode
+      delegate_to: localhost
+      vars:
+        ansible_connection: local
+
+    # ── Grant the ansible account passwordless sudo -- REST, bypassing the
+    # collection's own bug (see task 1's comment above for the full detail).
+    # Same GET-by-username -> extract .json[0].id -> PUT pattern 00-rest-bootstrap.yml's
+    # own "3a | Look up truenas_admin's own user record" already uses for a different
+    # user -- not re-invented here, just applied to the account task 1 just created.
+    # Not gated on ansible_user == truenas_rest_bootstrap_user the way task 1a is --
+    # that gate exists because locking password SSH down is itself a one-time action a
+    # re-run as the ansible user should never repeat. This one is safe to re-apply every
+    # run regardless of which account authenticated: idempotent (TrueNAS simply confirms
+    # the same value already matches), and if it were ever missing on a later run for
+    # any reason, there is no harm in setting it again.
+    - name: "1b | Look up the ansible account's own id (needed for the sudo PUT below)"
+      ansible.builtin.uri:
+        url: "https://{{ truenas_target_ip | default(ansible_host) }}/api/v2.0/user?username=ansible"
+        method: GET
+        user: "{{ truenas_rest_bootstrap_user }}"
+        password: "{{ truenas_rest_bootstrap_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ truenas_rest_validate_certs | default(false) }}"
+        status_code: 200
+      register: _truenas_ansible_user_lookup
+      delegate_to: localhost
+      check_mode: false
+      vars:
+        ansible_connection: local
+
+    - name: "1c | Grant the ansible account passwordless sudo (sudo_commands_nopasswd: [ALL])"
+      ansible.builtin.uri:
+        url: "https://{{ truenas_target_ip | default(ansible_host) }}/api/v2.0/user/id/{{ _truenas_ansible_user_lookup.json[0].id }}"
+        method: PUT
+        user: "{{ truenas_rest_bootstrap_user }}"
+        password: "{{ truenas_rest_bootstrap_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ truenas_rest_validate_certs | default(false) }}"
+        body_format: json
+        body:
+          sudo_commands_nopasswd:
+            - ALL
+        status_code: 200
+      when: not ansible_check_mode
       delegate_to: localhost
       vars:
         ansible_connection: local

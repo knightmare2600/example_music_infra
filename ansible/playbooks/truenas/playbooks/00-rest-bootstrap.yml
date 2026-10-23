@@ -88,10 +88,13 @@
 #
 # Deliberately does NOT create the `ansible` account here. `10-access.yml`
 # already does that correctly, over the SSH connection this play exists to
-# unlock, via arensb.truenas.user — using sudo_commands_nopasswd: [ALL] (fixed
-# 2026-10-23, see that file's own changelog -- sudo/sudo_nopasswd are rejected
-# outright by the real, currently-installed collection, despite an earlier,
-# wrong claim here and there that they'd been confirmed). The REST
+# unlock, via arensb.truenas.user for the account itself, then a direct REST
+# PUT for sudo_commands_nopasswd: [ALL] (fixed 2026-10-23, see that file's own
+# changelog -- sudo/sudo_nopasswd are rejected outright by the real,
+# currently-installed collection, and sudo_commands_nopasswd itself crashes
+# with EINVAL due to a genuine bug in that collection's own code, confirmed
+# by reading its source directly -- no module parameter works around it).
+# The REST
 # /user POST schema in api2.txt has no equivalent blanket-sudo boolean (only
 # `sudo_commands`/`sudo_commands_nopasswd` command arrays), so re-implementing
 # account creation here would mean guessing at a weaker, differently-shaped
