@@ -29,11 +29,12 @@
 # inferred from a separate get_used call). If the named pool already exists,
 # none of this runs at all -- idempotent, safe to re-run.
 #
-# Needs 00-preflight.yml/10-access.yml to have already run -- run together,
-# or via site.yml, rather than standalone. The new pool-creation tasks also need
-# truenas_rest_bootstrap_user/_password/truenas_target_ip, facts 00-rest-bootstrap.yml
-# resolves earlier in the same site.yml run -- another reason this isn't meant to run
-# standalone on a first-ever pass.
+# Needs 00-rest-bootstrap.yml/00-preflight.yml to have already run (truenas_rest_bootstrap_
+# user/_password/truenas_target_ip facts, resolved earlier in the same site.yml run) --
+# run together, or via site.yml, rather than standalone. Does NOT need 10-access.yml --
+# site.yml now runs this file BEFORE 10-access.yml deliberately (2026-10-23, see
+# site.yml's own changelog): the ansible account 10-access.yml creates needs a home
+# directory on the pool THIS file creates, so storage has to come first.
 #
 # Usage:
 #   ansible-playbook -i configs/inventory playbooks/truenas/playbooks/20-storage.yml
