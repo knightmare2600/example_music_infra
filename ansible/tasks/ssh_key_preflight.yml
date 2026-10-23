@@ -57,6 +57,19 @@
 # delegate_to, so this always resolves against the real original target.
 # =============================================================================
 # Changelog:
+#   2026-10-23  Robert spotted it live, EXANASFAL001: "[WARNING]: Encountered 1 template error
+#               ... '_sshpf_target' is undefined" (and the same for _sshpf_remote_user) printed
+#               repeatedly every time this whole file is skipped via ssh_key_preflight_skip=true
+#               (the documented password-authenticated first-run path). Real cause: Ansible
+#               renders a task's own name: field for display BEFORE checking its when: --
+#               module params are templated lazily and never touched for a genuinely skipped
+#               task, but name: always is. Five task names referenced _sshpf_target/
+#               _sshpf_remote_user bare (no default()), all downstream of the one task that
+#               actually sets them (itself gated on the same ssh_key_preflight_skip check) --
+#               so every one of them threw this warning on every skipped run. Cosmetic only
+#               (the tasks themselves correctly stayed skipped either way), but genuinely
+#               confusing output that looked like a failure. Fixed by adding | default(...) to
+#               all five.
 #   2026-09-17  Fixed a real bug in BOTH the sudo-install one-liners above (auth auto-heal's and
 #               sudo-heal's), found live on the very first sudo-heal test against EXAPVEFRD001:
 #               `command -v sudo || (apt-get update -qq && apt-get install -y -qq sudo); echo ... ;
@@ -245,7 +258,7 @@
 # disabled entirely and prompting would just waste time — matches the same explicit,
 # extra-var-driven override idiom as ssh_key_preflight_skip itself.
 
-- name: "[ssh-preflight] Auto-heal — prompt for {{ _sshpf_target }}'s root password"
+- name: "[ssh-preflight] Auto-heal — prompt for {{ _sshpf_target | default('target') }}'s root password"
   ansible.builtin.pause:
     prompt: >-
       SSH key auth to {{ _sshpf_remote_user }}@{{ _sshpf_target }} failed. Enter this node's
@@ -272,7 +285,7 @@
     - _sshpf_root_pass_prompt is not skipped
     - _sshpf_root_pass_prompt.user_input | default('') | length > 0
 
-- name: "[ssh-preflight] Auto-heal — create/repair {{ _sshpf_remote_user }}, sudo, and install the current key"
+- name: "[ssh-preflight] Auto-heal — create/repair {{ _sshpf_remote_user | default('ansible') }}, sudo, and install the current key"
   ansible.builtin.command:
     argv:
       - sshpass
@@ -407,7 +420,7 @@
   become: false
   when: not (ssh_key_preflight_skip | default(false) | bool)
 
-- name: "[ssh-preflight] Check whether sudo is present on {{ _sshpf_target }}"
+- name: "[ssh-preflight] Check whether sudo is present on {{ _sshpf_target | default('target') }}"
   ansible.builtin.command:
     argv:
       - ssh
@@ -432,7 +445,7 @@
     - not (ssh_key_preflight_skip | default(false) | bool)
     - _sshpf_ssh_ok | default(false)
 
-- name: "[ssh-preflight] WARN — sudo missing on {{ _sshpf_target }}, attempting sudo-heal"
+- name: "[ssh-preflight] WARN — sudo missing on {{ _sshpf_target | default('target') }}, attempting sudo-heal"
   ansible.builtin.debug:
     msg: >-
       {{ _sshpf_remote_user }}@{{ _sshpf_target }} is reachable over SSH with the configured
@@ -444,7 +457,7 @@
     - _sshpf_sudo_check is not skipped
     - _sshpf_sudo_check.rc | default(1) != 0
 
-- name: "[ssh-preflight] Sudo-heal — prompt for {{ _sshpf_target }}'s root password"
+- name: "[ssh-preflight] Sudo-heal — prompt for {{ _sshpf_target | default('target') }}'s root password"
   ansible.builtin.pause:
     prompt: >-
       {{ _sshpf_remote_user }}@{{ _sshpf_target }} has no 'sudo' binary. Enter this node's
