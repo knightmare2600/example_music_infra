@@ -76,6 +76,13 @@
 # legitimate first-ever run against a brand new host.
 # =============================================================================
 # Changelog:
+#   2026-10-23  Passed target_hostname explicitly to the hostname_facts.yml include --
+#               real live bug, EXANASFAL001, same day as the NAS exclusion below: that
+#               exclusion never actually fired, because host_role resolved to UNKNOWN
+#               (via the rescue branch) rather than NAS, since the fallback chain ended
+#               up reading a stale, cached ansible_hostname ("truenas", the box's own
+#               not-yet-renamed OS hostname) left over from an earlier play in the same
+#               run. See the task's own inline comment for the full detail.
 #   2026-10-23  Added NAS to the role pattern-exclusion alongside PVE -- real live
 #               abort, EXANASFAL001, the first run of this check against a TrueNAS
 #               host (added to truenas/site.yml the same day, see that file's own
@@ -93,6 +100,26 @@
       include_tasks: ../tasks/colour_fallback.yml
 
     - name: Best-effort hostname facts (PVE/NAS pattern-exclusion only — never fatal here)
+      # 2026-10-23, Robert's ask, live on EXANASFAL001: without target_hostname set
+      # explicitly, this falls back to ansible_hostname -- but gather_facts isn't even
+      # run in THIS play (gather_facts: false above), so on a host with no cached facts
+      # from an earlier play in the SAME run, ansible_hostname is simply undefined and
+      # this falls through further, to inventory_hostname... except on TrueNAS's own
+      # chain, 00-preflight.yml's earlier play (gather_facts: true) already cached
+      # ansible_hostname as a per-host fact for the REST of this run, and that's the
+      # box's stale, not-yet-renamed OS hostname ("truenas") -- hostvars persist across
+      # plays in the same invocation, so this fell back to THAT, not inventory_hostname,
+      # exactly the same trap 00-preflight.yml's own fix (same day) already corrected
+      # for itself. The NAS pattern-exclusion added to this file earlier today never
+      # actually fired as a result -- host_role resolved to UNKNOWN (rescue branch), not
+      # NAS, so the exclusion check below never matched. Fixed the same way: pass
+      # target_hostname explicitly, the authoritative, always-correct source regardless
+      # of whether gather_facts ran in this play or an earlier one already cached a
+      # stale value -- safe for every other caller of this shared file too, not just
+      # TrueNAS, since inventory_hostname already matches the EXA convention for any
+      # host that's actually been renamed (the normal case everywhere else).
+      vars:
+        target_hostname: "{{ inventory_hostname }}"
       block:
         - include_tasks: ../tasks/hostname_facts.yml
       rescue:
