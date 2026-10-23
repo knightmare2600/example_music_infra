@@ -34,6 +34,13 @@
 # and never will.
 # =============================================================================
 # Changelog:
+#   2026-10-23  Robert's ask, live on EXANASFAL001: a reinstalled TrueNAS box at an
+#               existing standard NAS slot hit "REMOTE HOST IDENTIFICATION HAS CHANGED"
+#               on first real SSH connection -- the previous occupant's cached host key
+#               was stale. Added ../../../tasks/purge_stale_known_hosts_key.yml (shared
+#               with firewallme/90-firewall.yml, which had this exact pattern inline
+#               already) to Play 1, unconditional, ahead of ssh_key_preflight_skip --
+#               see that task's own include site for the full reasoning.
 #   2026-10-22  Added an early nodeinfo.json write to Play 2 (site lookup), right after
 #               nas_environment is resolved -- Robert's ask: make sure nodeinfo.json
 #               genuinely gets written, not just assumed. Previously the ONLY write in this
@@ -55,6 +62,31 @@
   hosts: truenas_servers
   gather_facts: false
   tasks:
+    # 2026-10-23, Robert's ask, live on EXANASFAL001: a reinstalled TrueNAS box at an
+    # existing standard NAS slot (replacing an OLDER TrueNAS install there -- the same
+    # root cause as firewallme's own "shared DHCP lease" case, just a reinstalled box
+    # at a permanent site slot instead of an address reuse on a shared network) hit
+    # "REMOTE HOST IDENTIFICATION HAS CHANGED" the moment any real SSH connection was
+    # attempted (both the password-auth Gathering Facts in the next play, and this
+    # play's own key-based check below if that path is taken instead) -- the box's
+    # brand-new host key doesn't match what known_hosts still has cached from the
+    # previous occupant. Ported firewallme/playbooks/90-firewall.yml's own known-hosts
+    # probe/purge (now shared, see that file's own 2026-10-23 changelog entry) --
+    # unconditional, ahead of ssh_key_preflight_skip, since the stale-key problem
+    # equally blocks a password-based connection (this play's own skip condition for
+    # that exact case) as it would a key-based one.
+    - name: Test + purge a stale known_hosts entry for this TrueNAS box's address
+      include_tasks: ../../../tasks/purge_stale_known_hosts_key.yml
+      vars:
+        phk_target_ip: "{{ ansible_host | default(inventory_hostname) }}"
+        phk_target_user: "{{ ansible_user | default('ansible') }}"
+        phk_target_port: "{{ ansible_port | default(22) }}"
+        phk_identity_file: "{{ ansible_ssh_private_key_file | default(lookup('env', 'HOME') + '/ansible/configs/ansible-id_rsa') }}"
+        phk_reason: >-
+          This standard NAS slot had an OLDER TrueNAS install here before (replaced, not a
+          shared-DHCP address reuse) -- its own cached host key is stale now that this box
+          has a brand-new one.
+
     - name: Real SSH connectivity check using the configured key
       include_tasks: ../../../tasks/ssh_key_preflight.yml
       vars:
