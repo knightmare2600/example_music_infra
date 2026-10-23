@@ -59,6 +59,15 @@
 # middleware daemon.
 # =============================================================================
 # Changelog:
+#   2026-10-23  Added task 0d -- creates the ansible account's home directory on the
+#               pool before task 1 ever tries to assign it. The real middleware's
+#               home_create parameter (what would make TrueNAS do this itself) is
+#               unimplemented in arensb.truenas.user (confirmed in its own source
+#               comments), so setting home: alone would hit the exact same EINVAL
+#               again. Plain ansible.builtin.file works fine over the existing
+#               truenas_admin+become connection. Unverified: whether TrueNAS re-chowns
+#               an already-existing directory to the new user on assignment -- watch
+#               this on the next live run.
 #   2026-10-23  Real live failure, EXANASFAL001 -- the first run of task 1 ever to reach
 #               a real box: "Unsupported parameters for (arensb.truenas.user) module:
 #               sudo, sudo_nopasswd." This directly contradicted the header comment's
@@ -132,6 +141,17 @@
 
   tasks:
 
+    - name: "0d | Ensure the ansible account's future home directory exists on the pool"
+      # home_create (the real middleware parameter that would make TrueNAS do this
+      # itself) isn't exposed by arensb.truenas.user at all -- see task 1's own comment
+      # below for the full detail. Plain OS-level file module works fine here: we're
+      # connected as truenas_admin with become: true, and TrueNAS SCALE's pool mount is
+      # a real, normal path on the underlying Linux filesystem.
+      ansible.builtin.file:
+        path: "/mnt/{{ nas_pool_name }}/ansible_home"
+        state: directory
+        mode: "0700"
+
     - name: "1 | Ensure ansible automation account exists"
       # 2026-10-23, real live failure, EXANASFAL001, first run of this task ever to reach
       # a real box: "Unsupported parameters for (arensb.truenas.user) module: sudo,
@@ -163,11 +183,39 @@
       # directly via REST instead (tasks 1b/1c below), the same bypass-the-collection-gap
       # pattern task 1a already uses for ssh_password_enabled, which this same collection
       # also has no parameter for.
+      #
+      # THIRD real failure, same run, immediately after the sudo fix: TWO more EINVALs
+      # at once -- (1) "password_disabled: Password authentication may not be disabled
+      # for SMB users": the module's own smb parameter defaults to true (confirmed in
+      # its argspec) when not given at all, and TrueNAS won't allow a disabled password
+      # on an SMB-enabled account; this account has nothing to do with SMB shares, so
+      # smb: false is unambiguously correct. (2) "sshpubkey: /var/empty: the user home
+      # directory must be set to a writable path located within a data pool" -- TrueNAS
+      # requires a real, writable home directory before it'll accept an SSH key at all,
+      # and we never set one (module defaulted to /var/empty). nas_pool_name now defaults
+      # to the estate-wide "PBSBackups" convention via 20-storage.yml's own pre_tasks --
+      # site.yml deliberately runs that file BEFORE this one now (see its own changelog)
+      # so the pool, and this default, both already exist by the time this task runs.
+      #
+      # FOURTH real failure found while fixing the third, before ever running this live
+      # again: the real middleware's home_create parameter (default false -- confirmed in
+      # docs/api2.txt's own user_create schema) is what actually makes TrueNAS create a
+      # home directory at the given path; this module doesn't expose it at all (its own
+      # source comments home_mode as a known-unimplemented parameter, and home_create
+      # isn't mentioned there either) -- so merely setting home: here, without the path
+      # already existing, would fail the exact same validation again. Added a task just
+      # below to create it first via a plain ansible.builtin.file (we're connected as
+      # truenas_admin with become: true at this point, a real OS-level path create/chmod
+      # works fine) -- UNVERIFIED whether TrueNAS re-chowns an already-existing directory
+      # to the new user when it's assigned as home, or whether it needs to stay
+      # root-owned; watch this specifically on the next live run.
       arensb.truenas.user:
         name: ansible
         comment: "Ansible automation account"
         create_group: true
         shell: /usr/bin/bash
+        smb: false
+        home: "/mnt/{{ nas_pool_name }}/ansible_home"
         ssh_authorized_keys:
           - "{{ exa_ansible_pub_key }}"
         password_disabled: true
