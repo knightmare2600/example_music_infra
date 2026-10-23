@@ -12,15 +12,18 @@
 # a plain /etc/passwd entry -- linux/tools.yml's ansible.builtin.user tasks
 # do NOT apply here and must never be pointed at a TrueNAS host.
 #
-# sudo/sudo_nopasswd (real boolean parameters, confirmed 2026-07-22 against
-# the installed collection's own argspec via `ansible-doc -j
-# arensb.truenas.user` -- an earlier draft of this file guessed at
-# sudo_commands_nopasswd: [ALL] instead, a real but different parameter
-# that only grants sudo for a literal command named "ALL", not blanket
-# access; caught before it shipped by checking the real module, not just
-# the collection's rendered docs) grant full passwordless sudo, matching
-# every other host's "ansible has passwordless sudo" convention in this
-# estate exactly.
+# CORRECTED 2026-10-23 (see Changelog) -- the paragraph below was wrong, kept here
+# struck through rather than deleted: "sudo/sudo_nopasswd (real boolean parameters,
+# confirmed 2026-07-22 against the installed collection's own argspec via
+# `ansible-doc -j arensb.truenas.user` -- an earlier draft of this file guessed at
+# sudo_commands_nopasswd: [ALL] instead, a real but different parameter that only
+# grants sudo for a literal command named "ALL", not blanket access; caught before it
+# shipped by checking the real module, not just the collection's rendered docs) grant
+# full passwordless sudo, matching every other host's "ansible has passwordless
+# sudo" convention in this estate exactly." Task 1 below now actually uses
+# sudo_commands_nopasswd: [ALL] -- "ALL" IS a documented wildcard there, not a literal
+# command name; whatever check produced the paragraph above either ran against a
+# different collection version or was simply mistaken.
 #
 # First run (before the ansible account exists, using truenas_admin + password --
 # root is never usable here, no root password is ever set on these boxes):
@@ -38,16 +41,28 @@
 #
 # Tags: access
 #
-# NOT YET TESTED against a real TrueNAS box. Parameter names ARE confirmed --
-# arensb.truenas 2.0.3 installed locally 2026-07-22 and every parameter used
-# below checked against `ansible-doc -j arensb.truenas.user`/`.hostname`'s
-# real argspec, not just the collection's rendered docs (which is how the
-# sudo/sudo_nopasswd fix above was caught). syntax-check passes against the
-# installed collection. What's still unverified is purely behavioural --
+# FIRST RUN against a real TrueNAS box was 2026-10-23 (EXANASFAL001) -- task 1's own
+# sudo/sudo_nopasswd parameters were rejected outright by the real, currently-installed
+# collection ("Unsupported parameters"), despite this file's own prior claim of having
+# checked them against `ansible-doc -j arensb.truenas.user`'s real argspec on
+# 2026-07-22. That claim was wrong (or checked a different collection version) -- see
+# task 1's own 2026-10-23 fix and this file's Changelog. Lesson taken: "checked against
+# ansible-doc" is not a standing fact once written down, it needs re-confirming against
+# whatever's actually installed on the real control node at the time a file finally
+# runs for real, not trusted indefinitely from an earlier check. What's still
+# unverified is purely behavioural beyond task 1 --
 # whether these calls actually do the right thing against a real
 # middleware daemon.
 # =============================================================================
 # Changelog:
+#   2026-10-23  Real live failure, EXANASFAL001 -- the first run of task 1 ever to reach
+#               a real box: "Unsupported parameters for (arensb.truenas.user) module:
+#               sudo, sudo_nopasswd." This directly contradicted the header comment's
+#               claim that those were checked against the real module argspec on
+#               2026-07-22 (now struck through above, not deleted). Re-checked
+#               ansible-doc -j arensb.truenas.user directly: sudo_commands_nopasswd's
+#               own docstring documents "ALL" as a real wildcard value, not a literal
+#               command name. Switched task 1 to sudo_commands_nopasswd: [ALL].
 #   2026-10-22  Added a TrueNAS API key provisioning section (for the Zabbix companion
 #               template's own REST/HTTP_AGENT items, docs/zabbix_templates/
 #               zabbix_template_truenas.json) -- Robert's ask: automate creating it and
@@ -96,6 +111,22 @@
   tasks:
 
     - name: "1 | Ensure ansible automation account exists"
+      # 2026-10-23, real live failure, EXANASFAL001, first run of this task ever to reach
+      # a real box: "Unsupported parameters for (arensb.truenas.user) module: sudo,
+      # sudo_nopasswd. Supported parameters include: ... sudo_commands,
+      # sudo_commands_nopasswd ..." -- directly contradicting this file's own header
+      # comment above, which claims sudo/sudo_nopasswd were confirmed against the real
+      # installed collection's argspec on 2026-07-22 (that check was apparently either
+      # against a different collection version than what's on the real control node now,
+      # or simply wrong -- not re-litigated here, the live error is the authority).
+      # Re-checked the module's real docstring directly (ansible-doc -j
+      # arensb.truenas.user) before fixing: sudo_commands_nopasswd's own description
+      # explicitly documents "ALL" as a special wildcard value ("allows executing any
+      # command"), not a literal command named "ALL" the way this file's header
+      # comment claims the "earlier draft" version wrongly assumed -- so that earlier,
+      # since-reverted version was actually closer to correct than the fix that replaced
+      # it. sudo_commands_nopasswd: ['ALL'] grants the same full, passwordless sudo this
+      # estate's "ansible has passwordless sudo" convention needs everywhere else.
       arensb.truenas.user:
         name: ansible
         comment: "Ansible automation account"
@@ -104,8 +135,8 @@
         ssh_authorized_keys:
           - "{{ exa_ansible_pub_key }}"
         password_disabled: true
-        sudo: true
-        sudo_nopasswd: true
+        sudo_commands_nopasswd:
+          - ALL
         state: present
 
     # ── Lock SSH password auth back down (opened by 00-rest-bootstrap.yml's steps
