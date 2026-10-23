@@ -71,6 +71,14 @@
 # plain Debian box -- unverified either way.
 # =============================================================================
 # Changelog:
+#   2026-10-23  Swapped 10-access.yml and 20-storage.yml's order -- storage now runs
+#               first. 20-storage.yml creates the data pool itself now (Robert's ask,
+#               REST, see that file's own changelog); 10-access.yml's task 1 gives the
+#               new ansible account a home directory on that pool, which has to exist
+#               first. Caught before ever running live -- would have failed with
+#               "nas_pool_name is undefined" (storage's own pool-name default lives in
+#               ITS pre_tasks, never reached under the old order) the moment 10-access
+#               tried to reference it.
 #   2026-10-23  Robert, live against EXANASFAL001 (first real end-to-end run of this whole
 #               chain): the documented --user=truenas_admin -k invocation above never
 #               actually took effect for any real SSH connection -- group_vars/all/main.yml's
@@ -115,8 +123,17 @@
 
 - import_playbook: ../check_linux_baseline.yml
 
-- import_playbook: playbooks/10-access.yml
-  tags: access
-
+# 2026-10-23, Robert's ask: 20-storage.yml now creates the data pool itself (REST,
+# see that file's own changelog) rather than requiring one to pre-exist -- storage
+# MUST run before access: 10-access.yml's own task 1 gives the new `ansible` account
+# a real home directory on that same pool (TrueNAS rejects an SSH-key-bearing
+# account whose home isn't a writable path on a data pool), so the pool has to
+# exist first. Swapped from the original access-then-storage order. Neither file
+# actually needs the OTHER's own output to run (storage doesn't need the ansible
+# account; access's home-directory path is the only real dependency, now satisfied
+# by running storage first), so this reorder has no other effect.
 - import_playbook: playbooks/20-storage.yml
   tags: storage
+
+- import_playbook: playbooks/10-access.yml
+  tags: access
