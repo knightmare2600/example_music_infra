@@ -86,6 +86,20 @@
 #
 # =============================================================================
 # Changelog:
+#   2026-10-23  Robert's ask: "the windows bootstrap playbook autoreboots, this is
+#               unacceptable... supposed to OFFER a reboot, default to no, and then remind
+#               the user." [H]'s hostname-only reboot (no IP change) was unconditional --
+#               replaced with ../tasks/confirm_reboot.yml (ask, default No, remind if
+#               declined). Added serial: 1 to this play too -- the new pause-based confirm
+#               needs it, same bug class already fixed in ssh_preflight_with_fallback.yml.
+#               Deliberately NOT changed: [H]'s OTHER reboot, the IP-change path
+#               (shutdown /r /t 5 /f, fire-and-forget) -- that one is functionally required
+#               for this SAME play to continue at all (the very next task switches
+#               ansible_host to the new static IP and reconnects), same category of
+#               "genuinely needed" as domain join's own reboot (80-domainjoin.yml,
+#               Robert's explicit call, also left unchanged). Gating that one risks
+#               breaking this phase's own ability to proceed -- flagged to Robert rather
+#               than guessed at.
 #   2026-10-13  Robert's ask: added install_explorer_patcher_input vars_prompt (yes/no,
 #               default no) and its derived install_explorer_patcher boolean fact, gating
 #               the new optional ExplorerPatcher install (ansible/playbooks/windows_bootstrap/
@@ -429,6 +443,12 @@
 - name: Pre-flight — credentials, hostname, IP, SSH
   hosts:         "{{ target_hosts | default(target | default('all')) }}"
   gather_facts:  false
+  # serial: 1 -- [H]'s confirm_reboot.yml include uses ansible.builtin.pause, which only
+  # reliably registers one answer across a parallel multi-host batch (same bug class
+  # already fixed in firewallme/ssh_preflight_with_fallback.yml's own 2026-07-16
+  # changelog). This family is normally run against a single -e target_hosts= host
+  # anyway, but costs nothing to make correct for the group-run case too.
+  serial: 1
 
   vars_prompt:
     - name: ansible_user
@@ -1209,11 +1229,12 @@
         timeout: 60
       when: ip_needs_change | bool
 
-    - name: "[H] Reboot — hostname change only (no IP change)"
-      ansible.windows.win_reboot:
-        reboot_timeout:    300
-        post_reboot_delay: 20
-        msg:               "Ansible preflight — applying hostname change"
+    - name: "[H] Confirm reboot — hostname change only (no IP change)"
+      include_tasks: ../tasks/confirm_reboot.yml
+      vars:
+        confirm_reboot_reason:     "hostname change (preflight)"
+        confirm_reboot_timeout:    300
+        confirm_reboot_post_delay: 20
       when: hostname_needs_change | bool and not ip_needs_change | bool
 
     # =========================================================================

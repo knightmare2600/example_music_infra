@@ -25,6 +25,15 @@
 # Tags: rename
 # =============================================================================
 # Changelog:
+#   2026-10-23  Robert's ask: "the windows bootstrap playbook autoreboots, this is
+#               unacceptable... supposed to OFFER a reboot, default to no, and then remind
+#               the user." The post-rename reboot here was unconditional (only gated on
+#               rename_result is changed, no operator input at all) -- replaced with
+#               ../tasks/confirm_reboot.yml (ask, default No, remind if declined). Added
+#               serial: 1 to this play too -- the new pause-based confirm needs it, same
+#               bug class already fixed in ssh_preflight_with_fallback.yml. Domain join's
+#               own reboot (80-domainjoin.yml) is deliberately NOT changed -- Robert's
+#               explicit call, that one genuinely needs to happen regardless.
 #   2026-09-19  CRITICAL, found live (Robert, EXAANSFRD001 -- mid-EXADCSFRD001 build): this
 #               play's hosts: line only checked {{ target | default('all') }} -- "target" is
 #               never set anywhere in this chain; only site.yml's own documented
@@ -74,6 +83,12 @@
 - name: Windows — Rename host
   hosts:         "{{ target_hosts | default(target | default('all')) }}"
   gather_facts: true
+  # serial: 1 -- the new confirm_reboot.yml include below uses ansible.builtin.pause,
+  # which only reliably registers one answer across a parallel multi-host batch (same
+  # bug class already fixed in firewallme/ssh_preflight_with_fallback.yml's own
+  # 2026-07-16 changelog). This family is normally run against a single -e target=
+  # host anyway, but costs nothing to make correct for the group-run case too.
+  serial: 1
   vars_prompt:
     - name: target_hostname
       prompt: "New hostname (EXA[ROLE][SITE][NNN], e.g. EXAWKSGLA001) — Enter to skip rename"
@@ -110,9 +125,8 @@
         - target_hostname != ""
         - ansible_hostname | upper != target_hostname | upper
 
-    - name: Reboot after rename
-      ansible.windows.win_reboot:
-        reboot_timeout:    600
-        post_reboot_delay: 30
-        msg: "Rebooting after hostname rename"
+    - name: Confirm reboot after rename
+      include_tasks: ../tasks/confirm_reboot.yml
+      vars:
+        confirm_reboot_reason: "hostname rename"
       when: rename_result is changed
