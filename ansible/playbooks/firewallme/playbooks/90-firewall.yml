@@ -16,6 +16,12 @@
 #       packages, network, nftables, dnsmasq, ssh, cockpit, finish
 #
 # Changelog:
+#   2026-10-23  Robert's ask, after truenas/playbooks/00-preflight.yml hit the same
+#               changed-host-key problem live on EXANASFAL001: extracted the inline
+#               known_hosts probe/warning/purge logic into ../../../tasks/
+#               purge_stale_known_hosts_key.yml so the second real caller doesn't
+#               duplicate it -- no behaviour change here, same probe/message/purge,
+#               just via include_tasks now.
 #   2026-10-23  Robert, live on EXAFWLABD001: forgot to run playbooks/linux/tools.yml first,
 #               then hit a confusing, unrelated-looking SSH timeout against this host's
 #               permanent LAN-side ansible_host (a separate, already-tracked WireGuard-routing
@@ -127,39 +133,24 @@
       vars:
         example_music_gate_files: [sites.csv, ad_forest.json]
         example_music_gate_repo_root: "{{ playbook_dir }}/../../../.."
-    - name: "[Preflight] Test strict host-key verification (does NOT bypass it, unlike the SSH-key test below)"
-      ansible.builtin.command: >
-        ssh -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new
-            -o Port={{ ansible_port | default(22) }}
-            -i {{ ansible_ssh_private_key_file | default(lookup('env', 'HOME') + '/ansible/configs/ansible-id_rsa') }}
-            {{ ansible_user | default('ansible') }}@{{ ansible_host | default(inventory_hostname) }}
-            true
-      register: _fwl_hostkey_probe
-      delegate_to: localhost
-      changed_when: false
-      failed_when: false
+    # 2026-10-23: extracted into ../../../tasks/purge_stale_known_hosts_key.yml --
+    # truenas/playbooks/00-preflight.yml is the second real caller (Robert's ask,
+    # live on EXANASFAL001), same reasoning ssh_preflight_with_fallback.yml's own
+    # header already uses for when to extract a pattern vs. duplicate it. Identical
+    # probe/warning/purge behaviour to before, just no longer inline here.
+    - name: Test + purge a stale known_hosts entry for this firewall's address
+      include_tasks: ../../../tasks/purge_stale_known_hosts_key.yml
       vars:
-        ansible_connection: local
-
-    - name: "[Preflight] WARNING — stale known_hosts entry, purging (firewall-only, see 2026-09-01 changelog above)"
-      ansible.builtin.debug:
-        msg: |
-          {{ _c.Y }}[!]{{ _c.NC }} SSH host key for {{ ansible_host | default(inventory_hostname) }} has
-          CHANGED since this address was last seen -- normally a real warning sign, but expected here:
-          this is a firewall's temporary DHCP lease on the shared provisioning network, which has almost
-          certainly belonged to a different, unrelated box before. Purging the stale known_hosts entry so
-          this run can continue.
-          This purge is scoped to FIREWALLS ONLY -- a changed host key on any other node type (DCS, Salt,
-          RMM, etc.) is never auto-purged and will still fail loudly, since those are expected to already
-          have a stable identity.
-      when: "'REMOTE HOST IDENTIFICATION HAS CHANGED' in _fwl_hostkey_probe.stderr"
-
-    - name: "[Preflight] Purge stale known_hosts entry"
-      ansible.builtin.command: >
-        ssh-keygen -f {{ lookup('env', 'HOME') }}/.ssh/known_hosts
-        -R {{ ansible_host | default(inventory_hostname) }}
-      delegate_to: localhost
-      changed_when: true
+        phk_target_ip: "{{ ansible_host | default(inventory_hostname) }}"
+        phk_target_user: "{{ ansible_user | default('ansible') }}"
+        phk_target_port: "{{ ansible_port | default(22) }}"
+        phk_identity_file: "{{ ansible_ssh_private_key_file | default(lookup('env', 'HOME') + '/ansible/configs/ansible-id_rsa') }}"
+        phk_reason: >-
+          This is a firewall's temporary DHCP lease on the shared provisioning network, which has
+          almost certainly belonged to a different, unrelated box before. This purge is scoped to
+          FIREWALLS ONLY -- a changed host key on any other node type (DCS, Salt, RMM, etc.) is
+          never auto-purged and will still fail loudly, since those are expected to already have a
+          stable identity.
       when: "'REMOTE HOST IDENTIFICATION HAS CHANGED' in _fwl_hostkey_probe.stderr"
 
 - import_playbook: ../../ssh_preflight_with_fallback.yml
