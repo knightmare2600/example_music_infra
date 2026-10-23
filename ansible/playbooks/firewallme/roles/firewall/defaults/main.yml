@@ -5,6 +5,11 @@
 # =============================================================================
 # Override any of these in group_vars, host_vars, or -e at runtime.
 # Changelog:
+#   2026-10-23  Added molly-guard to fw_packages -- Robert's ask, real gap: this list is
+#               separate from group_vars/all/main.yml's common_packages, which firewalls
+#               never consume at all, so molly-guard being there never protected a
+#               firewall's own SSH session from an accidental reboot/shutdown. See
+#               12_console_hardening.yml's own matching correction, same day.
 #   2026-08-13  Added fw_noninteractive -- Robert's batch-run ask (backlog item, picked
 #               up this date): "vars_prompt do it now" already made 00_preflight_3_ask.yml's
 #               ~20 pause tasks skippable per-prompt via fw_<name>_override extra-vars; this
@@ -97,6 +102,14 @@ fw_is_black_site: false
 
 # Package list — mirrors firewallme.sh BOOTSTRAP_PKGS logic
 fw_packages:
+  # 2026-10-23, Robert's ask: molly-guard was missing here. This list is firewallme's
+  # own, separate from group_vars/all/main.yml's common_packages (firewalls don't
+  # consume that var at all -- 05_packages.yml checks fw_packages specifically), so
+  # molly-guard being in common_packages never actually protected a firewall's SSH
+  # session from an accidental reboot/shutdown -- confirmed by reading 05_packages.yml
+  # directly, not assumed. 12_console_hardening.yml's own header comment wrongly
+  # claimed this was "already covered" for firewalls -- corrected there too, same day.
+  - molly-guard
   - network-manager
   - nftables
   - iproute2
