@@ -69,6 +69,20 @@
 # until a password fact (if needed) is already in hand.
 # =============================================================================
 # Changelog:
+#   2026-10-23  Robert's ask, live on EXANASFAL001: the key-only probe below always
+#               fails when the whole run is already using password auth (-k/
+#               ansible_password), since a password-auth run never relied on the key in
+#               the first place -- it then always fell through to the password prompt,
+#               asking the human to retype the SAME password they already gave at the
+#               CLI, for no actual benefit (connectivity is already proven by that
+#               point). Confirmed redundant across two separate live re-runs of the same
+#               host the same day. Wrapped the whole probe-and-fallback sequence in a
+#               block, skipped entirely when password auth is already active -- reuses
+#               the exact same signal 00-preflight.yml's own ssh_key_preflight_skip
+#               already uses for the identical reason. Not TrueNAS-specific: benefits
+#               every caller's own --user=root/truenas_admin -k first-run path equally
+#               (proxmox/salt included), none of which were ever actually spared this
+#               friction before, just never reported.
 #   2026-10-23  Robert's ask, live on EXAFWLABD001 (see check_linux_baseline.yml's own
 #               changelog for the fuller story): added a WAN/provisioning-IP fallback
 #               (192.168.139.<site-octet>, firewalls only -- see the dedicated comment
@@ -134,188 +148,218 @@
 
   tasks:
 
-    - name: "[Preflight] Test SSH connectivity with the current key"
-      # Delegated plain ssh, not ansible.builtin.ping -- see header comment above.
-      #
-      # BUG FIX 2026-10-19 (found live bootstrapping EXACLPCLD001 against a bare-IP
-      # target, -i "<ip>,"): delegate_to: localhost re-scopes CONNECTION variables
-      # (ansible_host/ansible_port/ansible_user/etc) to the DELEGATE's own hostvars,
-      # not the original target's -- documented Ansible behaviour, confirmed via an
-      # isolated debug playbook. A plain {{ ansible_host | default(...) }} here
-      # therefore resolves to localhost's OWN ansible_host ("localhost" itself),
-      # not the real target -- for any host where ansible_host is explicitly set
-      # (every bare-IP target, since Ansible's inventory parser auto-sets
-      # ansible_host = the IP for a bare entry), this tested connectivity to
-      # ansible@localhost instead of the real box, always "failing" and falling
-      # through to the interactive password prompt. Silently masked until now: a
-      # human always just types the password anyway when prompted, so the wrong
-      # test target never looked wrong from the outside -- only matters for a key
-      # that genuinely IS valid, which a human-driven run never needed to notice.
-      # Real named hosts without an explicit ansible_host override (DNS-resolvable
-      # hostname only) were never affected -- inventory_hostname (NOT a connection
-      # var, stays correctly scoped under delegation) was already the right value.
-      # Fixed via an explicit hostvars[inventory_hostname] lookup, which bypasses
-      # delegate_to's connection-variable re-scoping entirely.
-      ansible.builtin.command: >
-        ssh -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=no
-            -o Port={{ hostvars[inventory_hostname].ansible_port | default(22) }}
-            -i {{ _preflight_key }}
-            {{ hostvars[inventory_hostname].ansible_user | default('ansible') }}@{{ hostvars[inventory_hostname].ansible_host | default(inventory_hostname) }}
-            true
-      register: _ssh_preflight
-      delegate_to: localhost
-      changed_when: false
-      failed_when: false
-      vars:
-        ansible_connection: local
-
-    # ── WAN/provisioning-IP fallback — FIREWALLS ONLY ──────────────────────────
-    # Robert, 2026-10-23, live on EXAFWLABD001: forgot to run linux/tools.yml first, then
-    # hit a confusing SSH timeout trying to reach this host's permanent LAN-side
-    # ansible_host (192.168.224.253), which only routes via a WireGuard peer that hadn't
-    # been registered on the hub yet -- a real catch-22 for a firewall that's built enough
-    # to exist in inventory but not yet fully meshed in. His ask: try the provisioning/WAN
-    # IP (192.168.139.<site-octet>, the SAME convention firewallme/roles/firewall/tasks/
-    # 00_preflight_1_derive.yml's own fw_wan_static_ip already uses -- reused via the
-    # identical sites.csv Subnet-third-octet derivation, not re-invented here) as a genuine
-    # second candidate when the primary address doesn't respond, and persist it as an
-    # ansible_host override for the rest of the run if it works -- same pattern already
-    # used below for the password fallback.
-    #
-    # Deliberately gated on host_role == 'FWL', not applied generically to every caller of
-    # this shared file (bind9/truenas/salt/cloudpanel/linux_tools all import it too).
-    # 192.168.139.<site-octet> is only that EXACT host's own permanent address for a
-    # firewall -- for every other role, that address belongs to the SITE'S firewall, a
-    # completely different box that also happens to trust the same 'ansible' key. Applying
-    # this fallback generically would silently "succeed" by connecting to the wrong machine
-    # entirely for every non-firewall host -- a real safety hazard, not a convenience.
-    # host_role comes from hostname_facts.yml, wrapped in block/rescue (same reasoning as
-    # check_linux_baseline.yml's own identical wrapping) since this runs before any
-    # caller's own hostname validation and must never be fatal here.
-
-    - name: "[Preflight] Best-effort hostname facts (WAN-IP fallback pattern-gate — firewalls only)"
-      block:
-        - include_tasks: ../tasks/hostname_facts.yml
-      rescue:
-        - set_fact:
-            host_role: "UNKNOWN"
-      when: _ssh_preflight.rc != 0
-
-    - name: "[Preflight] Load sites.csv (WAN-IP fallback — firewalls only)"
-      ansible.builtin.read_csv:
-        path: "{{ playbook_dir }}/../../benarbejde/sites.csv"
-      register: _preflight_sites_raw
-      delegate_to: localhost
-      become: false
-      when:
-        - _ssh_preflight.rc != 0
-        - host_role | default('UNKNOWN') | upper == 'FWL'
-
-    - name: "[Preflight] Compute WAN/provisioning IP candidate (WAN-IP fallback — firewalls only)"
+    # 2026-10-23, Robert's ask, live on EXANASFAL001 (TrueNAS's own first-ever password-
+    # authenticated onboard run): this file's key-only probe always fails when the whole
+    # run is already using password auth (-k / ansible_password/-e), since the real
+    # connection a password-auth run relies on was never key-based in the first place --
+    # it then always falls through to the password prompt below, which just asks the
+    # human to retype the SAME password they already supplied at the CLI, for no actual
+    # benefit (connectivity is already proven; 00-preflight.yml's own gather_facts, or
+    # the caller's own equivalent, already succeeded using it). Confirmed as redundant,
+    # not protective, across two separate live re-runs of the same host the same day.
+    # Reuses the EXACT same signal 00-preflight.yml's own ssh_key_preflight_skip already
+    # uses for the identical reason -- not a TrueNAS-specific fix, this benefits every
+    # caller's own --user=root/truenas_admin -k first-run path equally (proxmox/salt
+    # included), none of which were ever actually spared this friction before, just
+    # never reported.
+    - name: "[Preflight] Determine whether this run is already using password auth"
       ansible.builtin.set_fact:
-        _preflight_wan_candidate: >-
-          192.168.139.{{ (_preflight_sites_raw.list
-             | selectattr('Site', 'equalto', host_site | default(''))
-             | map(attribute='Subnet') | map('regex_replace', '^\d+\.\d+\.(\d+)\..*$', '\1')
-             | list | first | default('')) }}
-      when:
-        - _preflight_sites_raw is defined
-        - _preflight_sites_raw is not skipped
-        - _preflight_sites_raw.list | selectattr('Site', 'equalto', host_site | default('')) | list | length > 0
+        _ssh_preflight_password_auth_active: "{{ (ansible_ssh_pass is defined) or ((ansible_password | default('')) != '') }}"
 
-    - name: "[Preflight] Test SSH connectivity via the WAN/provisioning IP candidate"
-      ansible.builtin.command: >
-        ssh -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=no
-            -o Port={{ hostvars[inventory_hostname].ansible_port | default(22) }}
-            -i {{ _preflight_key }}
-            {{ hostvars[inventory_hostname].ansible_user | default('ansible') }}@{{ _preflight_wan_candidate }}
-            true
-      register: _ssh_preflight_wan
-      delegate_to: localhost
-      changed_when: false
-      failed_when: false
-      when: _preflight_wan_candidate is defined
-      vars:
-        ansible_connection: local
-
-    - name: "[Preflight] Capture the original configured address (before it gets overwritten below)"
-      # Must run BEFORE the override task -- found live, 2026-10-23 (first real run of this
-      # feature, EXAFWLABD001): the override task's own set_fact updates
-      # hostvars[inventory_hostname].ansible_host immediately, same-host, visible to the
-      # very next task -- a debug message reading that same expression AFTER the override
-      # had already run saw the NEW value on both sides, printing "configured address
-      # (192.168.139.224) didn't respond, but ... 192.168.139.224 did" instead of showing
-      # the real original (192.168.224.253). Captured once, here, strictly before the
-      # overwrite, so the later NOTE message has the real original regardless of task order.
-      ansible.builtin.set_fact:
-        _preflight_original_host: "{{ hostvars[inventory_hostname].ansible_host | default(inventory_hostname) }}"
-      when:
-        - _ssh_preflight_wan is defined
-        - _ssh_preflight_wan is not skipped
-        - _ssh_preflight_wan.rc | default(1) == 0
-
-    - name: "[Preflight] WAN-IP fallback succeeded — persist ansible_host override for the rest of this run"
-      ansible.builtin.set_fact:
-        ansible_host: "{{ _preflight_wan_candidate }}"
-        # Consumed below to skip the password prompt / skip-group marking entirely --
-        # without this, both would still fire: a skipped (never-registered)
-        # _ssh_preflight_pw's .user_input resolves through | default('') to '' just like
-        # a genuinely blank answer would, so "Mark host to be skipped" would incorrectly
-        # fire even though connectivity is already fixed.
-        _ssh_preflight_fixed_by_wan: true
-      when:
-        - _ssh_preflight_wan is defined
-        - _ssh_preflight_wan is not skipped
-        - _ssh_preflight_wan.rc | default(1) == 0
-
-    - name: "[Preflight] NOTE — WAN/provisioning IP fallback succeeded"
+    - name: "[Preflight] NOTE — skipping key probe, this run is already using password auth"
       ansible.builtin.debug:
         msg: >-
-          {{ _c.Y }}[!]{{ _c.NC }} {{ inventory_hostname }}'s configured address
-          ({{ _preflight_original_host }})
-          didn't respond, but the provisioning/WAN IP {{ _preflight_wan_candidate }} did —
-          using that for the rest of this run instead. This usually means the permanent
-          route to this host (e.g. its WireGuard peer) isn't up yet — fix that separately,
-          this is a convenience to unblock THIS run, not a substitute for it.
-      when:
-        - _ssh_preflight_wan is defined
-        - _ssh_preflight_wan is not skipped
-        - _ssh_preflight_wan.rc | default(1) == 0
+          {{ _c.Y }}[!]{{ _c.NC }} {{ inventory_hostname }}: this run is already using
+          password auth (-k/ansible_password) -- skipping the key-only connectivity probe
+          and fallback prompt below, nothing useful for them to test here.
+      when: _ssh_preflight_password_auth_active
 
-    - name: "[Preflight] Key auth failed -- prompt for a fallback password"
-      ansible.builtin.pause:
-        prompt: |-
+    - name: "[Preflight] Key/password probe-and-fallback block (skipped entirely under password auth, see above)"
+      when: not _ssh_preflight_password_auth_active
+      block:
 
-          ── SSH preflight failed for {{ inventory_hostname }} ───────────────────
-            The current Ansible SSH key was rejected (or the host didn't respond)
-            connecting as {{ ansible_user | default('ansible') }}.
-            Every node's ansible user has a locked password and passwordless
-            sudo by design -- this only helps if that account's password has
-            already been manually unlocked/set out-of-band for recovery.
-            Enter it now to continue this host, or leave blank to skip it.
-          ─────────────────────────────────────────────────────────────────────
-          Password (masked, blank to skip this host)
-        echo: false
-      register: _ssh_preflight_pw
-      when:
-        - _ssh_preflight.rc != 0
-        - not (_ssh_preflight_fixed_by_wan | default(false))
+        - name: "[Preflight] Test SSH connectivity with the current key"
+          # Delegated plain ssh, not ansible.builtin.ping -- see header comment above.
+          #
+          # BUG FIX 2026-10-19 (found live bootstrapping EXACLPCLD001 against a bare-IP
+          # target, -i "<ip>,"): delegate_to: localhost re-scopes CONNECTION variables
+          # (ansible_host/ansible_port/ansible_user/etc) to the DELEGATE's own hostvars,
+          # not the original target's -- documented Ansible behaviour, confirmed via an
+          # isolated debug playbook. A plain {{ ansible_host | default(...) }} here
+          # therefore resolves to localhost's OWN ansible_host ("localhost" itself),
+          # not the real target -- for any host where ansible_host is explicitly set
+          # (every bare-IP target, since Ansible's inventory parser auto-sets
+          # ansible_host = the IP for a bare entry), this tested connectivity to
+          # ansible@localhost instead of the real box, always "failing" and falling
+          # through to the interactive password prompt. Silently masked until now: a
+          # human always just types the password anyway when prompted, so the wrong
+          # test target never looked wrong from the outside -- only matters for a key
+          # that genuinely IS valid, which a human-driven run never needed to notice.
+          # Real named hosts without an explicit ansible_host override (DNS-resolvable
+          # hostname only) were never affected -- inventory_hostname (NOT a connection
+          # var, stays correctly scoped under delegation) was already the right value.
+          # Fixed via an explicit hostvars[inventory_hostname] lookup, which bypasses
+          # delegate_to's connection-variable re-scoping entirely.
+          ansible.builtin.command: >
+            ssh -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=no
+                -o Port={{ hostvars[inventory_hostname].ansible_port | default(22) }}
+                -i {{ _preflight_key }}
+                {{ hostvars[inventory_hostname].ansible_user | default('ansible') }}@{{ hostvars[inventory_hostname].ansible_host | default(inventory_hostname) }}
+                true
+          register: _ssh_preflight
+          delegate_to: localhost
+          changed_when: false
+          failed_when: false
+          vars:
+            ansible_connection: local
 
-    - name: "[Preflight] Apply fallback password for this run"
-      ansible.builtin.set_fact:
-        ansible_password: "{{ _ssh_preflight_pw.user_input }}"
-      no_log: true
-      when:
-        - _ssh_preflight_pw is not skipped
-        - _ssh_preflight_pw.user_input | default('') | length > 0
+        # ── WAN/provisioning-IP fallback — FIREWALLS ONLY ──────────────────────────
+        # Robert, 2026-10-23, live on EXAFWLABD001: forgot to run linux/tools.yml first, then
+        # hit a confusing SSH timeout trying to reach this host's permanent LAN-side
+        # ansible_host (192.168.224.253), which only routes via a WireGuard peer that hadn't
+        # been registered on the hub yet -- a real catch-22 for a firewall that's built enough
+        # to exist in inventory but not yet fully meshed in. His ask: try the provisioning/WAN
+        # IP (192.168.139.<site-octet>, the SAME convention firewallme/roles/firewall/tasks/
+        # 00_preflight_1_derive.yml's own fw_wan_static_ip already uses -- reused via the
+        # identical sites.csv Subnet-third-octet derivation, not re-invented here) as a genuine
+        # second candidate when the primary address doesn't respond, and persist it as an
+        # ansible_host override for the rest of the run if it works -- same pattern already
+        # used below for the password fallback.
+        #
+        # Deliberately gated on host_role == 'FWL', not applied generically to every caller of
+        # this shared file (bind9/truenas/salt/cloudpanel/linux_tools all import it too).
+        # 192.168.139.<site-octet> is only that EXACT host's own permanent address for a
+        # firewall -- for every other role, that address belongs to the SITE'S firewall, a
+        # completely different box that also happens to trust the same 'ansible' key. Applying
+        # this fallback generically would silently "succeed" by connecting to the wrong machine
+        # entirely for every non-firewall host -- a real safety hazard, not a convenience.
+        # host_role comes from hostname_facts.yml, wrapped in block/rescue (same reasoning as
+        # check_linux_baseline.yml's own identical wrapping) since this runs before any
+        # caller's own hostname validation and must never be fatal here.
 
-    - name: "[Preflight] Mark host to be skipped -- no working key and no password given"
-      ansible.builtin.add_host:
-        name:   "{{ inventory_hostname }}"
-        groups: ssh_preflight_skip
-      delegate_to: localhost
-      changed_when: false
-      when:
-        - _ssh_preflight.rc != 0
-        - not (_ssh_preflight_fixed_by_wan | default(false))
-        - _ssh_preflight_pw.user_input | default('') | length == 0
+        - name: "[Preflight] Best-effort hostname facts (WAN-IP fallback pattern-gate — firewalls only)"
+          block:
+            - include_tasks: ../tasks/hostname_facts.yml
+          rescue:
+            - set_fact:
+                host_role: "UNKNOWN"
+          when: _ssh_preflight.rc != 0
+
+        - name: "[Preflight] Load sites.csv (WAN-IP fallback — firewalls only)"
+          ansible.builtin.read_csv:
+            path: "{{ playbook_dir }}/../../benarbejde/sites.csv"
+          register: _preflight_sites_raw
+          delegate_to: localhost
+          become: false
+          when:
+            - _ssh_preflight.rc != 0
+            - host_role | default('UNKNOWN') | upper == 'FWL'
+
+        - name: "[Preflight] Compute WAN/provisioning IP candidate (WAN-IP fallback — firewalls only)"
+          ansible.builtin.set_fact:
+            _preflight_wan_candidate: >-
+              192.168.139.{{ (_preflight_sites_raw.list
+                 | selectattr('Site', 'equalto', host_site | default(''))
+                 | map(attribute='Subnet') | map('regex_replace', '^\d+\.\d+\.(\d+)\..*$', '\1')
+                 | list | first | default('')) }}
+          when:
+            - _preflight_sites_raw is defined
+            - _preflight_sites_raw is not skipped
+            - _preflight_sites_raw.list | selectattr('Site', 'equalto', host_site | default('')) | list | length > 0
+
+        - name: "[Preflight] Test SSH connectivity via the WAN/provisioning IP candidate"
+          ansible.builtin.command: >
+            ssh -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=no
+                -o Port={{ hostvars[inventory_hostname].ansible_port | default(22) }}
+                -i {{ _preflight_key }}
+                {{ hostvars[inventory_hostname].ansible_user | default('ansible') }}@{{ _preflight_wan_candidate }}
+                true
+          register: _ssh_preflight_wan
+          delegate_to: localhost
+          changed_when: false
+          failed_when: false
+          when: _preflight_wan_candidate is defined
+          vars:
+            ansible_connection: local
+
+        - name: "[Preflight] Capture the original configured address (before it gets overwritten below)"
+          # Must run BEFORE the override task -- found live, 2026-10-23 (first real run of this
+          # feature, EXAFWLABD001): the override task's own set_fact updates
+          # hostvars[inventory_hostname].ansible_host immediately, same-host, visible to the
+          # very next task -- a debug message reading that same expression AFTER the override
+          # had already run saw the NEW value on both sides, printing "configured address
+          # (192.168.139.224) didn't respond, but ... 192.168.139.224 did" instead of showing
+          # the real original (192.168.224.253). Captured once, here, strictly before the
+          # overwrite, so the later NOTE message has the real original regardless of task order.
+          ansible.builtin.set_fact:
+            _preflight_original_host: "{{ hostvars[inventory_hostname].ansible_host | default(inventory_hostname) }}"
+          when:
+            - _ssh_preflight_wan is defined
+            - _ssh_preflight_wan is not skipped
+            - _ssh_preflight_wan.rc | default(1) == 0
+
+        - name: "[Preflight] WAN-IP fallback succeeded — persist ansible_host override for the rest of this run"
+          ansible.builtin.set_fact:
+            ansible_host: "{{ _preflight_wan_candidate }}"
+            # Consumed below to skip the password prompt / skip-group marking entirely --
+            # without this, both would still fire: a skipped (never-registered)
+            # _ssh_preflight_pw's .user_input resolves through | default('') to '' just like
+            # a genuinely blank answer would, so "Mark host to be skipped" would incorrectly
+            # fire even though connectivity is already fixed.
+            _ssh_preflight_fixed_by_wan: true
+          when:
+            - _ssh_preflight_wan is defined
+            - _ssh_preflight_wan is not skipped
+            - _ssh_preflight_wan.rc | default(1) == 0
+
+        - name: "[Preflight] NOTE — WAN/provisioning IP fallback succeeded"
+          ansible.builtin.debug:
+            msg: >-
+              {{ _c.Y }}[!]{{ _c.NC }} {{ inventory_hostname }}'s configured address
+              ({{ _preflight_original_host }})
+              didn't respond, but the provisioning/WAN IP {{ _preflight_wan_candidate }} did —
+              using that for the rest of this run instead. This usually means the permanent
+              route to this host (e.g. its WireGuard peer) isn't up yet — fix that separately,
+              this is a convenience to unblock THIS run, not a substitute for it.
+          when:
+            - _ssh_preflight_wan is defined
+            - _ssh_preflight_wan is not skipped
+            - _ssh_preflight_wan.rc | default(1) == 0
+
+        - name: "[Preflight] Key auth failed -- prompt for a fallback password"
+          ansible.builtin.pause:
+            prompt: |-
+
+              ── SSH preflight failed for {{ inventory_hostname }} ───────────────────
+                The current Ansible SSH key was rejected (or the host didn't respond)
+                connecting as {{ ansible_user | default('ansible') }}.
+                Every node's ansible user has a locked password and passwordless
+                sudo by design -- this only helps if that account's password has
+                already been manually unlocked/set out-of-band for recovery.
+                Enter it now to continue this host, or leave blank to skip it.
+              ─────────────────────────────────────────────────────────────────────
+              Password (masked, blank to skip this host)
+            echo: false
+          register: _ssh_preflight_pw
+          when:
+            - _ssh_preflight.rc != 0
+            - not (_ssh_preflight_fixed_by_wan | default(false))
+
+        - name: "[Preflight] Apply fallback password for this run"
+          ansible.builtin.set_fact:
+            ansible_password: "{{ _ssh_preflight_pw.user_input }}"
+          no_log: true
+          when:
+            - _ssh_preflight_pw is not skipped
+            - _ssh_preflight_pw.user_input | default('') | length > 0
+
+        - name: "[Preflight] Mark host to be skipped -- no working key and no password given"
+          ansible.builtin.add_host:
+            name:   "{{ inventory_hostname }}"
+            groups: ssh_preflight_skip
+          delegate_to: localhost
+          changed_when: false
+          when:
+            - _ssh_preflight.rc != 0
+            - not (_ssh_preflight_fixed_by_wan | default(false))
+            - _ssh_preflight_pw.user_input | default('') | length == 0
