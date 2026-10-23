@@ -1,0 +1,104 @@
+---
+# =============================================================================
+# playbooks/check_linux_baseline.yml
+# Example Music Limited — Hard-abort if linux/tools.yml hasn't run against this host yet
+# =============================================================================
+# Robert, 2026-10-23, live on EXAFWLABD001: forgot to run playbooks/linux/tools.yml
+# against a freshly built firewall before running firewallme's own 90-firewall.yml --
+# the real blocker that run hit was unrelated (SSH preflight tried the host's
+# permanent LAN-side ansible_host, which only routes via a WireGuard peer that
+# hadn't been registered yet), but it surfaced the same underlying gap either
+# way: nothing checks whether the generic Linux baseline has actually been laid
+# down before a module-specific playbook barges ahead and fails confusingly
+# deeper into its own run. His ask: a gated check, early, that alerts clearly
+# instead.
+#
+# Marker: /etc/example-music/sites.csv. linux/tools.yml is the only thing that
+# deploys the actual reference CSV/JSON files into /etc/example-music/ for
+# every "ordinary" Linux module (firewallme, bind9, truenas, salt, cloudpanel --
+# confirmed by reading each one's own tasks: none of them deploy these files
+# themselves, they all assume linux/tools.yml already has).
+#
+# PVE is the one deliberate exception, pattern-excluded by host_role rather
+# than simply left out of every caller's import list -- playbooks/proxmox/
+# playbooks/30-example-music.yml deploys the identical files completely
+# independently of linux/tools.yml (explicitly documented there as mirroring
+# linux/tools.yml's own approach, on purpose), and PVE nodes never run
+# linux/tools.yml at all. Pattern-excluding by role here means this file stays
+# safe to import from anywhere, including any future caller whose inventory
+# pattern might mix in a PVE host, without needing every caller to separately
+# remember to omit it -- same reasoning as linux/tools.yml's own NAS-safe-mode
+# gate (tools_nas_mode) pattern-excluding risky tasks by host_role rather than
+# requiring every invocation to know to skip them.
+#
+# hostname_facts.yml is wrapped in block/rescue, not called bare -- it hard-
+# asserts on a non-EXA-conformant hostname, and this check runs earlier in
+# every caller's own chain than that caller's own first hostname validation
+# (ssh_preflight_with_fallback.yml, which every caller already runs before
+# this, never touches hostname parsing at all). A host whose name doesn't
+# parse yet falls through to host_role=UNKNOWN in the rescue branch, which
+# simply never matches 'PVE' -- the baseline check still applies normally,
+# rather than this file crashing the whole run over a hostname-parsing
+# ambiguity that's orthogonal to what it's actually checking for.
+#
+# any_errors_fatal: true -- Robert's explicit call: one host missing its
+# baseline aborts the WHOLE run, not just a skip for that one host (unlike
+# ssh_preflight_skip's per-host skip pattern in ssh_preflight_with_fallback.yml,
+# which this deliberately does NOT reuse). A host failing here is already
+# excluded from every later play in this same ansible-playbook invocation by
+# Ansible's own default behaviour; any_errors_fatal additionally stops every
+# OTHER host in THIS play immediately too, which is what actually halts the
+# whole run rather than letting unaffected hosts limp through the rest of this
+# one play before the run as a whole gives up.
+#
+# Import this AFTER ssh_preflight_with_fallback.yml (needs a real connection
+# already established -- key or fallback password, either is fine) and BEFORE
+# the caller's own heavier configuration play:
+#
+#   - import_playbook: ../ssh_preflight_with_fallback.yml   # from playbooks/<module>/
+#   - import_playbook: ../check_linux_baseline.yml
+#
+# Not imported by linux/tools.yml itself -- it IS the thing that lays this
+# marker down, so gating it on its own prerequisite would false-alarm on every
+# legitimate first-ever run against a brand new host.
+# =============================================================================
+# Changelog:
+#   2026-10-23  Initial file.
+# =============================================================================
+
+- name: Linux baseline check — has linux/tools.yml run against this host yet?
+  hosts: "{{ target | default('all') }}"
+  gather_facts: false
+  any_errors_fatal: true
+
+  tasks:
+    - name: Include colour fallback
+      include_tasks: ../tasks/colour_fallback.yml
+
+    - name: Best-effort hostname facts (PVE pattern-exclusion only — never fatal here)
+      block:
+        - include_tasks: ../tasks/hostname_facts.yml
+      rescue:
+        - set_fact:
+            host_role: "UNKNOWN"
+
+    - name: Check for /etc/example-music/sites.csv (the linux/tools.yml marker)
+      ansible.builtin.stat:
+        path: /etc/example-music/sites.csv
+      register: _linux_baseline_marker
+      when: host_role | upper != 'PVE'
+
+    - name: ABORT — linux/tools.yml has not been run against this host yet
+      ansible.builtin.fail:
+        msg: >-
+          {{ _c.R }}[X]{{ _c.NC }} /etc/example-music/sites.csv not found on {{ inventory_hostname }} —
+          playbooks/linux/tools.yml has never been run against this host. That playbook deploys the
+          shared reference files (sites.csv, devices.csv, role_codes.csv, ...) every other Linux
+          module assumes are already present. Run it first, then re-run this playbook:
+
+            ansible-playbook -i configs/inventory playbooks/linux/tools.yml --limit {{ inventory_hostname }}
+
+          Aborting the whole run — not just skipping this host.
+      when:
+        - host_role | upper != 'PVE'
+        - not (_linux_baseline_marker.stat.exists | default(false))

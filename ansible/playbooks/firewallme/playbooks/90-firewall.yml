@@ -16,6 +16,14 @@
 #       packages, network, nftables, dnsmasq, ssh, cockpit, finish
 #
 # Changelog:
+#   2026-10-23  Robert, live on EXAFWLABD001: forgot to run playbooks/linux/tools.yml first,
+#               then hit a confusing, unrelated-looking SSH timeout against this host's
+#               permanent LAN-side ansible_host (a separate, already-tracked WireGuard-routing
+#               gap) -- surfaced the same underlying need either way: a clear, early alert if
+#               the generic Linux baseline was never laid down, rather than failing confusingly
+#               deeper into a run. Added ../../check_linux_baseline.yml (import_playbook, right
+#               after the SSH preflight) -- see that file's own header for the full mechanism
+#               and why it hard-aborts the whole run rather than just skipping this one host.
 #   2026-09-01  Robert, live (EXAFWLATL001): a brand-new firewall's very first connection
 #               failed outright -- "REMOTE HOST IDENTIFICATION HAS CHANGED", Gathering Facts
 #               UNREACHABLE -- even though the SSH preflight play just below had already
@@ -155,6 +163,8 @@
       when: "'REMOTE HOST IDENTIFICATION HAS CHANGED' in _fwl_hostkey_probe.stderr"
 
 - import_playbook: ../../ssh_preflight_with_fallback.yml
+
+- import_playbook: ../../check_linux_baseline.yml
 
 - name: Example Music — Firewall configuration
   hosts: "{{ target | default('all') }}:!ssh_preflight_skip"
