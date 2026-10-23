@@ -206,6 +206,14 @@
 #   # DHCP address here; leave blank only if already on the target address.
 # =============================================================================
 # Changelog:
+#   2026-10-23  Robert's ask, live on EXANASFAL001: the "current reachable IP" prompt's old
+#               wording ("if not yet moved to its target X slot -- blank if it's already
+#               there") framed the move as a vague hedge when this run is about to attempt
+#               it right now, and gave no real moment to notice a typo in the resolved
+#               target before live API calls started -- exactly what happened
+#               (-e ansible_host=192.168.76.90, meant .19, went straight through uncaught,
+#               wasted a full commit/checkin_timeout/revert cycle). Rephrased to state the
+#               action plainly with the resolved target on its own line.
 #   2026-10-22  Added steps 3a/3b -- real live finding against EXANASVRK001 (TrueNAS 25.10.2.1,
 #               Robert's Projekt opbevaring automated install): enabling the SSH *service*
 #               (steps 2/3 above) does NOT mean truenas_admin can log in with a password --
@@ -376,11 +384,21 @@
       no_log: true
 
     - name: "Prompt for the box's CURRENT reachable IP (if not already set via -e)"
+      # 2026-10-23, Robert's ask, live on EXANASFAL001: the old wording ("if not yet moved
+      # to its target X slot -- blank if it's already there") framed this as a vague,
+      # hedged "if" when THIS run is about to attempt that exact move right now, and it
+      # gave no moment to actually notice a typo in -e ansible_host before real API calls
+      # started (a mistyped target, .76.90 for .76.19, went straight through uncaught).
+      # Rephrased to state the action plainly and put the resolved target on its own line
+      # where a wrong value is easier to actually see before answering.
       ansible.builtin.pause:
         prompt: >-
-          TrueNAS's CURRENT reachable IP (its DHCP address, if not yet moved
-          to its target {{ hostvars[inventory_hostname].ansible_host }} slot
-          -- blank if it's already there)
+          This run will move TrueNAS to: {{ hostvars[inventory_hostname].ansible_host }}
+          (from -e ansible_host -- check this is really where you want it before continuing)
+
+
+          Enter the box's CURRENT reachable IP (its DHCP address right now), or leave
+          blank if it is ALREADY at the target address above
         echo: true
       register: _truenas_current_ip_prompt
       when: truenas_current_ip is not defined
