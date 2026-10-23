@@ -52,6 +52,17 @@
 # Tags: finish
 # =============================================================================
 # Changelog:
+#   2026-10-23  Robert's ask: "the windows bootstrap playbook autoreboots, this is
+#               unacceptable... supposed to OFFER a reboot, default to no, and then remind
+#               the user." This final reboot was unconditional once Windows reported one
+#               pending (no operator input at all) -- replaced with
+#               ../tasks/confirm_reboot.yml (ask, default No, remind if declined), reusing
+#               this task's own 900s reboot_timeout (see 2026-10-12 entry below) via
+#               confirm_reboot_timeout. Added serial: 1 to this play too -- the new
+#               pause-based confirm needs it, same bug class already fixed in
+#               ssh_preflight_with_fallback.yml. Domain join's own reboot
+#               (80-domainjoin.yml) is deliberately NOT changed -- Robert's explicit call,
+#               that one genuinely needs to happen regardless.
 #   2026-10-12  Real live incident, EXADCSCLD001: the final reboot's own reboot_timeout
 #               (600s) wasn't enough -- timed out at 646s elapsed waiting for the
 #               post-reboot responsiveness check, even though the reboot itself completed
@@ -149,6 +160,12 @@
 - name: Windows — Bootstrap finish (summary + reboot)
   hosts:         "{{ target_hosts | default(target | default('all')) }}"
   gather_facts: false
+  # serial: 1 -- the confirm_reboot.yml include below uses ansible.builtin.pause, which
+  # only reliably registers one answer across a parallel multi-host batch (same bug
+  # class already fixed in firewallme/ssh_preflight_with_fallback.yml's own 2026-07-16
+  # changelog). This family is normally run against a single -e target= host anyway,
+  # but costs nothing to make correct for the group-run case too.
+  serial: 1
   tasks:
 
     - name: "── Finish ──"
@@ -288,11 +305,11 @@
           Windows Update RebootRequired, PendingFileRenameOperations).
       tags: finish
 
-    - name: "[Finish] Final reboot (only if Windows is actually reporting one pending)"
-      ansible.windows.win_reboot:
-        reboot_timeout:    900
-        post_reboot_delay: 30
-        msg:               "Ansible bootstrap complete — final reboot"
+    - name: "[Finish] Confirm final reboot (only if Windows is actually reporting one pending)"
+      include_tasks: ../tasks/confirm_reboot.yml
+      vars:
+        confirm_reboot_reason:     "Ansible bootstrap complete — final reboot"
+        confirm_reboot_timeout:    900
       when: _finish_reboot_pending.stdout | trim == 'True'
       tags: finish
 
