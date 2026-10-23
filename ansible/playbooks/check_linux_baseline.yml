@@ -19,7 +19,7 @@
 # confirmed by reading each one's own tasks: none of them deploy these files
 # themselves, they all assume linux/tools.yml already has).
 #
-# PVE is the one deliberate exception, pattern-excluded by host_role rather
+# PVE and NAS are the deliberate exceptions, pattern-excluded by host_role rather
 # than simply left out of every caller's import list -- playbooks/proxmox/
 # playbooks/30-example-music.yml deploys the identical files completely
 # independently of linux/tools.yml (explicitly documented there as mirroring
@@ -30,6 +30,19 @@
 # remember to omit it -- same reasoning as linux/tools.yml's own NAS-safe-mode
 # gate (tools_nas_mode) pattern-excluding risky tasks by host_role rather than
 # requiring every invocation to know to skip them.
+#
+# NAS (TrueNAS) added 2026-10-23, Robert's ask, live on EXANASFAL001 -- the first
+# real run of this check against a TrueNAS host, added to truenas/site.yml that
+# same day "for consistency" without actually checking whether TrueNAS fit the
+# same assumption PVE already needed an exception for. It doesn't: TrueNAS reads
+# sites.csv straight off the CONTROL NODE in truenas/playbooks/00-preflight.yml
+# (delegate_to: localhost) and never deploys a copy onto the box itself, the same
+# way PVE's own 30-example-music.yml does independently -- and 10-access.yml's own
+# header already states linux/tools.yml's ansible.builtin.user tasks must never be
+# pointed at a TrueNAS host at all (arensb.truenas manages TrueNAS's own
+# middleware-tracked accounts, not a plain /etc/passwd entry). This check's
+# hard-abort was technically correct (the marker file genuinely isn't there) but
+# the underlying expectation was never true for TrueNAS in the first place.
 #
 # hostname_facts.yml is wrapped in block/rescue, not called bare -- it hard-
 # asserts on a non-EXA-conformant hostname, and this check runs earlier in
@@ -63,6 +76,10 @@
 # legitimate first-ever run against a brand new host.
 # =============================================================================
 # Changelog:
+#   2026-10-23  Added NAS to the role pattern-exclusion alongside PVE -- real live
+#               abort, EXANASFAL001, the first run of this check against a TrueNAS
+#               host (added to truenas/site.yml the same day, see that file's own
+#               changelog). See the comment above for the full reasoning.
 #   2026-10-23  Initial file.
 # =============================================================================
 
@@ -75,7 +92,7 @@
     - name: Include colour fallback
       include_tasks: ../tasks/colour_fallback.yml
 
-    - name: Best-effort hostname facts (PVE pattern-exclusion only — never fatal here)
+    - name: Best-effort hostname facts (PVE/NAS pattern-exclusion only — never fatal here)
       block:
         - include_tasks: ../tasks/hostname_facts.yml
       rescue:
@@ -86,7 +103,7 @@
       ansible.builtin.stat:
         path: /etc/example-music/sites.csv
       register: _linux_baseline_marker
-      when: host_role | upper != 'PVE'
+      when: host_role | upper not in ['PVE', 'NAS']
 
     - name: ABORT — linux/tools.yml has not been run against this host yet
       ansible.builtin.fail:
@@ -100,5 +117,5 @@
 
           Aborting the whole run — not just skipping this host.
       when:
-        - host_role | upper != 'PVE'
+        - host_role | upper not in ['PVE', 'NAS']
         - not (_linux_baseline_marker.stat.exists | default(false))
