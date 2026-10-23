@@ -1,0 +1,75 @@
+---
+# =============================================================================
+# ansible/tasks/purge_stale_known_hosts_key.yml
+# Example Music Limited — Detect + purge a stale/changed known_hosts entry
+# =============================================================================
+# Extracted from firewallme/playbooks/90-firewall.yml's own inline "[Preflight] Early
+# checks" logic (originally added 2026-09-01) -- truenas/playbooks/00-preflight.yml is
+# the second real caller (2026-10-23, Robert's ask, live on EXANASFAL001: the OLD
+# TrueNAS install this standard NAS slot replaces almost certainly left a different
+# cached host key behind) -- matching this repo's own precedent for when to extract a
+# pattern into a shared file rather than duplicate it a second time (see
+# ssh_preflight_with_fallback.yml's own header for the identical reasoning, applied to
+# a different pattern).
+#
+# Does NOT bypass strict host-key checking -- StrictHostKeyChecking=accept-new only
+# ever silently trusts a genuinely NEW key (no existing entry at all); a CHANGED key
+# (an existing, different entry) is still rejected by this probe exactly as normal SSH
+# would, and only then deliberately purged, with a clear, named reason logged -- never
+# a blanket host-key bypass.
+#
+# Caller sets:
+#   phk_target_ip      -- required, the address to probe/purge
+#   phk_target_user    -- optional, default 'ansible'
+#   phk_target_port    -- optional, default 22
+#   phk_identity_file  -- optional, SSH private key to offer -- purely to let the probe
+#                         attempt a real connection; a missing/wrong key still correctly
+#                         surfaces "REMOTE HOST IDENTIFICATION HAS CHANGED" in stderr if
+#                         that's the real issue, since host-key verification happens
+#                         before authentication is ever attempted. Default: this
+#                         estate's standard ansible key, same as every other caller.
+#   phk_reason         -- optional, one line explaining WHY a changed key is expected
+#                         here specifically (shown in the warning message) -- default is
+#                         generic (shared/DHCP-churned network); pass something specific
+#                         when the real reason is different (e.g. a reinstalled box at
+#                         a permanent standard slot).
+#
+# Assumes _c (colour codes) is already in scope, same assumption every other shared
+# file touching group_vars/all-loaded hosts already makes -- not re-included here.
+# =============================================================================
+# Changelog:
+#   2026-10-23  Extracted from firewallme/playbooks/90-firewall.yml (its own 2026-09-01
+#               entry), which now includes this file instead of its own inline copy, no
+#               behaviour change there (same probe, same message content via
+#               phk_reason, same purge). Second caller:
+#               truenas/playbooks/00-preflight.yml.
+# =============================================================================
+
+- name: "[Host-key] Test strict host-key verification for {{ phk_target_ip }} (does NOT bypass it)"
+  ansible.builtin.command: >
+    ssh -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new
+        -o Port={{ phk_target_port | default(22) }}
+        -i {{ phk_identity_file | default(lookup('env', 'HOME') + '/ansible/configs/ansible-id_rsa') }}
+        {{ phk_target_user | default('ansible') }}@{{ phk_target_ip }}
+        true
+  register: _phk_probe
+  delegate_to: localhost
+  changed_when: false
+  failed_when: false
+  vars:
+    ansible_connection: local
+
+- name: "[Host-key] WARNING — stale known_hosts entry for {{ phk_target_ip }}, purging"
+  ansible.builtin.debug:
+    msg: >-
+      {{ _c.Y }}[!]{{ _c.NC }} SSH host key for {{ phk_target_ip }} has CHANGED since this
+      address was last seen. {{ phk_reason | default("Expected on a shared, DHCP-churned provisioning network -- this address has almost certainly belonged to a different, unrelated box before.") }}
+      Purging the stale known_hosts entry so this run can continue.
+  when: "'REMOTE HOST IDENTIFICATION HAS CHANGED' in _phk_probe.stderr"
+
+- name: "[Host-key] Purge stale known_hosts entry for {{ phk_target_ip }}"
+  ansible.builtin.command: >
+    ssh-keygen -f {{ lookup('env', 'HOME') }}/.ssh/known_hosts -R {{ phk_target_ip }}
+  delegate_to: localhost
+  changed_when: true
+  when: "'REMOTE HOST IDENTIFICATION HAS CHANGED' in _phk_probe.stderr"
