@@ -27,10 +27,18 @@
 # Proxmox's own `qm reboot`/`qm shutdown` via qemu-guest-agent is a
 # completely different mechanism (agent-mediated guest request, not a
 # console keypress) and is unaffected — still the preferred way to reboot
-# these VMs. molly-guard (common_packages, group_vars/all/main.yml) already
-# covers the SSH-issued reboot/shutdown case; this closes the one gap that
-# was outside molly-guard's reach — an out-of-band console signal it never
-# sees at all.
+# these VMs. molly-guard covers the SSH-issued reboot/shutdown case; this
+# closes the other gap — an out-of-band console signal it never sees at all.
+#
+# CORRECTED 2026-10-23 (Robert's ask, real gap spotted): the paragraph above
+# originally claimed molly-guard was already in place here via
+# common_packages (group_vars/all/main.yml) -- wrong. Firewalls don't consume
+# common_packages at all; 05_packages.yml checks its own, separate
+# fw_packages list, which never actually had molly-guard in it. So the
+# SSH-issued reboot/shutdown case was NOT covered until molly-guard was added
+# to fw_packages (roles/firewall/defaults/main.yml) the same day -- this
+# file's own console-hardening logic below is unaffected either way, it only
+# ever addressed the console path.
 #
 # system.conf.d changes need a manager re-exec (not just daemon-reload) to
 # take effect — confirmed against ansible.builtin.systemd's own
@@ -40,6 +48,12 @@
 # Tags: firewall, console_hardening
 # =============================================================================
 # Changelog:
+#   2026-10-23  Corrected this file's own header claim that molly-guard already covered
+#               the SSH-issued reboot/shutdown case for firewalls via common_packages --
+#               wrong, firewalls never consume that var; molly-guard is now added to
+#               fw_packages instead (roles/firewall/defaults/main.yml, same day). No
+#               change to this file's own tasks -- they only ever addressed the console
+#               path, which was never affected by the wrong claim either way.
 #   2026-09-01  Robert, live (EXAFWLATL001, genuine first-ever run): the copy task below
 #               failed outright -- "Destination directory /etc/systemd/system.conf.d does
 #               not exist" -- since that directory isn't shipped by default on a fresh
