@@ -413,14 +413,16 @@
       # started (a mistyped target, .76.90 for .76.19, went straight through uncaught).
       # Rephrased to state the action plainly and put the resolved target on its own line
       # where a wrong value is easier to actually see before answering.
+      # 2026-10-23 (Robert's ask, same session): the blank line between the two sentences
+      # was a YAML folded-scalar paragraph break, which ansible.builtin.pause renders as a
+      # real newline -- the prompt was wrapping across 3 lines while the username/password
+      # prompts above stayed on one. Removed the blank line so this one also renders single-
+      # line, matching them.
       ansible.builtin.pause:
         prompt: >-
-          This run will move TrueNAS to: {{ hostvars[inventory_hostname].ansible_host }}
-          (from -e ansible_host -- check this is really where you want it before continuing)
-
-
-          Enter the box's CURRENT reachable IP (its DHCP address right now), or leave
-          blank if it is ALREADY at the target address above
+          TrueNAS will move to {{ hostvars[inventory_hostname].ansible_host }} (from -e ansible_host --
+          check this before continuing). Enter the box's CURRENT reachable IP (its DHCP address right
+          now), or leave blank if it is ALREADY at the target address above
         echo: true
       register: _truenas_current_ip_prompt
       when: truenas_current_ip is not defined
