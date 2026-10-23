@@ -195,6 +195,25 @@
         nas_hostname: "EXA{{ host_role }}{{ host_site }}{{ host_num }}"
       tags: [preflight, always]
 
+    # 2026-10-23, Robert's ask, live on EXANASFAL001: this early write (added
+    # 2026-10-22, comment above) never created /etc/example-music itself -- every
+    # OTHER caller of tasks/nodeinfo.yml does this first (confirmed by checking, not
+    # assumed: proxmox/playbooks/30-example-music.yml's own "Ensure /etc/example-music
+    # exists" task, same pattern 10-access.yml's task 3 already uses for ITS own
+    # later write of the same file). nodeinfo.yml itself has never created the
+    # directory -- every caller is expected to, and this one genuinely didn't. Real
+    # failure: "Write /etc/example-music/nodeinfo.json" -> "Destination directory
+    # /etc/example-music does not exist", the very first time this early-write path
+    # ever ran against a real, genuinely brand-new box (10-access.yml's own later
+    # write had never actually been exercised live either, so this gap was invisible
+    # until now).
+    - name: "[Preflight] Ensure /etc/example-music directory exists (needed by the early nodeinfo.json write below)"
+      ansible.builtin.file:
+        path: /etc/example-music
+        state: directory
+        mode: "0755"
+      tags: [preflight, always]
+
     - name: "[Preflight] Write /etc/example-music/nodeinfo.json (early -- see comment above)"
       tags: [preflight, always]
       ansible.builtin.include_tasks: ../../../tasks/nodeinfo.yml
