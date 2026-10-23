@@ -1838,7 +1838,7 @@ RECORD_COUNT=$(grep -c 'IN  A' /etc/bind/db.${EXA_DOMAIN} 2>/dev/null || echo "?
 
 echo -e "
 ${WH}╔══════════════════════════════════════════════════════════════╗${RS}
-${WH}║           EXAMPLE MUSIC LIMITED: $(printf '%-24s' "${HOSTNAME}")║${RS}
+${WH}║           EXAMPLE MUSIC LIMITED: $(printf '%-28s' "${HOSTNAME}")║${RS}
 ${WH}╚══════════════════════════════════════════════════════════════╝${RS}
 
   ${YL}Role     :${RS} DNS Server -- ${EXA_DOMAIN}

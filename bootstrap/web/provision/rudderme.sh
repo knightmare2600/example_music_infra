@@ -909,7 +909,7 @@ NODE_COUNT=\$(curl -sk -H "X-API-Token: \${RUDDER_TOKEN:-unset}" \
   | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['data']['total'])" 2>/dev/null || echo "?")
 echo -e "
 \${WH}╔══════════════════════════════════════════════════════════════╗\${NC}
-\${WH}║     EXAMPLE MUSIC LIMITED: \$(printf '%-35s' "\${HOSTNAME}")║\${NC}
+\${WH}║     EXAMPLE MUSIC LIMITED: \$(printf '%-34s' "\${HOSTNAME}")║\${NC}
 \${WH}╚══════════════════════════════════════════════════════════════╝\${NC}
 
   \${YL}Site     :\${NC} ${SITE_CODE}: ${SITE_DISPLAY_CITY}, ${SITE_DISPLAY_COUNTRY}

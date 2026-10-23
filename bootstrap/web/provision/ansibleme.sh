@@ -2339,7 +2339,7 @@ ANSIBLE_VER=\$(ansible --version 2>/dev/null | head -1 || echo "not found")
 INV_HOSTS=\$(ansible all --list-hosts 2>/dev/null | tail -n +2 | wc -l || echo "?")
 echo -e "
 \${WH}╔══════════════════════════════════════════════════════════════╗\${NC}
-\${WH}║     EXAMPLE MUSIC LIMITED: \$(printf '%-35s' "\${HOSTNAME}")║\${NC}
+\${WH}║     EXAMPLE MUSIC LIMITED: \$(printf '%-34s' "\${HOSTNAME}")║\${NC}
 \${WH}╚══════════════════════════════════════════════════════════════╝\${NC}
 
   \${YL}Site     :\${NC} ${SITE_CODE}: ${CITY}, ${COUNTRY}
