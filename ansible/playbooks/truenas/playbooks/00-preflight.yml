@@ -108,7 +108,25 @@
   tasks:
 
     - name: Include hostname facts
+      # 2026-10-23, Robert's ask, live on EXANASFAL001: without target_hostname set
+      # explicitly, hostname_facts.yml falls back to ansible_hostname (this play's own
+      # gather_facts: true has already populated it by this point) -- the box's
+      # factory/DHCP-assigned OS hostname, NOT yet renamed to the EXA convention
+      # (10-access.yml's task 2 is what renames it, later in this same chain). That
+      # mismatched hostname doesn't match the EXA[ROLE][SITE][NNN] regex at all,
+      # which crashed "Parse role from hostname" outright (see hostname_facts.yml's
+      # own fix, same day, for that half) and would otherwise have failed the very
+      # next "Validate hostname convention" assert with host_role/host_site=UNKNOWN.
+      # Fixed by passing target_hostname explicitly -- same pattern salt/playbooks/
+      # 00-preflight.yml's own "Parse site code from hostname" task already uses
+      # (target_hostname: "{{ salt_hostname }}"), just sourced from inventory_hostname
+      # here since TrueNAS is a per-site standard-slot role with no separate
+      # user-supplied hostname var to prefer. proxmox/00-preflight.yml never needed
+      # this at all -- its nodes are already correctly named by the time this runs,
+      # confirmed by that file having no target_hostname override anywhere.
       include_tasks: ../../../tasks/hostname_facts.yml
+      vars:
+        target_hostname: "{{ inventory_hostname }}"
       tags: preflight
 
     - name: Load sites.csv
