@@ -175,13 +175,21 @@ ansible/
 ├── host_vars/               # Per-host overrides
 ├── playbooks/
 │   ├── bind9/               # BIND9 DNS zone generation from devices.csv
+│   ├── cloudpanel/          # CloudPanel install (web hosting panel) — Ansible conversion of install.sh
 │   ├── firewallme/          # Firewall bootstrap (wraps firewallme.sh)
 │   ├── linux/               # Common Linux tooling — packages, /etc/example-music deploy
+│   ├── meshcentral/         # RETIRED — replaced by TacticalRMM's bundled instance (EXAMSHCLD001 decommissioned)
 │   ├── proxmox/             # Proxmox VE onboarding (site.yml)
 │   ├── rudder/              # Rudder configuration management server
+│   ├── salt/                # Salt master onboarding (with SaltGUI)
+│   ├── snmp/                # SNMP sysLocation rollout across switches/printers
+│   ├── tacticalrmm/         # TacticalRMM remote-management server prep + install
+│   ├── truenas/             # TrueNAS NAS/SAN onboarding (the .19 standard slot)
 │   ├── windows_adschema/    # AD schema, OUs, groups, computers, users
 │   ├── windows_bootstrap/   # Windows host PostOOBE bootstrap (replaces Join-DomainAndBootstrap.ps1)
-│   └── windows_dc/          # Domain controller promotion
+│   ├── windows_dc/          # Domain controller promotion
+│   ├── windows_hygiene/     # Post-build Windows cleanup and optimisation
+│   └── zabbix/              # Zabbix 7.0 server + agent onboarding
 └── vars/
 ```
 
@@ -191,11 +199,20 @@ ansible/
 |----------|---------|
 | `linux/tools.yml` | Deploy common packages and `/etc/example-music/{sites,devices}.csv` to all Linux hosts |
 | `bind9/bind9-dns.yml` | Generate and deploy BIND9 zones from `devices.csv` |
+| `cloudpanel/site.yml` | Install and configure CloudPanel (web hosting panel) — Ansible conversion of the upstream `install.sh` |
+| `firewallme/playbooks/90-firewall.yml` | Firewall configuration (wraps firewallme.sh) |
 | `proxmox/bootstrap-new-node.yml` | One-time: give a brand-new PVE node (still on its preseed DHCP IP) its real hostname and static network config, from an operator-supplied build-sheet hostname. Run this first against the DHCP IP, then add the node to inventory and run `proxmox/site.yml` |
 | `proxmox/site.yml` | Onboard a new Proxmox VE node — Zabbix, packages, SSH, sudoers, `/etc/example-music/`, per-site Proxmox pool + `vmbr1` VLAN bridge, [proxmorph](https://github.com/IT-BAER/proxmorph) UI themes + sensor monitoring. Re-run safe: only refreshes packages/example-music/scripts/pools/vmbr1 on an already-onboarded node unless `-e pve_force_full_onboard=true` |
+| `salt/site.yml` | Bootstrap a Salt master with SaltGUI |
+| `snmp/sysinfo.yml` | Set SNMP `sysLocation` on every switch/printer in `devices.csv` |
+| `tacticalrmm/tacticalrmm_server.yml` | Prepare and fully install the TacticalRMM remote-management server |
+| `truenas/site.yml` | Onboard an already-installed, already-networked TrueNAS NAS/SAN (the `.19` standard slot) — no install/bootstrap capability |
 | `windows_bootstrap/site.yml` | Full Windows host PostOOBE bootstrap — rename, static IP, domain join, packages, wallpaper |
 | `windows_dc/site.yml` | Promote a Windows Server to domain controller |
 | `windows_adschema/site.yml` | Create AD OUs, groups, computers and users from TDF data |
+| `windows_hygiene/site.yml` | Post-build Windows cleanup and optimisation — safe to re-run on any bootstrapped Windows host |
+| `zabbix/zabbix_server.yml` | Zabbix 7.0 monitoring server (Ansible port of zabbixme.sh) |
+| `zabbix/zabbix_agent.yml` | Onboard the Zabbix agent onto an existing host, one at a time |
 
 ---
 
