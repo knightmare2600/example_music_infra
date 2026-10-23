@@ -305,6 +305,14 @@
 # host that had no working key and no password given, rather than failing the whole run.
 - import_playbook: ../ssh_preflight_with_fallback.yml
 
+# 2026-10-23, Robert's ask: hard-abort if playbooks/linux/tools.yml has never been run
+# against this host -- that playbook deploys the shared /etc/example-music/*.csv reference
+# files this role (and every other "ordinary" Linux module) assumes are already present,
+# but nothing ever checked for that; a host missing it would previously fail confusingly
+# deeper into this run instead of with a clear, early message. See
+# playbooks/check_linux_baseline.yml's own header for the full mechanism.
+- import_playbook: ../check_linux_baseline.yml
+
 - name: BIND9 DNS server (master or secondary)
   hosts: "{{ target | default('dns') }}:!ssh_preflight_skip"
   become: true
