@@ -85,6 +85,16 @@
 #               already fixed connectivity. All of this logic was exercised in isolation
 #               (mocked SSH results, real sites.csv-derivation inputs) before trusting it --
 #               the actual `ssh` connectivity test itself is unchanged/unexercised by that.
+#               SAME DAY, first real live run (EXAFWLABD001): the NOTE message printed the
+#               SAME address on both sides ("configured address (192.168.139.224) didn't
+#               respond, but ... 192.168.139.224 did") -- the override task's own set_fact
+#               updates hostvars[inventory_hostname].ansible_host immediately, so the NOTE
+#               message's own {{ hostvars[inventory_hostname].ansible_host }} read the
+#               already-overwritten value, not the real original. Fixed by capturing the
+#               original address into _preflight_original_host in a dedicated task BEFORE
+#               the override runs, and having the NOTE message read that instead -- re-
+#               verified in isolation (this exact before/after task ordering, not just the
+#               Jinja expression alone) before trusting it this time.
 #   2026-10-19  Real live bug, found bootstrapping EXACLPCLD001 against a bare-IP target:
 #               the key-connectivity test's {{ ansible_host | default(inventory_hostname) }}
 #               resolved to "localhost" (the delegate's own value, since delegate_to
@@ -228,6 +238,22 @@
       vars:
         ansible_connection: local
 
+    - name: "[Preflight] Capture the original configured address (before it gets overwritten below)"
+      # Must run BEFORE the override task -- found live, 2026-10-23 (first real run of this
+      # feature, EXAFWLABD001): the override task's own set_fact updates
+      # hostvars[inventory_hostname].ansible_host immediately, same-host, visible to the
+      # very next task -- a debug message reading that same expression AFTER the override
+      # had already run saw the NEW value on both sides, printing "configured address
+      # (192.168.139.224) didn't respond, but ... 192.168.139.224 did" instead of showing
+      # the real original (192.168.224.253). Captured once, here, strictly before the
+      # overwrite, so the later NOTE message has the real original regardless of task order.
+      ansible.builtin.set_fact:
+        _preflight_original_host: "{{ hostvars[inventory_hostname].ansible_host | default(inventory_hostname) }}"
+      when:
+        - _ssh_preflight_wan is defined
+        - _ssh_preflight_wan is not skipped
+        - _ssh_preflight_wan.rc | default(1) == 0
+
     - name: "[Preflight] WAN-IP fallback succeeded — persist ansible_host override for the rest of this run"
       ansible.builtin.set_fact:
         ansible_host: "{{ _preflight_wan_candidate }}"
@@ -246,7 +272,7 @@
       ansible.builtin.debug:
         msg: >-
           {{ _c.Y }}[!]{{ _c.NC }} {{ inventory_hostname }}'s configured address
-          ({{ hostvars[inventory_hostname].ansible_host | default(inventory_hostname) }})
+          ({{ _preflight_original_host }})
           didn't respond, but the provisioning/WAN IP {{ _preflight_wan_candidate }} did —
           using that for the rest of this run instead. This usually means the permanent
           route to this host (e.g. its WireGuard peer) isn't up yet — fix that separately,
