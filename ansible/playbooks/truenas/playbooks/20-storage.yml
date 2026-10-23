@@ -13,30 +13,56 @@
 # starting point -- treat it as a placeholder to build on once real
 # per-site requirements exist, not a finished design.
 #
-# Pool creation is NOT done here and arensb/ansible-truenas has no module
-# for it at all (checked its full module list, 2026-07-22 -- 24 modules,
-# none create a pool) -- which disks form a pool is a hardware-specific,
-# one-time decision made through TrueNAS's own web UI during initial setup,
-# same "install-time, hands-off, out of band" treatment this repo already
-# gives Proxmox's rpool/vmbr0. nas_pool_name (host_vars, no default here on
-# purpose) must name a pool that already exists.
+# Pool creation: arensb/ansible-truenas has no module for it at all (checked its
+# full module list, 2026-07-22 -- 24 modules, none create a pool), so this uses a
+# direct REST call instead (POST /pool -- schema confirmed against docs/api2.txt's
+# own pool_create component before writing this, not guessed). Robert's call,
+# 2026-10-23: nas_pool_name is now a fixed, estate-wide convention ("PBSBackups"),
+# not a per-site host_vars choice any more -- defaults to that below, override via
+# host_vars/-e only if some future site genuinely needs something different.
+#
+# Topology is chosen automatically by how many currently-unused disks the box has
+# (Robert's explicit call, not guessed): exactly 1 -> STRIPE (no redundancy, the
+# only option with one disk), exactly 2 -> MIRROR, 3+ -> RAIDZ1 (tolerates one
+# disk failure). "Unused" is read directly from GET /disk's own `pool` field
+# (`null` if not part of any pool -- confirmed against docs/api2.txt, not
+# inferred from a separate get_used call). If the named pool already exists,
+# none of this runs at all -- idempotent, safe to re-run.
 #
 # Needs 00-preflight.yml/10-access.yml to have already run -- run together,
-# or via site.yml, rather than standalone.
+# or via site.yml, rather than standalone. The new pool-creation tasks also need
+# truenas_rest_bootstrap_user/_password/truenas_target_ip, facts 00-rest-bootstrap.yml
+# resolves earlier in the same site.yml run -- another reason this isn't meant to run
+# standalone on a first-ever pass.
 #
 # Usage:
 #   ansible-playbook -i configs/inventory playbooks/truenas/playbooks/20-storage.yml
 #
 # Tags: storage
 #
-# NOT YET TESTED against a real TrueNAS box. Parameter names ARE confirmed --
-# checked against `ansible-doc -j arensb.truenas.filesystem`'s real argspec
-# (arensb.truenas 2.0.3 installed locally 2026-07-22), not just the
-# collection's rendered docs. syntax-check passes against the installed
-# collection. What's still unverified is purely behavioural -- whether this
-# actually creates the dataset correctly against a real middleware daemon.
+# NOT YET TESTED against a real TrueNAS box. Dataset-creation parameter names ARE
+# confirmed -- checked against `ansible-doc -j arensb.truenas.filesystem`'s real
+# argspec (arensb.truenas 2.0.3 installed locally 2026-07-22), not just the
+# collection's rendered docs. The new REST-based pool-creation calls (POST /pool,
+# GET /disk) are schema-confirmed against docs/api2.txt directly, and the
+# selectattr('pool', 'none')/topology-by-count Jinja logic was verified in isolation
+# before writing it here (same pattern this whole TrueNAS chain has used throughout).
+# What's still unverified either way is purely behavioural -- whether these calls
+# actually do the right thing against a real middleware daemon; this is the single
+# most consequential untested step in the whole chain so far, since it's destructive
+# (wipes whatever's currently on the disks it's given).
 # =============================================================================
 # Changelog:
+#   2026-10-23  Added REST-based pool creation (name defaults to the new estate-wide
+#               "PBSBackups" convention, topology auto-picked by unused-disk count:
+#               1=STRIPE, 2=MIRROR, 3+=RAIDZ1) -- Robert's explicit ask, reversing this
+#               file's own prior "pool creation is NOT done here, web-UI only" design.
+#               arensb.truenas genuinely still has no pool-creation module (unchanged
+#               finding, still true); this bypasses it via a direct REST call instead,
+#               same bypass-the-collection-gap pattern already used in 10-access.yml
+#               for ssh_password_enabled and sudo_commands_nopasswd. nas_pool_name's
+#               own host_vars-only requirement (no default) is removed -- it's a fixed
+#               convention now, not a per-site choice.
 #   2026-07-22  Initial file.
 # =============================================================================
 
@@ -51,17 +77,110 @@
 
   pre_tasks:
 
-    - name: "Validate nas_pool_name is set"
-      assert:
-        that:
-          - nas_pool_name is defined and nas_pool_name != ""
-        fail_msg: >
-          nas_pool_name must be set in host_vars/{{ inventory_hostname }}/main.yml --
-          this is the name of a pool already created through TrueNAS's own web UI
-          (see this file's own header; there is no Ansible module to create one).
-        success_msg: "nas_pool_name={{ nas_pool_name }} — proceeding."
+    # pre_tasks set_fact, not vars: -- a vars: self-reference
+    # (nas_pool_name: "{{ nas_pool_name | default(...) }}") recurses infinitely;
+    # this estate's own standing fix for that exact footgun.
+    - name: "Default nas_pool_name to the standing estate-wide convention (PBSBackups)"
+      set_fact:
+        nas_pool_name: "{{ nas_pool_name | default('PBSBackups') }}"
 
   tasks:
+
+    - name: "0 | Check whether the {{ nas_pool_name }} pool already exists"
+      ansible.builtin.uri:
+        url: "https://{{ truenas_target_ip | default(ansible_host) }}/api/v2.0/pool?name={{ nas_pool_name }}"
+        method: GET
+        user: "{{ truenas_rest_bootstrap_user }}"
+        password: "{{ truenas_rest_bootstrap_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ truenas_rest_validate_certs | default(false) }}"
+        status_code: 200
+      register: _nas_pool_lookup
+      delegate_to: localhost
+      check_mode: false
+      vars:
+        ansible_connection: local
+
+    - name: "0 | Set pool-already-exists fact"
+      ansible.builtin.set_fact:
+        nas_pool_already_exists: "{{ _nas_pool_lookup.json | length > 0 }}"
+
+    - name: "0 | List all disks (only if the pool doesn't exist yet)"
+      ansible.builtin.uri:
+        url: "https://{{ truenas_target_ip | default(ansible_host) }}/api/v2.0/disk"
+        method: GET
+        user: "{{ truenas_rest_bootstrap_user }}"
+        password: "{{ truenas_rest_bootstrap_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ truenas_rest_validate_certs | default(false) }}"
+        status_code: 200
+      register: _nas_disk_list
+      delegate_to: localhost
+      check_mode: false
+      when: not nas_pool_already_exists
+      vars:
+        ansible_connection: local
+
+    - name: "0 | Determine unused disks (pool field is null -- confirmed via docs/api2.txt, not inferred)"
+      ansible.builtin.set_fact:
+        nas_unused_disks: "{{ _nas_disk_list.json | selectattr('pool', 'none') | map(attribute='name') | list }}"
+      when: not nas_pool_already_exists
+
+    - name: "0 | FAIL -- no unused disks found to create {{ nas_pool_name }} with"
+      ansible.builtin.fail:
+        msg: >-
+          No unused disks found on {{ inventory_hostname }} (every disk already belongs
+          to a pool, per GET /disk's own pool field) -- cannot create {{ nas_pool_name }}.
+          Check the box's real disk inventory by hand before re-running -- this is a
+          showstopper, not a guess-and-proceed situation.
+      when:
+        - not nas_pool_already_exists
+        - nas_unused_disks | default([]) | length == 0
+
+    - name: "0 | Determine pool topology by disk count (standing rule: 1=STRIPE, 2=MIRROR, 3+=RAIDZ1)"
+      ansible.builtin.set_fact:
+        nas_pool_vdev_type: >-
+          {{ 'STRIPE' if (nas_unused_disks | length == 1)
+             else ('MIRROR' if (nas_unused_disks | length == 2)
+             else 'RAIDZ1') }}
+      when:
+        - not nas_pool_already_exists
+        - nas_unused_disks | default([]) | length > 0
+
+    - name: "0 | Create the {{ nas_pool_name }} pool"
+      ansible.builtin.uri:
+        url: "https://{{ truenas_target_ip | default(ansible_host) }}/api/v2.0/pool"
+        method: POST
+        user: "{{ truenas_rest_bootstrap_user }}"
+        password: "{{ truenas_rest_bootstrap_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ truenas_rest_validate_certs | default(false) }}"
+        body_format: json
+        body:
+          name: "{{ nas_pool_name }}"
+          topology:
+            data:
+              - type: "{{ nas_pool_vdev_type }}"
+                disks: "{{ nas_unused_disks }}"
+        status_code: 200
+      register: _nas_pool_create
+      when:
+        - not nas_pool_already_exists
+        - nas_unused_disks | default([]) | length > 0
+        - not ansible_check_mode
+      delegate_to: localhost
+      vars:
+        ansible_connection: local
+
+    - name: "0 | --check mode notice"
+      ansible.builtin.debug:
+        msg: >-
+          Would create pool {{ nas_pool_name }} as {{ nas_pool_vdev_type | default('?') }}
+          across {{ nas_unused_disks | default([]) | length }} disk(s) -- not run in check mode.
+      when:
+        - not nas_pool_already_exists
+        - nas_unused_disks | default([]) | length > 0
+        - ansible_check_mode
 
     - name: "1 | Ensure a general-purpose dataset exists"
       arensb.truenas.filesystem:
@@ -77,7 +196,10 @@
           - "  ════════════════════════════════════════════════════════════════"
           - "  STORAGE SETUP COMPLETE — {{ inventory_hostname }}"
           - "  ════════════════════════════════════════════════════════════════"
-          - "  Pool     : {{ nas_pool_name }}"
+          - >-
+              Pool     : {{ nas_pool_name }} ({{ 'already existed, nothing to do' if nas_pool_already_exists
+              else (nas_pool_vdev_type ~ ' across ' ~ (nas_unused_disks | length) ~ ' disk(s): ' ~ (nas_unused_disks | join(', ')) if not ansible_check_mode
+              else 'not created, check mode') }})
           - "  Dataset  : {{ nas_pool_name }}/general (placeholder only)"
           - "  ════════════════════════════════════════════════════════════════"
           - "  NOT DONE: real per-site dataset/share layout — this stage only"
