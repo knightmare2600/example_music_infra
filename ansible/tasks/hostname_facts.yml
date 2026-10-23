@@ -9,6 +9,13 @@
 # This covers bare-IP inventory runs where inventory_hostname is an IP.
 # =============================================================================
 # Changelog:
+#   2026-10-23  Robert's ask, live on EXANASFAL001: fixed the three | default([...])
+#               calls below to pass the boolean-filter second argument -- without it,
+#               a regex_search() that returns None (no match) passed straight
+#               through to | first and crashed "'NoneType' object is not iterable"
+#               instead of ever falling back to UNKNOWN/001. See the task's own
+#               inline comment for the full detail, including why this was never hit
+#               before TrueNAS's own 00-preflight.yml fix (same day).
 #   2026-06-20  Initial file
 #   2026-06-29  Fix | default placement — must wrap list before | first
 #   2026-06-29  Use target_hostname > ansible_hostname > inventory_hostname
@@ -31,22 +38,39 @@
 
 - name: Parse role from hostname
   tags: always
+  # 2026-10-23, Robert's ask, live on EXANASFAL001: regex_search() returns a plain
+  # None (not Jinja Undefined) when the pattern doesn't match at all -- the
+  # | default([...]) calls below never actually caught that, since Jinja's default()
+  # filter only replaces Undefined by default, not None/falsy values. A non-matching
+  # hostname therefore passed None straight through to | first, which crashed with
+  # "'NoneType' object is not iterable" instead of ever falling back to
+  # UNKNOWN/001. Confirmed in isolation (a non-matching string really does produce
+  # None here, and default([...], true) really does catch it) before trusting this
+  # fix. Reproduced for real by this exact chain: TrueNAS boxes keep their factory/
+  # DHCP-assigned OS hostname until 10-access.yml renames them, so this file's
+  # ansible_hostname fallback (used whenever a caller's own play has already run
+  # gather_facts, as 00-preflight.yml's site-lookup play does) doesn't match the EXA
+  # convention yet at this point in the chain -- see that file's own fix for the
+  # other half of this (passing target_hostname explicitly, so it never even reaches
+  # this fallback for TrueNAS). This default()-boolean-arg fix stands on its own
+  # regardless: any future caller hitting a genuinely non-matching hostname would
+  # have hit the exact same crash.
   set_fact:
     host_role: >-
       {{ (target_hostname | default(ansible_hostname | default(inventory_hostname)))
          | upper
          | regex_search('^EXA([A-Z]{2,4})[A-Z]{3}[0-9]{3}$', '\1')
-         | default(['UNKNOWN']) | first }}
+         | default(['UNKNOWN'], true) | first }}
     host_site: >-
       {{ (target_hostname | default(ansible_hostname | default(inventory_hostname)))
          | upper
          | regex_search('^EXA[A-Z]{2,4}([A-Z]{3})[0-9]{3}$', '\1')
-         | default(['UNKNOWN']) | first }}
+         | default(['UNKNOWN'], true) | first }}
     host_num: >-
       {{ (target_hostname | default(ansible_hostname | default(inventory_hostname)))
          | upper
          | regex_search('^EXA[A-Z]{2,4}[A-Z]{3}([0-9]{3})$', '\1')
-         | default(['001']) | first }}
+         | default(['001'], true) | first }}
 
 - name: Validate hostname convention
   tags: always
