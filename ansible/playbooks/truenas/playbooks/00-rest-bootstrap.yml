@@ -206,6 +206,28 @@
 #   # DHCP address here; leave blank only if already on the target address.
 # =============================================================================
 # Changelog:
+#   2026-10-23  Real live bug, EXANASFAL001: the interface move succeeded on an earlier run,
+#               but gateway-setting (step 9) never completed (a different failure cut that
+#               run short first) -- the NAS was left with NO default route at all, confirmed
+#               live (`ip route show default` empty, `ip route get <remote>` ->  "Network is
+#               unreachable"). A plain re-run afterward saw truenas_ip_already_aligned=true
+#               and skipped the ENTIRE IP-alignment section again, gateway included -- no
+#               clean retry path short of a manual API call (which is what actually unblocked
+#               this specific box). Fixed properly, not just patched around: gateway/DNS is a
+#               system-wide TrueNAS setting, independent of which IP is current, so step 4's
+#               sites.csv/gateway-deriving facts are no longer gated on IP-alignment (cheap,
+#               read-only, always needed now), a new step "4a" checks the box's ACTUAL current
+#               gateway/DNS against the desired values (truenas_gateway_already_set), and step
+#               9 now fires on EITHER "IP just moved, poll succeeded" (the original path) OR
+#               "already aligned, but gateway specifically still isn't right" -- a plain re-run
+#               can now actually fix a gateway-only gap. Step 10 (checkin) deliberately NOT
+#               given the same second path -- it confirms the INTERFACE commit specifically,
+#               unrelated to gateway, and must stay skipped for a gateway-only fix (nothing
+#               pending to check in). All four branches (already-aligned+correct,
+#               already-aligned+wrong, not-aligned+poll-success, checkin-stays-untouched)
+#               verified in isolation, including confirming Jinja's `and`/`or` short-circuit
+#               genuinely protects the new when: from referencing _truenas_target_reachable
+#               before it would exist, before trusting this live.
 #   2026-10-23  Robert's ask, live on EXANASFAL001: the "current reachable IP" prompt's old
 #               wording ("if not yet moved to its target X slot -- blank if it's already
 #               there") framed the move as a vague hedge when this run is about to attempt
@@ -565,6 +587,18 @@
       vars:
         ansible_connection: local
 
+    # BUG FIX (2026-10-23, Robert, live on EXANASFAL001): these three facts used to be
+    # gated on `not truenas_ip_already_aligned` too, same as the rest of the IP-alignment
+    # section below -- but gateway/DNS (/network/configuration) is a system-wide TrueNAS
+    # setting, completely independent of which interface/IP is current. A real run hit
+    # this: the interface move succeeded, but the gateway-set step (9, below) never
+    # completed (a different failure cut the play short before reaching it) -- a plain
+    # re-run afterward saw truenas_ip_already_aligned=true and skipped the ENTIRE
+    # alignment section again, gateway included, with no clean way to retry just that
+    # one piece short of a manual API call. Ungated here (cheap, read-only, no reason not
+    # to always have these facts available) so the new "3c" check below can compare the
+    # box's ACTUAL current gateway against the desired one regardless of IP-alignment
+    # state, and step 9 can fire independently if gateway specifically still needs it.
     - name: "4 | Load this site's row from sites.csv (gateway/subnet)"
       ansible.builtin.read_csv:
         path: "{{ playbook_dir }}/../../../../benarbejde/sites.csv"
@@ -573,18 +607,42 @@
       check_mode: false
       vars:
         ansible_connection: local
-      when: not truenas_ip_already_aligned | bool
 
     - name: "4 | Set site addressing facts"
       ansible.builtin.set_fact:
         _truenas_site_row: "{{ _truenas_sites_raw.list | selectattr('Site', 'equalto', host_site) | list | first }}"
-      when: not truenas_ip_already_aligned | bool
 
     - name: "4 | Derive gateway/netmask facts"
       ansible.builtin.set_fact:
         _truenas_gateway: "{{ _truenas_site_row.Gateway }}"
         _truenas_netmask: "{{ _truenas_site_row.Subnet.split('/')[1] | int }}"
-      when: not truenas_ip_already_aligned | bool
+
+    # ── 3c-style check (deliberately placed here, after gateway is known) ──────────
+    # Independent idempotency check for gateway/DNS, same reasoning as the 2026-10-23
+    # fix above -- reads the box's CURRENT config (via truenas_current_ip, always
+    # reachable by this point regardless of IP-alignment state, confirmed by step 0
+    # above) and compares against the desired values, so step 9 below can fire on its
+    # own merits instead of only ever firing as a side effect of a fresh IP move.
+    - name: "4a | Check current gateway/DNS configuration"
+      ansible.builtin.uri:
+        url: "https://{{ truenas_current_ip }}/api/v2.0/network/configuration"
+        method: GET
+        user: "{{ truenas_rest_bootstrap_user }}"
+        password: "{{ truenas_rest_bootstrap_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ truenas_rest_validate_certs }}"
+        status_code: 200
+      register: _truenas_network_config
+      delegate_to: localhost
+      check_mode: false
+      vars:
+        ansible_connection: local
+
+    - name: "4a | Set gateway-already-correct fact"
+      ansible.builtin.set_fact:
+        truenas_gateway_already_set: >-
+          {{ _truenas_network_config.json.ipv4gateway == _truenas_gateway
+             and _truenas_network_config.json.nameserver1 == '192.168.139.8' }}
 
     - name: "5 | List interfaces (to find the one to configure)"
       ansible.builtin.uri:
@@ -745,10 +803,19 @@
           ipv4gateway: "{{ _truenas_gateway }}"
           nameserver1: "192.168.139.8"
         status_code: 200
-      when:
-        - not truenas_ip_already_aligned | bool
-        - not ansible_check_mode
-        - _truenas_target_reachable is success
+      # BUG FIX (2026-10-23, Robert, live on EXANASFAL001): used to be gated purely on
+      # "IP just moved, poll succeeded" -- meaning if gateway-setting itself failed or
+      # the play was cut short before reaching it on some earlier run, a later re-run
+      # (now correctly seeing truenas_ip_already_aligned=true) would skip this
+      # unconditionally forever, with no clean retry path short of a manual API call
+      # (exactly what happened here). Added a second, independent path: fire anyway if
+      # the box is already aligned but 4a's own check found the gateway/DNS genuinely
+      # still wrong. `and` short-circuits before `_truenas_target_reachable` is ever
+      # referenced when truenas_ip_already_aligned is true, so this is safe even though
+      # that fact is only ever set inside the (skipped, in that branch) polling step above.
+      when: >-
+        (not truenas_ip_already_aligned | bool and not ansible_check_mode and _truenas_target_reachable is success)
+        or (truenas_ip_already_aligned | bool and not ansible_check_mode and not truenas_gateway_already_set | bool)
       delegate_to: localhost
       vars:
         ansible_connection: local
@@ -809,5 +876,6 @@
           - "  TrueNAS version : {{ _truenas_system_info.json.version | default('unknown') }}"
           - "  SSH service     : state={{ _truenas_ssh_service.state }} enable={{ _truenas_ssh_service.enable }} (before this run)"
           - "  IP alignment    : {{ 'already on ' ~ truenas_target_ip ~ ', nothing to do' if truenas_ip_already_aligned | bool else (truenas_current_ip ~ ' -> ' ~ truenas_target_ip ~ ' (checked in)' if not ansible_check_mode else 'not run in check mode') }}"
+          - "  Gateway/DNS     : {{ 'already correct (' ~ _truenas_gateway ~ ' / 192.168.139.8)' if truenas_gateway_already_set | bool else (_truenas_network_config.json.ipv4gateway ~ ' -> ' ~ _truenas_gateway ~ ' / 192.168.139.8 (fixed this run)' if not ansible_check_mode else 'not run in check mode') }}"
           - "  Next stage      : re-run as truenas_admin+password over SSH (-k) to continue via 00-preflight.yml/10-access.yml"
           - "  ════════════════════════════════════════════════════════════════"
