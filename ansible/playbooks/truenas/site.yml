@@ -71,6 +71,18 @@
 # plain Debian box -- unverified either way.
 # =============================================================================
 # Changelog:
+#   2026-10-23  Robert, live against EXANASFAL001 (first real end-to-end run of this whole
+#               chain): the documented --user=truenas_admin -k invocation above never
+#               actually took effect for any real SSH connection -- group_vars/all/main.yml's
+#               unconditional ansible_user: ansible beats --user on the command line
+#               (Ansible's own documented precedence: CLI values are the lowest-precedence
+#               source of all, below every inventory var). 00-preflight.yml's gather_facts
+#               failed "Permission denied (publickey)" trying ansible@<ip> -- that account
+#               doesn't exist yet on a brand-new box; 10-access.yml creates it, later in this
+#               same chain. Fixed via a new configs/inventory/group_vars/truenas_servers/
+#               main.yml, not by patching each play -- see that file's own header for the
+#               full mechanism (defers to truenas_rest_bootstrap_user while the bootstrap
+#               fact is in scope, falls back to 'ansible' once it isn't).
 #   2026-07-28  Robert, live against EXANASFAL001: corrected every usage example from
 #               --user=root to --user=truenas_admin -- root SSH was always a presumption
 #               (00-preflight.yml's own header flagged it as "not verified"), and it's now

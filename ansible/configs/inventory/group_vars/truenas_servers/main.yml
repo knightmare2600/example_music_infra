@@ -1,0 +1,48 @@
+---
+# group_vars/truenas_servers/main.yml
+# Example Music Limited — TrueNAS connection-user override for the bootstrap window
+# =============================================================================
+# Real live failure, 2026-10-23, first full end-to-end run against EXANASFAL001:
+# group_vars/all/main.yml sets ansible_user: ansible unconditionally for every host in
+# the estate. Ansible's own documented variable precedence puts inventory group_vars
+# ABOVE command-line values (--user/-u are the single LOWEST-precedence source,
+# beaten by every inventory-sourced var, group_vars/all included) -- so
+# truenas/site.yml's own documented first-run invocation
+# (--user=truenas_admin -k) never actually took effect for any REAL Ansible
+# connection (gather_facts, arensb.truenas.*'s own SSH-based middleware calls).
+# Those kept trying ansible@<ip> with a key, failing "Permission denied (publickey)",
+# because the 'ansible' account doesn't exist yet on a brand-new box -- creating it is
+# literally what 10-access.yml's task 1 does, later in the same chain, and that task
+# itself needs a working connection to run in the first place.
+#
+# Fixed here, not in 00-preflight.yml/10-access.yml individually: ansible_user now
+# resolves to truenas_rest_bootstrap_user (the fact 00-rest-bootstrap.yml's own
+# "Resolve parameter facts" task already sets earlier in the SAME site.yml run --
+# normally "truenas_admin") whenever that fact exists, which spans every real
+# connection in the bootstrap window (00-preflight.yml's gather_facts, 10-access.yml's
+# arensb.truenas.user/hostname calls) uniformly, without touching 10-access.yml's own
+# existing "ansible_user == truenas_rest_bootstrap_user" gate (task 1a) -- that
+# condition still correctly distinguishes "this run went through password bootstrap"
+# from "this run used the already-created ansible key", it's just now trivially true
+# whenever the fact is set rather than coincidentally true, same net effect.
+#
+# On a SUBSEQUENT run (--skip-tags rest-bootstrap -- that play never runs,
+# truenas_rest_bootstrap_user is never set), this correctly falls back to the literal
+# 'ansible' default -- the real, by-then-already-created key-based account from
+# 10-access.yml's own task 1 on an earlier pass. group_vars/<this-group>/ beats
+# group_vars/all for hosts in this group (Ansible's own documented precedence order,
+# not a guess) -- every other host group is completely unaffected by this file.
+#
+# ansible_password (set via -k at the CLI) is unaffected by any of this -- it applies
+# to whichever ansible_user actually gets used, same as always. ControlPersist=300s
+# (ansible.cfg's [ssh_connection] ssh_args) means the one real connection this fixes
+# (Gathering Facts, early in 00-preflight.yml) stays open and gets reused for the rest
+# of the same run even after 10-access.yml's task 1a locks truenas_admin's own SSH
+# password login back down mid-run -- confirmed as the mechanism, not just presumed,
+# by reading ansible.cfg's own real ssh_args before relying on it.
+# =============================================================================
+# Changelog:
+#   2026-10-23  Initial file. Real live bug, EXANASFAL001 -- see comment above.
+# =============================================================================
+
+ansible_user: "{{ truenas_rest_bootstrap_user | default('ansible') }}"
