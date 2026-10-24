@@ -219,9 +219,18 @@
 # (regexp matches it) or appends a brand new one at EOF (regexp matches nothing, since
 # the stock file only has it as a commented doc block) -- confirmed line-for-line
 # against the real file extracted from the cached zabbix-agent_*.deb, not assumed.
-# PidFile=/run/zabbix/zabbix_agentd.pid, LogFile=/var/log/zabbix/zabbix_agentd.log, and
-# Include=/etc/zabbix/zabbix_agentd.d/*.conf are ALL already correct in the stock file
-# shipped by the package -- deliberately not touched here at all.
+# LogFile=/var/log/zabbix/zabbix_agentd.log and Include=/etc/zabbix/zabbix_agentd.d/
+# *.conf are already correct in the stock file AND were already written correctly by
+# the previous copy: content: task on every host that's already run it -- genuinely
+# nothing to do for those two, left alone entirely.
+#
+# PidFile IS included below despite also being correct in the stock file -- the
+# previous copy: content: task is exactly what DROPPED it on every host that's
+# already run this file (the real bug fixed in 14aa54f/540cf42). A fresh install
+# already has it right (this entry is then a no-op); an already-damaged host (the
+# PidFile= line genuinely missing right now) gets it added back, same regexp-finds-
+# nothing-so-append behaviour as the TLS*/AllowKey entries below. Self-healing on
+# re-run either way -- no manual intervention needed on any host already affected.
 - name: "[Zabbix] Configure zabbix_agentd.conf (lineinfile -- add/replace only, never rewrite)"
   ansible.builtin.lineinfile:
     path: /etc/zabbix/zabbix_agentd.conf
@@ -229,6 +238,7 @@
     line: "{{ item.line }}"
     backup: true
   loop:
+    - { regexp: "^PidFile=", line: "PidFile=/run/zabbix/zabbix_agentd.pid" }
     # Stock ships LogFileSize=0 (no rotation) -- 1MB rotation instead, deliberate choice.
     - { regexp: "^LogFileSize=", line: "LogFileSize=1" }
     # Stock ships Server=127.0.0.1/ServerActive=127.0.0.1 (loopback placeholders).
