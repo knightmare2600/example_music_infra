@@ -58,15 +58,34 @@
 #     role_codes.csv's own ZAB row note claims; flagged to Robert as a doc inconsistency
 #     to confirm, not silently "corrected" in case SSL was added out-of-band since.
 #
-# Config content is written via copy: content: (inline), not a separate template: src:
-# .j2 file -- this is a shared tasks file included from two playbooks at different
-# directory depths, and Ansible's relative template src: resolution bit us earlier today
-# on cloudpanel/00-preflight.yml (resolves relative to the including playbook's own
-# directory, differently for each caller here) with no existing precedent in ansible/tasks/
-# to confirm the behaviour for an *included tasks file* specifically. Inlining sidesteps
-# the ambiguity entirely rather than gambling on untested path-resolution semantics.
+# Config content is edited via lineinfile, NOT a full copy: content:/template: rewrite --
+# Robert's explicit ask, 2026-10-24, after the PidFile= bug below: ripping out and
+# replacing the Debian package's entire shipped zabbix_agentd.conf is gratuitous and
+# genuinely cost us a real directive (PidFile=) we never meant to touch. Every task below
+# only swaps an existing value (regexp + line, replaces in place) or appends a brand new
+# directive that doesn't exist uncommented in the stock file at all (TLSConnect/TLSAccept/
+# TLSPSKIdentity/TLSPSKFile/AllowKey) -- never a wholesale overwrite, so anything in the
+# package's own shipped file that we don't explicitly care about (PidFile=, LogFile=,
+# Include=, every commented-out doc block) survives untouched regardless of what the
+# package maintainer ships or changes it to in a future version.
 # =============================================================================
 # Changelog:
+#   2026-10-24  Robert's explicit ask, after confirming the real bug below: rewrote the
+#               config-writing task from a single copy: content: (full-file overwrite)
+#               to a series of ansible.builtin.lineinfile tasks against the real,
+#               package-shipped /etc/zabbix/zabbix_agentd.conf -- confirmed field-for-
+#               field against the actual file extracted from the cached .deb
+#               (dpkg-deb --fsys-tarfile .../zabbix-agent_*.deb | tar -xO
+#               ./etc/zabbix/zabbix_agentd.conf) rather than assumed. Real finding from
+#               that extraction: PidFile=/run/zabbix/zabbix_agentd.pid, LogFile=, and
+#               Include= were ALL already correct in the stock file -- our own full
+#               overwrite below was the only thing that had ever dropped PidFile=, so
+#               those three are left alone entirely now. Only Server/ServerActive/
+#               Hostname/LogFileSize get replaced (stock ships placeholder/loopback
+#               defaults); TLSConnect/TLSAccept/TLSPSKIdentity/TLSPSKFile/AllowKey get
+#               appended fresh since the stock file only has them as commented docs, not
+#               real directives. AllowKey=system.run[*] kept exactly as before -- Robert's
+#               explicit, knowing call on the security tradeoff, not revisited here.
 #   2026-10-24  Real live bug, EXAZABCLD001: `systemctl restart zabbix-agent` timed out
 #               and restart-looped even though the daemon itself started fine (collector
 #               + 10 listeners + active-checks worker all genuinely running, confirmed via
@@ -195,31 +214,41 @@
 
 # ── Agent config ─────────────────────────────────────────────────────────────────────
 
-- name: "[Zabbix] Write zabbix_agentd.conf"
-  ansible.builtin.copy:
-    content: |
-      # Managed by Ansible (tasks/zabbix_agent_onboard.yml) -- do not edit by hand.
-      PidFile=/run/zabbix/zabbix_agentd.pid
-      LogFile=/var/log/zabbix/zabbix_agentd.log
-      LogFileSize=1
-      Server={{ site_services.zabbix.ip }}
-      ServerActive={{ site_services.zabbix.ip }}
-      Hostname={{ zbx_real_hostname }}
-      TLSConnect=psk
-      TLSAccept=psk
-      TLSPSKIdentity={{ zbx_real_hostname }}-psk
-      TLSPSKFile=/etc/zabbix/agent_psk/{{ zbx_real_hostname }}.psk
-      # EnableRemoteCommands is deprecated in 7.0 -- AllowKey is the real current mechanism
-      # (confirmed against the real 7.0 config-parameter docs, not the 2026-09-03 design
-      # doc's older wording). DenyKey=system.run[*] ships as the package default; this
-      # overrides it to allow remote commands, per Robert's own original brief.
-      AllowKey=system.run[*]
-      Include=/etc/zabbix/zabbix_agentd.d/*.conf
-    dest: /etc/zabbix/zabbix_agentd.conf
-    owner: root
-    group: root
-    mode: "0644"
+# lineinfile only below -- NEVER a full-file rewrite (Robert's explicit ask, see this
+# file's own header). Each entry either replaces an existing stock directive in place
+# (regexp matches it) or appends a brand new one at EOF (regexp matches nothing, since
+# the stock file only has it as a commented doc block) -- confirmed line-for-line
+# against the real file extracted from the cached zabbix-agent_*.deb, not assumed.
+# PidFile=/run/zabbix/zabbix_agentd.pid, LogFile=/var/log/zabbix/zabbix_agentd.log, and
+# Include=/etc/zabbix/zabbix_agentd.d/*.conf are ALL already correct in the stock file
+# shipped by the package -- deliberately not touched here at all.
+- name: "[Zabbix] Configure zabbix_agentd.conf (lineinfile -- add/replace only, never rewrite)"
+  ansible.builtin.lineinfile:
+    path: /etc/zabbix/zabbix_agentd.conf
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
     backup: true
+  loop:
+    # Stock ships LogFileSize=0 (no rotation) -- 1MB rotation instead, deliberate choice.
+    - { regexp: "^LogFileSize=", line: "LogFileSize=1" }
+    # Stock ships Server=127.0.0.1/ServerActive=127.0.0.1 (loopback placeholders).
+    - { regexp: "^Server=", line: "Server={{ site_services.zabbix.ip }}" }
+    - { regexp: "^ServerActive=", line: "ServerActive={{ site_services.zabbix.ip }}" }
+    # Stock ships the literal placeholder Hostname=Zabbix server.
+    - { regexp: "^Hostname=", line: "Hostname={{ zbx_real_hostname }}" }
+    # None of these exist uncommented in the stock file -- appended fresh.
+    - { regexp: "^TLSConnect=", line: "TLSConnect=psk" }
+    - { regexp: "^TLSAccept=", line: "TLSAccept=psk" }
+    - { regexp: "^TLSPSKIdentity=", line: "TLSPSKIdentity={{ zbx_real_hostname }}-psk" }
+    - { regexp: "^TLSPSKFile=", line: "TLSPSKFile=/etc/zabbix/agent_psk/{{ zbx_real_hostname }}.psk" }
+    # EnableRemoteCommands is deprecated in 7.0 -- AllowKey is the real current mechanism
+    # (confirmed against the real 7.0 config-parameter docs). Stock ships
+    # DenyKey=system.run[*] by default (also not present as an uncommented line, applied
+    # internally) -- this explicitly allows it instead. Real security tradeoff, Robert's
+    # own explicit, knowing call -- not revisited or softened here.
+    - { regexp: "^AllowKey=", line: "AllowKey=system.run[*]" }
+  loop_control:
+    label: "{{ item.regexp }}"
   notify: Restart zabbix-agent
   tags: [zabbix, monitoring]
 
