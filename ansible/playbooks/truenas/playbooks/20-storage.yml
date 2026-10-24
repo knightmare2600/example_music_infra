@@ -54,6 +54,21 @@
 # (wipes whatever's currently on the disks it's given).
 # =============================================================================
 # Changelog:
+#   2026-10-24  SAME DAY, follow-up to the job_wait fix below: that fix didn't actually
+#               work (verified live, by hand, via curl, not just retried blind) --
+#               /core/job_wait is itself job-wrapped over REST, returns a new job id on
+#               every call rather than blocking (97 -> 104 -> 109 across three calls).
+#               Querying the ORIGINAL job directly (GET /core/get_jobs?id=97) revealed
+#               the real problem: state: FAILED, "pool_create.topology: disks already in
+#               use: sda" -- despite GET /disk's own pool field reporting null for it.
+#               Real cause: that field only reflects current pool membership, not
+#               leftover ZFS labels from EXANASFAL001's prior TrueNAS install at this
+#               same slot. Robert's explicit call (asked, destructive even in QUICK
+#               mode): added a QUICK wipe of every candidate disk before pool creation,
+#               and replaced job_wait entirely with new shared tasks/truenas_job_wait.yml
+#               (polls GET /core/get_jobs?id=<id> directly, checks state, surfaces the
+#               real error on failure) -- confirmed correct against live job data, not
+#               just plausible-looking code.
 #   2026-10-24  Real live failure, EXANASFAL001 -- the first run of the pool-creation code
 #               ever to reach midclt: "[EINVAL] pool_dataset_create.name: Please specify a
 #               pool which exists", right after pool creation itself reported success.
@@ -62,7 +77,8 @@
 #               finished pool; the documented full-pool-object response schema in
 #               docs/api2.txt is the job's eventual RESULT, not what the POST itself
 #               returns. Added a POST /core/job_wait task right after pool creation,
-#               confirmed against its own schema before writing it.
+#               confirmed against its own schema before writing it -- turned out wrong,
+#               see the entry above, same day.
 #   2026-10-23  Added REST-based pool creation (name defaults to the new estate-wide
 #               "PBSBackups" convention, topology auto-picked by unused-disk count:
 #               1=STRIPE, 2=MIRROR, 3+=RAIDZ1) -- Robert's explicit ask, reversing this
@@ -147,6 +163,58 @@
         - not nas_pool_already_exists
         - nas_unused_disks | default([]) | length == 0
 
+    # ── Wipe stale ZFS labels from any prior pool membership ────────────────────────
+    # 2026-10-24, real live failure, EXANASFAL001: pool.create failed "[EINVAL]
+    # pool_create.topology: The following disks are already in use: sda" despite
+    # GET /disk's own pool field reporting null for it -- confirmed live, by hand, via
+    # curl, not guessed: GET /disk's pool field only reflects CURRENT import/membership,
+    # not leftover ZFS labels/partition signatures from a PREVIOUS pool. This box
+    # replaced an older TrueNAS install at this same standard slot (confirmed elsewhere
+    # in this chain -- see purge_stale_known_hosts_key.yml's own comment) -- sda almost
+    # certainly still carried that prior install's stale labels. Robert's explicit
+    # call, asked rather than assumed (destructive, even though QUICK mode only zeros
+    # the first/last 32MB): automate a QUICK wipe of every candidate disk right before
+    # pool creation, since any future NAS reinstall at an existing slot will hit this
+    # same wall, not just this one box.
+    - name: "0 | Wipe stale ZFS labels from each unused disk (QUICK -- first/last 32MB only)"
+      ansible.builtin.uri:
+        url: "https://{{ truenas_target_ip | default(ansible_host) }}/api/v2.0/disk/wipe"
+        method: POST
+        user: "{{ truenas_rest_bootstrap_user }}"
+        password: "{{ truenas_rest_bootstrap_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ truenas_rest_validate_certs | default(false) }}"
+        body_format: json
+        body:
+          dev: "{{ item }}"
+          mode: QUICK
+        status_code: 200
+      register: _nas_disk_wipe
+      loop: "{{ nas_unused_disks | default([]) }}"
+      when:
+        - not nas_pool_already_exists
+        - nas_unused_disks | default([]) | length > 0
+        - not ansible_check_mode
+      delegate_to: localhost
+      vars:
+        ansible_connection: local
+
+    - name: "0 | Wait for each disk-wipe job to finish"
+      ansible.builtin.include_tasks: ../../../tasks/truenas_job_wait.yml
+      loop: "{{ _nas_disk_wipe.results | default([]) }}"
+      loop_control:
+        loop_var: _nas_wipe_result
+      vars:
+        tjw_job_id: "{{ _nas_wipe_result.json }}"
+        tjw_target_ip: "{{ truenas_target_ip | default(ansible_host) }}"
+        tjw_user: "{{ truenas_rest_bootstrap_user }}"
+        tjw_password: "{{ truenas_rest_bootstrap_password }}"
+        tjw_validate_certs: "{{ truenas_rest_validate_certs | default(false) }}"
+      when:
+        - not nas_pool_already_exists
+        - nas_unused_disks | default([]) | length > 0
+        - not ansible_check_mode
+
     - name: "0 | Determine pool topology by disk count (standing rule: 1=STRIPE, 2=MIRROR, 3+=RAIDZ1)"
       ansible.builtin.set_fact:
         nas_pool_vdev_type: >-
@@ -187,36 +255,31 @@
     # finished pool. POST /pool is one of TrueNAS's "job" methods (confirmed against
     # docs/api2.txt's own /pool POST response schema, which documents the FULL pool
     # object -- that's the job's eventual RESULT, not what the synchronous HTTP call
-    # actually returns). We moved straight on to creating the dataset before the
-    # ZFS pool creation job had actually finished server-side, so it failed "[EINVAL]
-    # pool_dataset_create.name: Please specify a pool which exists". Fixed with the
-    # dedicated POST /core/job_wait endpoint (confirmed against its own schema: takes
-    # the bare job id as the request body, a single-arg method -- same convention
-    # /disk/get_used's own single-arg request body already uses in this file's sibling
-    # tasks), which blocks until the job completes and returns its real result.
-    # timeout: 300, generous for a real ZFS pool create, matching this chain's existing
-    # pattern for "wait for something slow to actually finish" (00-rest-bootstrap.yml's
-    # own checkin_timeout=300).
-    - name: "0 | Wait for the pool-creation job to finish (POST /pool is async -- returns a job id, not the finished pool)"
-      ansible.builtin.uri:
-        url: "https://{{ truenas_target_ip | default(ansible_host) }}/api/v2.0/core/job_wait"
-        method: POST
-        user: "{{ truenas_rest_bootstrap_user }}"
-        password: "{{ truenas_rest_bootstrap_password }}"
-        force_basic_auth: true
-        validate_certs: "{{ truenas_rest_validate_certs | default(false) }}"
-        body_format: json
-        body: "{{ _nas_pool_create.json }}"
-        status_code: 200
-        timeout: 300
-      register: _nas_pool_create_wait
+    # actually returns).
+    #
+    # SECOND finding, same incident: the first fix for this used POST /core/job_wait --
+    # wrong, confirmed live by hand via curl: calling job_wait doesn't block and return
+    # the result at all, it just returns ANOTHER new job id every time (97 -> 104 -> 109
+    # across three successive calls) -- job_wait is itself job-wrapped over REST, not a
+    # usable synchronous polling RPC. Querying the ORIGINAL job directly via GET
+    # /core/get_jobs?id=97 revealed the real truth: state: FAILED, "disks already in
+    # use" -- the wrapping POST's own 200 status told us nothing about whether the
+    # queued job actually succeeded. Replaced with the correct mechanism (confirmed
+    # live): poll GET /core/get_jobs?id=<id> directly via tasks/truenas_job_wait.yml
+    # (new shared file, same reasoning the disk-wipe wait above now also uses) --
+    # checks the job's own state field, fails loudly with its real error if not SUCCESS.
+    - name: "0 | Wait for the pool-creation job to finish"
+      ansible.builtin.include_tasks: ../../../tasks/truenas_job_wait.yml
+      vars:
+        tjw_job_id: "{{ _nas_pool_create.json }}"
+        tjw_target_ip: "{{ truenas_target_ip | default(ansible_host) }}"
+        tjw_user: "{{ truenas_rest_bootstrap_user }}"
+        tjw_password: "{{ truenas_rest_bootstrap_password }}"
+        tjw_validate_certs: "{{ truenas_rest_validate_certs | default(false) }}"
       when:
         - not nas_pool_already_exists
         - nas_unused_disks | default([]) | length > 0
         - not ansible_check_mode
-      delegate_to: localhost
-      vars:
-        ansible_connection: local
 
     - name: "0 | --check mode notice"
       ansible.builtin.debug:

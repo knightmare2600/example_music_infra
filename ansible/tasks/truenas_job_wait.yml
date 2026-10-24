@@ -1,0 +1,67 @@
+---
+# =============================================================================
+# ansible/tasks/truenas_job_wait.yml
+# Example Music Limited — Poll a TrueNAS REST "job" until it finishes, fail if it failed
+# =============================================================================
+# Real live finding, 2026-10-24, EXANASFAL001: TrueNAS's /core/job_wait endpoint is NOT
+# a plain synchronous "block and return the result" RPC the way its own docs/api2.txt
+# description ("The result data returned by the completed job") suggests -- confirmed
+# live, by hand, via curl: calling it just returns ANOTHER new job id each time (97 ->
+# 104 -> 109, each call's own "job_wait" invocation is itself job-wrapped). It is not
+# usable for REST polling at all. The correct, confirmed-working mechanism is GET
+# /core/get_jobs?id=<id> -- the same simple equality-filter query convention already
+# used elsewhere in this estate (/pool?name=X, /user?username=X) -- checking the
+# returned job's own `state` field directly.
+#
+# This is also how the real root cause of that same incident was actually found: a
+# pool.create job that reported "OK" via the create POST's own 200 status still had
+# `state: FAILED` with a real error ("disks already in use") once actually queried this
+# way -- a wrapping REST call succeeding tells you NOTHING about whether the underlying
+# job it queued actually succeeded. Never trust a job-returning POST's own status_code
+# alone; always poll and check state.
+#
+# Caller sets:
+#   tjw_job_id          -- required, the job id (plain integer) returned by the POST
+#                          that queued it
+#   tjw_target_ip        -- required, the box's REST target IP
+#   tjw_user/_password   -- required, REST Basic Auth creds
+#   tjw_validate_certs    -- optional, default false (matches every other REST call
+#                           in this estate's TrueNAS chain)
+#   tjw_retries/_delay    -- optional, default 60/5 (5 minutes total) -- override for a
+#                           genuinely slower job (e.g. a full disk wipe, not QUICK)
+#
+# Sets: tjw_result (the finished job's own `result` field) -- callers that don't need
+# it can simply ignore it.
+# =============================================================================
+# Changelog:
+#   2026-10-24  Initial file. Real live incident, EXANASFAL001 -- see comment above.
+# =============================================================================
+
+- name: "[TrueNAS job wait] Poll job {{ tjw_job_id }} until it finishes"
+  ansible.builtin.uri:
+    url: "https://{{ tjw_target_ip }}/api/v2.0/core/get_jobs?id={{ tjw_job_id }}"
+    method: GET
+    user: "{{ tjw_user }}"
+    password: "{{ tjw_password }}"
+    force_basic_auth: true
+    validate_certs: "{{ tjw_validate_certs | default(false) }}"
+    status_code: 200
+  register: _tjw_poll
+  delegate_to: localhost
+  check_mode: false
+  until: _tjw_poll.json[0].state not in ['WAITING', 'RUNNING']
+  retries: "{{ tjw_retries | default(60) }}"
+  delay: "{{ tjw_delay | default(5) }}"
+  vars:
+    ansible_connection: local
+
+- name: "[TrueNAS job wait] FAIL -- job {{ tjw_job_id }} did not succeed"
+  ansible.builtin.fail:
+    msg: >-
+      TrueNAS job {{ tjw_job_id }} ({{ _tjw_poll.json[0].method }}) finished with state
+      {{ _tjw_poll.json[0].state }}: {{ _tjw_poll.json[0].error | default('(no error message given)') }}
+  when: _tjw_poll.json[0].state != 'SUCCESS'
+
+- name: "[TrueNAS job wait] Set result fact"
+  ansible.builtin.set_fact:
+    tjw_result: "{{ _tjw_poll.json[0].result }}"
