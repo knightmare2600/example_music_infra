@@ -57,6 +57,14 @@
 # Tags: zabbix, monitoring
 # =============================================================================
 # Changelog:
+#   2026-10-24  Robert's ask: let EXAZABCLD001 monitor itself -- added a UFW rule allowing
+#               127.0.0.1 to the trapper port (10051/tcp). The companion templates
+#               (docs/zabbix_templates/*.json) all use ZABBIX_ACTIVE items, so the local
+#               zabbix-agent (already installed on this box, shared apt list with
+#               zabbix_agent_onboard.yml) pushes to its own trapper over loopback rather
+#               than the server polling it -- that's loopback traffic through UFW's INPUT
+#               chain, not implicitly covered by the existing per-site-subnet/provisioning
+#               trapper rules.
 #   2026-10-24  Robert's ask: browsing straight to the box's own hostname (or "/") should
 #               show the Zabbix login page directly, not via an Alias+redirect indirection
 #               -- the same indirection docs/zabbix_templates/import_template.py's own
@@ -540,6 +548,23 @@
         - { subnet: "{{ site_services.provisioning_fredericia_havn.subnet }}", label: "FRD" }
       loop_control:
         label: "{{ item.label }} ({{ item.subnet }})"
+      no_log: true
+      tags: [zabbix, monitoring]
+
+    # zabbix-agent is installed on this box too (line ~648, shared apt list with
+    # zabbix_agent_onboard.yml) so EXAZABCLD001 can monitor itself, same as every other
+    # host -- every companion template built so far (docs/zabbix_templates/*.json) uses
+    # ZABBIX_ACTIVE items, meaning the local agent pushes to the trapper port itself
+    # rather than the server polling it, so the traffic this needs to allow is the local
+    # agent -> 127.0.0.1:10051, not a passive-check 10050 rule. Robert's explicit ask,
+    # 2026-10-24.
+    - name: "[UFW] Allow Zabbix trapper port (10051/tcp) from localhost (self-monitoring)"
+      community.general.ufw:
+        rule: allow
+        src: "127.0.0.1"
+        port: "10051"
+        proto: tcp
+        comment: "Zabbix trapper self-monitoring"
       no_log: true
       tags: [zabbix, monitoring]
 
