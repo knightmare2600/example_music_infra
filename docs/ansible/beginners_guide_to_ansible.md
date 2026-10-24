@@ -981,6 +981,53 @@ sensitive they are — not something to automate without thinking about it first
 
 ---
 
+## Onboarding a TrueNAS NAS/SAN — Worked Example (`EXANASFAL001`)
+
+TrueNAS is a per-site standard-slot role (`EXANAS<SITE>001`, always `.19`), like Proxmox —
+but unlike every other base node in this guide, its own *install* is manual, by design:
+Robert completes TrueNAS SCALE's web-UI first-run wizard (admin password, a reachable IP,
+SSH service) by hand first, and only then does `playbooks/truenas/site.yml` ever touch the
+box. SSH isn't reliably enabled by that wizard, so the first real step is a REST API call —
+not SSH — to turn it on:
+
+```bash
+ansible-playbook playbooks/truenas/site.yml \
+  -i configs/inventory --limit EXANASFAL001 --user=truenas_admin -k
+```
+
+`-k` prompts for `truenas_admin`'s password once; the playbook then prompts again,
+separately, for the REST API credentials and for the box's *current* reachable address (its
+DHCP lease right now — not the final `.19` it's about to move to). Those are genuinely
+different things asked at different points, even though they're usually the same value in
+practice: the REST call happens over HTTPS with its own credentials, while the SSH
+connection that follows for the rest of the chain is a completely separate login. The whole
+chain is one invocation: REST bootstrap (enable SSH, align the IP) → preflight (hostname/site
+lookup) → create the `ansible` automation account and a dedicated data pool → done.
+
+> **The single most important general lesson from this one, not specific to TrueNAS:**
+> `--user=truenas_admin` on the command line did **not** take effect for the real SSH
+> connection, even though it's right there on the command line. `group_vars/all/main.yml`
+> sets `ansible_user: ansible` for every host in the estate, and **inventory variables beat
+> command-line values** in Ansible's own documented precedence order — `--user`/`-u` is the
+> single *lowest*-precedence source there is, below every `group_vars`/`host_vars` file.
+> `Gathering Facts` failed `Permission denied (publickey)` trying `ansible@<ip>` — an account
+> that didn't exist yet on the box — instead of connecting as `truenas_admin` the way the
+> command line asked. Fixed with a new, narrowly-scoped `group_vars/truenas_servers/main.yml`
+> rather than touching `group_vars/all`, so no other host group was affected. Worth
+> remembering any time `--user`/`-u` on the command line seems to be silently ignored: check
+> what the inventory itself says first, before assuming the CLI flag is broken.
+
+Everything past that first connection was genuinely new ground the first time it ran for
+real — automated pool creation (TrueNAS's own REST API, since no Ansible module for it
+exists), a real third-party collection bug in `arensb.truenas.user` that silently dropped a
+parameter it was given, and a VM-only quirk where QEMU/KVM virtual disks share no serial
+number at all by default, which TrueNAS's own ZFS layer flatly refuses to build a pool from.
+None of that is beginner material — it's mentioned here only so a reader hitting something
+odd on a NAS box knows this chain has real history worth checking (`git log
+ansible/playbooks/truenas/`) before assuming they've found something new.
+
+---
+
 ## Real-World Invocations — Day 2: Already-Onboarded Hosts
 
 Everything above is day 0 — a box with no history, reachable only by a temporary address,
@@ -2264,6 +2311,7 @@ command on one line before trusting it.
 | 2026-10-12 | **Updated "Filing a generated or typed DSRM password into KeePass"**: Robert's explicit reversal of Phase F's own 2026-10-01 "Ansible never writes DSRM to KeePass" decision -- now files the finalised value automatically via `keepass_credential_sync.yml`, same add-not-overwrite mechanism, driven by Robert's own stated worry about never risking an overwritten/lost DSRM credential ("better to have two records than none"). The three-source check-then-refuse-to-generate decision logic itself is unchanged. Kept the manual `kpcli_wrapper.py` path documented below as a still-valid fallback for older runs, rather than deleting it. Same change upgraded `keepass_credential_sync.yml`'s conflict-suffix from date-only to date+time, to avoid a same-day collision if a credential conflicts twice in one day -- benefits every existing caller of that shared task, not DSRM-specific. |
 | 2026-10-12 | Added "Setting up KeePass automation on an additional control node" -- found live rebuilding `EXADCSFRD001` from `EXAANSFRD001`: the KeePass sync automation needs a local master-password copy and the vault itself, neither ever set up on a control node other than the main one, surfacing as a `no_log`-censored "unknown error". Documents `ansibleme.sh`'s new Section 6c (same day) and gives the equivalent manual commands for a fresh, standalone vault, verified end-to-end against real throwaway paths before writing them up. Explicitly flagged this is never a way to rotate an existing shared vault's password. Also corrects a real mistake made live the same session: `~/benarbejde/...` was checked first and wrongly assumed to be the right path -- `~/ansible` is a symlink into `~/example_music_infra/ansible`, but there is no equivalent symlink for `benarbejde/`, which only exists at the real repo root (`~/example_music_infra/benarbejde/`). |
 | 2026-10-12 | Replaced "What's deliberately not covered here" (FSMO transfer) with a real worked example -- all 5 roles moved `EXADCSGOT001` → `EXADCSCLD001` live, confirmed via `netdom query fsmo` on both DCs. Documents: verifying health/replication first; a real post-reboot clock-skew incident on CLD (`KRB_AP_ERR_TKT_NYV`, self-corrected by Windows Time once network access to the PDC was restored) and a `DFSR` found `Stopped`; a known-benign `dcdiag` `KnowsOfRoleHolders`/`DsBindWithSpnEx` "Access is denied" anomaly confirmed bidirectional between these two DCs with SPNs/services all otherwise healthy, root cause still genuinely unconfirmed; and the probe-one-role-first approach that confirmed `Move-ADDirectoryServerOperationMasterRole` (ADWS-based) isn't affected by that legacy RPC quirk before transferring the remaining 4 roles. |
+| 2026-10-24 | Added "Onboarding a TrueNAS NAS/SAN -- Worked Example (`EXANASFAL001`)", a new top-level section before "Real-World Invocations -- Day 2" -- the real `playbooks/truenas/site.yml --user=truenas_admin -k` command used to build `EXANASFAL001` for real, across many live-debugged re-runs. Highlights the single most generally-useful lesson from the whole exercise: `--user`/`-u` on the command line is Ansible's *lowest*-precedence source of all, genuinely beaten by any inventory `group_vars`/`host_vars` setting `ansible_user` (as `group_vars/all/main.yml` does, estate-wide) -- worth knowing any time a CLI user override seems to be silently ignored. The rest of that chain's real history (a genuine third-party collection bug, automated ZFS pool creation, a VM-disk-serial quirk) is deliberately left as a pointer to `git log`/commit history rather than catalogued here -- out of scope for a beginner's walkthrough. |
 
 ---
 
