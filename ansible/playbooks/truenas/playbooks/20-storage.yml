@@ -54,6 +54,16 @@
 # (wipes whatever's currently on the disks it's given).
 # =============================================================================
 # Changelog:
+#   2026-10-24  Real live failure, EXANASFAL001 -- the disk-wipe fix below immediately hit
+#               "[Errno 16] Device or resource busy: '/dev/sda'". Confirmed via GET
+#               /boot/get_disks: sda is this box's own BOOT disk -- GET /disk's pool field
+#               only tracks data-pool membership, never excludes the boot-pool, so it was
+#               happily offered up as a "candidate" disk. This box genuinely has only one
+#               disk total and no room for a separate data pool at all -- an infrastructure
+#               gap (needs a second disk attached), not a code bug, but the detection logic
+#               itself WAS a real gap: added a boot-disk exclusion so this now fails early
+#               and clearly instead of crashing mid-wipe on a disk the kernel has mounted.
+#               Verified the selectattr/reject filter chain in isolation before trusting it.
 #   2026-10-24  SAME DAY, follow-up to the job_wait fix below: that fix didn't actually
 #               work (verified live, by hand, via curl, not just retried blind) --
 #               /core/job_wait is itself job-wrapped over REST, returns a new job id on
@@ -147,18 +157,46 @@
       vars:
         ansible_connection: local
 
-    - name: "0 | Determine unused disks (pool field is null -- confirmed via docs/api2.txt, not inferred)"
+    # 2026-10-24, real live failure, EXANASFAL001: GET /disk's own pool field is null
+    # for the boot disk too -- it only tracks DATA pool membership, not the boot-pool.
+    # Without this exclusion, "Determine unused disks" happily included sda, the
+    # box's actual boot disk (confirmed via GET /boot/get_disks, not assumed), and the
+    # wipe step then failed "[Errno 16] Device or resource busy: '/dev/sda'" -- the
+    # kernel refusing a raw write to a disk the running OS has mounted. Excluding boot
+    # disks up front turns that into a clear, early failure instead of a confusing
+    # mid-wipe OS-level crash.
+    - name: "0 | List boot-pool disks (to exclude them from candidates below)"
+      ansible.builtin.uri:
+        url: "https://{{ truenas_target_ip | default(ansible_host) }}/api/v2.0/boot/get_disks"
+        method: GET
+        user: "{{ truenas_rest_bootstrap_user }}"
+        password: "{{ truenas_rest_bootstrap_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ truenas_rest_validate_certs | default(false) }}"
+        status_code: 200
+      register: _nas_boot_disks
+      delegate_to: localhost
+      check_mode: false
+      when: not nas_pool_already_exists
+      vars:
+        ansible_connection: local
+
+    - name: "0 | Determine unused disks (pool field null AND not a boot disk)"
       ansible.builtin.set_fact:
-        nas_unused_disks: "{{ _nas_disk_list.json | selectattr('pool', 'none') | map(attribute='name') | list }}"
+        nas_unused_disks: >-
+          {{ _nas_disk_list.json | selectattr('pool', 'none') | map(attribute='name')
+             | reject('in', _nas_boot_disks.json) | list }}
       when: not nas_pool_already_exists
 
     - name: "0 | FAIL -- no unused disks found to create {{ nas_pool_name }} with"
       ansible.builtin.fail:
         msg: >-
-          No unused disks found on {{ inventory_hostname }} (every disk already belongs
-          to a pool, per GET /disk's own pool field) -- cannot create {{ nas_pool_name }}.
-          Check the box's real disk inventory by hand before re-running -- this is a
-          showstopper, not a guess-and-proceed situation.
+          No unused, non-boot disks found on {{ inventory_hostname }} -- every disk is
+          either already in a pool (per GET /disk's own pool field) or is this box's own
+          boot disk ({{ _nas_boot_disks.json | join(', ') }}, per GET /boot/get_disks).
+          Cannot create {{ nas_pool_name }}. This almost certainly means the VM needs a
+          second disk attached for data storage -- check with Robert before assuming
+          anything else. This is a showstopper, not a guess-and-proceed situation.
       when:
         - not nas_pool_already_exists
         - nas_unused_disks | default([]) | length == 0
