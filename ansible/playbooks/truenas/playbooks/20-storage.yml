@@ -344,7 +344,7 @@
           - "  STORAGE SETUP COMPLETE — {{ inventory_hostname }}"
           - "  ════════════════════════════════════════════════════════════════"
           - >-
-              Pool     : {{ nas_pool_name }} ({{ 'already existed, nothing to do' if nas_pool_already_exists
+              {{ '  ' }}Pool     : {{ nas_pool_name }} ({{ 'already existed, nothing to do' if nas_pool_already_exists
               else (nas_pool_vdev_type ~ ' across ' ~ (nas_unused_disks | length) ~ ' disk(s): ' ~ (nas_unused_disks | join(', ')) if not ansible_check_mode
               else 'not created, check mode') }})
           - "  Dataset  : {{ nas_pool_name }}/general (placeholder only)"
