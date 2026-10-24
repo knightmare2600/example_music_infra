@@ -28,6 +28,22 @@
 #                         genuinely needs to (should be rare)
 # =============================================================================
 # Changelog:
+#   2026-10-24  BUG FIX, Robert's ask: does running zabbix_agent.yml/zabbix_server.yml
+#               AFTER linux/tools.yml blank out fields tools.yml already wrote? Checked
+#               the real code rather than assumed -- yes, for base address/locale fields
+#               and environment. zabbix_agent.yml passes none of city/country/
+#               country_code/entity/office_name/street_address/postal_code/environment
+#               at all; zabbix_server.yml passes city/country/country_code/entity but
+#               still misses office_name/street_address/postal_code/environment. Every
+#               one of those previously defaulted straight to '' (or 'production' for
+#               environment) whenever the calling playbook's own vars block omitted
+#               them -- the 2026-10-17 nodeinfo_extra preservation fix below only ever
+#               covered role-specific EXTRA fields, never the base fields themselves.
+#               Added the same existing-file-fallback treatment to all 8 base fields,
+#               via `| default(_nodeinfo_existing_base.<field> | default(<original
+#               default>))` -- a caller that DOES supply a field, even deliberately
+#               blank, still always wins; this only kicks in when a field is genuinely
+#               never mentioned by the caller at all.
 #   2026-07-07  Initial file — extracted from proxmox/30-example-music.yml,
 #               firewallme's 13_finish.yml, and rudder_server.yml, which had
 #               each independently hand-written the same 9 base fields under
@@ -182,6 +198,32 @@
     _nodeinfo_preserved_extra: {}
   when: not _nodeinfo_existing_file.stat.exists
 
+# Fallback source for base address/locale fields + environment when THIS caller doesn't
+# supply them at all (zabbix_agent.yml passes none of city/country/country_code/entity/
+# office_name/street_address/postal_code/environment; zabbix_server.yml passes city/
+# country/country_code/entity but misses office_name/street_address/postal_code/
+# environment too) -- real live question, Robert's ask, 2026-10-24: does running the
+# Zabbix playbooks AFTER linux/tools.yml blank out fields tools.yml already filled in?
+# Confirmed yes, by reading the actual _nodeinfo dict construction below: every one of
+# these fields previously defaulted straight to '' (or 'production' for environment)
+# whenever the CALLING playbook's own vars block omitted them, with no fallback to
+# whatever a richer previous write already had. This is the exact same bug class the
+# 2026-10-17 nodeinfo_extra fix solved for role-specific extra fields, just never
+# extended to the base fields themselves. Only used via `| default(...)` below, so a
+# caller that DOES supply a field (even deliberately blank) always wins -- this is a
+# fallback for "not mentioned at all", never a silent override of a real value.
+- name: "[nodeinfo] Fallback source for base fields the existing file already has, if any"
+  tags: always
+  ansible.builtin.set_fact:
+    _nodeinfo_existing_base: "{{ _nodeinfo_existing_content.content | b64decode | from_json }}"
+  when: _nodeinfo_existing_file.stat.exists
+
+- name: "[nodeinfo] Default fallback-source fact (no existing file -- genuine first write)"
+  tags: always
+  ansible.builtin.set_fact:
+    _nodeinfo_existing_base: {}
+  when: not _nodeinfo_existing_file.stat.exists
+
 - name: "Write /etc/example-music/nodeinfo.json"
   tags: always
   ansible.builtin.copy:
@@ -196,18 +238,18 @@
           'fqdn':             ansible_fqdn | default(inventory_hostname),
           'role':             nodeinfo_role,
           'site':             nodeinfo_site,
-          'city':             nodeinfo_city | default(''),
-          'country':          nodeinfo_country | default(''),
-          'country_code':     nodeinfo_country_code | default(''),
-          'entity':           nodeinfo_entity | default(''),
-          'office_name':      nodeinfo_office_name | default(''),
-          'street_address':   nodeinfo_street_address | default(''),
-          'postal_code':      nodeinfo_postal_code | default(''),
+          'city':             nodeinfo_city | default(_nodeinfo_existing_base.city | default('')),
+          'country':          nodeinfo_country | default(_nodeinfo_existing_base.country | default('')),
+          'country_code':     nodeinfo_country_code | default(_nodeinfo_existing_base.country_code | default('')),
+          'entity':           nodeinfo_entity | default(_nodeinfo_existing_base.entity | default('')),
+          'office_name':      nodeinfo_office_name | default(_nodeinfo_existing_base.office_name | default('')),
+          'street_address':   nodeinfo_street_address | default(_nodeinfo_existing_base.street_address | default('')),
+          'postal_code':      nodeinfo_postal_code | default(_nodeinfo_existing_base.postal_code | default('')),
           'ansible_managed':  true,
           'bootstrapped_at':  _nodeinfo_bootstrapped_at,
           'bootstrapped_by':  _nodeinfo_bootstrapped_by,
           'last_ansible_run':  ansible_date_time.iso8601,
           'last_ansible_play': nodeinfo_bootstrapped_by,
-          'environment':      nodeinfo_environment | default('production'),
+          'environment':      nodeinfo_environment | default(_nodeinfo_existing_base.environment | default('production')),
         } | combine(_nodeinfo_preserved_extra) | combine(nodeinfo_extra | default({}))
       }}
