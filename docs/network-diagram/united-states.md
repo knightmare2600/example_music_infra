@@ -37,7 +37,7 @@
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRLAX001<br/>Cisco ISR 4331 · WAN edge<br/>192.168.213.1"]
+    O_RTR["📡 EXARTRLAX001<br/>Debian 12 · WAN edge router<br/>192.168.213.1"]
     O_SWI1["🔀 EXASWILAX001<br/>Cisco Catalyst 9300 · Core switch<br/>192.168.213.250"]
     O_SWI2["🔀 EXASWILAX002<br/>Cisco Catalyst 2960 · Access switch<br/>192.168.213.251"]
     O_DCR["🗝️ EXADCRLAX001<br/>DC · deployed, then physically disconnected<br/>192.168.213.10"]
@@ -585,7 +585,7 @@ graph TD
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRATL001<br/>Cisco ISR 4331 · WAN edge router<br/>192.168.33.1"]
+    O_RTR["📡 EXARTRATL001<br/>Debian 12 · WAN edge router<br/>192.168.33.1"]
     O_INET --> O_RTR
 
     style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF

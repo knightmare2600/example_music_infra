@@ -26,7 +26,7 @@
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRCPH001<br/>Cisco ISR 4331 · WAN edge<br/>192.168.231.1"]
+    O_RTR["📡 EXARTRCPH001<br/>Debian 12 · WAN edge router<br/>192.168.231.1"]
     O_SWI["🔀 EXASWICPH001<br/>TP-Link JetStream · Office switch<br/>192.168.231.250"]
     O_CLK["⏰ EXACLKCPH001<br/>Meinberg LANTIME M300 · NTP clock<br/>192.168.231.18"]
     O_DCR1["🗝️ EXADCRCPH001<br/>DC · example.com<br/>192.168.231.10"]
@@ -181,7 +181,7 @@ graph TD
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRODE001<br/>Cisco ASA 5506-X · WAN edge, router/firewall combo<br/>192.168.126.1"]
+    O_RTR["📡 EXARTRODE001<br/>Debian 12 · WAN edge router<br/>192.168.126.1"]
     O_DCR1["🗝️ EXADCRODE001<br/>DC PDC, RID/Infra Master<br/>192.168.126.10"]
     O_DCR2["🗝️ EXADCRODE002<br/>DC Secondary<br/>192.168.126.11"]
     O_ESX1["💾 EXAESXODE001<br/>HP ML310e, VMware ESXi 1<br/>192.168.126.5"]
@@ -314,7 +314,7 @@ graph TD
     T_DCS["🗝️ EXADCSODE001<br/>DCS 1<br/>192.168.126.10"]
     T_SBC["🛡️ EXASBCODE001<br/>SBC<br/>192.168.126.48"]
     T_SBC["🛡️ EXASBCODE001<br/>SBC 1<br/>192.168.126.48 — planned"]
-    T_FWL["🧱 EXAFWLODE001<br/>Enterprise Edge Firewall<br/>192.168.126.253"]
+    T_FWL["🧱 EXAFWLODE001<br/>LAN Face<br/>192.168.126.253"]
     T_FWL2["🧱 EXAFWLODE002<br/>FWL 2<br/>192.168.126.254 — planned"]
     T_PVE --> T_DCS --> T_SBC --> T_SBC --> T_FWL --> T_FWL2
     T_MAC["🍎 EXAMACODE001<br/>IMac<br/>192.168.126.150"]
@@ -514,7 +514,7 @@ graph TD
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRFAX001<br/>Cisco ISR 4331 · WAN edge<br/>192.168.246.1"]
+    O_RTR["📡 EXARTRFAX001<br/>Debian 12 · WAN edge router<br/>192.168.246.1"]
     O_DCR["🗝️ EXADCRFAX001<br/>DC · present but never used, bare metal<br/>192.168.246.10"]
     O_RAC["🔧 EXARACFAX001<br/>BMC<br/>192.168.246.2"]
     O_INET --> O_RTR
@@ -592,8 +592,7 @@ graph TD
     T_SBC["🛡️ EXASBCFAX001<br/>SBC<br/>192.168.246.48"]
     T_SBC["🛡️ EXASBCFAX001<br/>SBC 1<br/>192.168.246.48 — planned"]
     T_FWL["🧱 EXAFWLFAX001<br/>LAN Face<br/>192.168.246.253"]
-    T_FWL2["🧱 EXAFWLFAX002<br/>WAN Edge<br/>192.168.246.254"]
-    T_PVE --> T_DCS --> T_SBC --> T_SBC --> T_FWL --> T_FWL2
+    T_PVE --> T_DCS --> T_SBC --> T_SBC --> T_FWL
     T_ILO["🔧 EXAILOFAX001<br/>ILO 1<br/>192.168.246.3 — planned"]
     T_RAC["🔧 EXARACFAX002<br/>RAC 2<br/>192.168.246.4 — planned"]
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -615,7 +614,6 @@ graph TD
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style T_FWL2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_ILO fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:TOPOLOGY:FAX:END
