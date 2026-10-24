@@ -175,6 +175,11 @@ Changelog:
                 TrueNAS's own ZFS pool-creation validation rejects outright ("Disks
                 have duplicate serial numbers: None") since it can't tell them apart.
                 Real physical hardware never hits this. Format is Robert's own choice.
+    2026-10-24  Robert's ask: NAS role now defaults "Number of disks" to 2 instead of
+                1 (boot + at least one real data disk -- the truenas/ playbooks already
+                exclude the boot disk from pool candidates, so a single-disk NAS has
+                nothing left to put in a pool). Floor-enforced too, with a warn(), in
+                case the operator still types 1.
 
 
 Usage:
@@ -950,6 +955,16 @@ def prompt_hardware(role):
         default_cores   = 2
         default_ram     = 2048
         default_disk    = 40
+    elif role in ("NAS",):
+        # TrueNAS -- needs a boot disk PLUS at least one separate data disk for pool
+        # creation (the real truenas/ playbooks already exclude the boot disk from
+        # pool candidates, confirmed live on EXANASFAL001 -- a single-disk NAS has
+        # nothing left over to actually put in a pool). default_disk_count below
+        # defaults the "Number of disks" prompt to 2 instead of 1 for this role only.
+        default_sockets = 1
+        default_cores   = 2
+        default_ram     = 4096
+        default_disk    = 32
     elif role in ("WKS", "LAP", "MBP", "MAC", "SUR"):
         default_sockets = 1
         default_cores   = 2
@@ -983,7 +998,16 @@ def prompt_hardware(role):
     # (ZFS mirror/degraded testing), previously create-vm.py always created exactly one.
     # Defaults to 1 so nothing changes for the common case; every disk gets the same
     # size (below), not prompted individually -- keeps this simple for what was asked.
-    disk_count = prompt_int("Number of disks", default=1, min_val=1, max_val=8)
+    #
+    # 2026-10-24, Robert's ask: NAS role needs at least 2 disks (boot + at least one
+    # real data disk for TrueNAS pool creation) even if the operator doesn't think to
+    # ask for more -- default the prompt to 2 for this role, then floor-enforce it
+    # below in case someone still types 1.
+    default_disk_count = 2 if role == "NAS" else 1
+    disk_count = prompt_int("Number of disks", default=default_disk_count, min_val=1, max_val=8)
+    if role == "NAS" and disk_count < 2:
+        warn("NAS role needs at least 2 disks (boot + a real data disk for the pool) -- bumping to 2")
+        disk_count = 2
     disk    = prompt_int(
         "Disk size (GB)" + (" (applied to all disks)" if disk_count > 1 else ""),
         default=default_disk, min_val=1, max_val=65536,
