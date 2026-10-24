@@ -51,6 +51,7 @@ import datetime
 import json
 import os
 import re
+import secrets
 import sys
 from pathlib import Path
 
@@ -380,12 +381,21 @@ def create_vm(proxmox, node, cfg, log_fn, dry_run=False):
     disk_slots = ["scsi0"] + [f"scsi{i}" for i in range(2, 2 + disk_count - 1)]
     disk_sizes = cfg.get("disk_sizes") or [cfg["disk_gb"]] * disk_count
 
+    # 2026-10-24, Robert's ask, live while testing TrueNAS pool creation on a VM
+    # (EXANASFAL001), same fix as v1 (create-vm.py) -- duplicated, not imported, per
+    # this file's own design (see header): QEMU/KVM virtual disks report no serial
+    # number at all by default, and every disk on a VM shares the same null value --
+    # TrueNAS's own ZFS pool-creation validation rejects that outright ("Disks have
+    # duplicate serial numbers: None"), since it can't tell them apart. Real physical
+    # hardware never hits this. Format is Robert's own choice: 8 random hex digits as
+    # XXXX-XXXX. secrets.token_hex(2) returns 4 hex chars (2 random bytes) per half.
     log_fn(f"Adding disk(s) ({len(disk_slots)})...", "step")
     for slot, size in zip(disk_slots, disk_sizes):
         try:
-            disk_spec = f"{storage}:{size}{_discard_suffix}"
+            serial = f"{secrets.token_hex(2)}-{secrets.token_hex(2)}"
+            disk_spec = f"{storage}:{size}{_discard_suffix},serial={serial}"
             proxmox.nodes(node).qemu(vmid).config.put(**{slot: disk_spec})
-            log_fn(f"Disk: {size}GB on {storage} ({slot}){' [discard=on]' if _discard_suffix else ''}", "ok")
+            log_fn(f"Disk: {size}GB on {storage} ({slot}){' [discard=on]' if _discard_suffix else ''} [serial={serial}]", "ok")
         except Exception as e:
             log_fn(f"Failed to add disk {slot}: {e} — add manually", "warn")
 
