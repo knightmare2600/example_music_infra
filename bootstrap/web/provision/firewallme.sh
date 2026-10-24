@@ -191,6 +191,15 @@ export DEBCONF_NONINTERACTIVE_SEEN=true
 #              check_breakglass_zone_file_collisions.py, both of which already treat this
 #              file as a real fallback path) produces output consistent with the current
 #              Ansible role, not a silent regression to the old behaviour.
+#  2026-10-24  BUG FIX, Robert's ask: molly-guard was missing from BOOTSTRAP_PKGS entirely --
+#              never had it, not a regression. Found alongside the same gap in the Ansible
+#              role's own mirrored fw_packages list (roles/firewall/defaults/main.yml, fixed
+#              the same day) -- an SSH session on a firewall provisioned/re-run via THIS
+#              script had no protection against an accidental reboot/shutdown either. Same
+#              dpkg -s detection as the zsh plugins just above (molly-guard overrides
+#              /sbin/reboot/shutdown/halt with wrapper scripts, but those binaries always
+#              exist regardless of whether it's installed -- command -v would tell us
+#              nothing).
 #
 # -------------------------------------------------------------------------------------------------
 # Colour helpers
@@ -608,6 +617,13 @@ command -v locate      &>/dev/null || BOOTSTRAP_PKGS+=(plocate)
 # whether they are installed. Use dpkg -s instead.
 dpkg -s zsh-autosuggestions     &>/dev/null || BOOTSTRAP_PKGS+=(zsh-autosuggestions)
 dpkg -s zsh-syntax-highlighting &>/dev/null || BOOTSTRAP_PKGS+=(zsh-syntax-highlighting)
+# 2026-10-24, Robert's ask: molly-guard was missing from this list entirely -- never
+# had it, not a regression. Same dpkg -s detection as the zsh plugins above, same
+# reason: molly-guard works by overriding /sbin/reboot, /sbin/shutdown, /sbin/halt with
+# its own wrapper scripts, but those binaries always exist regardless (coreutils/
+# systemd-provided) -- command -v reboot would always succeed whether or not
+# molly-guard is actually installed, telling us nothing.
+dpkg -s molly-guard &>/dev/null || BOOTSTRAP_PKGS+=(molly-guard)
 BOOTSTRAP_PKGS+=(cockpit cockpit-networkmanager)
 
 if [[ ${#BOOTSTRAP_PKGS[@]} -gt 0 ]]; then
