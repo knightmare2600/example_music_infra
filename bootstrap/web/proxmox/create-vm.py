@@ -168,6 +168,13 @@ Changelog:
                 exec involved at all. Not yet re-run against the real node after this fix --
                 confirm the arm64 branches (Machine: virt in the summary, the seabios/ovmf prompt)
                 actually fire before treating item 1 as verified.
+    2026-10-24  Every disk created now gets a random serial= (8 hex digits, XXXX-XXXX) --
+                Robert's ask, live while testing TrueNAS pool creation on a VM
+                (EXANASFAL001): QEMU/KVM virtual disks report no serial at all by
+                default, and every disk on a VM shares the same null value, which
+                TrueNAS's own ZFS pool-creation validation rejects outright ("Disks
+                have duplicate serial numbers: None") since it can't tell them apart.
+                Real physical hardware never hits this. Format is Robert's own choice.
 
 
 Usage:
@@ -210,6 +217,7 @@ import json
 import os
 import sys
 import re
+import secrets
 import time
 
 try:
@@ -1878,12 +1886,22 @@ def create_vm(proxmox, node, cfg, dry_run=False):
     _disk_count = cfg.get("disk_count", 1)
     _disk_slots = ["scsi0"] + [f"scsi{i}" for i in range(2, 2 + _disk_count - 1)]
 
+    # 2026-10-24, Robert's ask, live while testing TrueNAS pool creation on a VM
+    # (EXANASFAL001): QEMU/KVM virtual disks report no serial number at all by
+    # default, and every disk on a VM shares the same null value -- TrueNAS's own
+    # ZFS pool-creation validation rejects that outright ("Disks have duplicate
+    # serial numbers: None"), since it can't be sure it isn't looking at the same
+    # disk twice. Real physical hardware never hits this (manufacturers always burn
+    # in a real unique serial); every VM disk this script creates needs one set
+    # explicitly instead. Format is Robert's own choice: 8 random hex digits as
+    # XXXX-XXXX. secrets.token_hex(2) returns 4 hex chars (2 random bytes) per half.
     step(f"Adding disk(s) ({len(_disk_slots)})...")
     for _slot in _disk_slots:
         try:
-            disk_spec = f"{storage}:{cfg['disk_gb']}{_discard_suffix}"
+            _serial = f"{secrets.token_hex(2)}-{secrets.token_hex(2)}"
+            disk_spec = f"{storage}:{cfg['disk_gb']}{_discard_suffix},serial={_serial}"
             proxmox.nodes(node).qemu(vmid).config.put(**{_slot: disk_spec})
-            ok(f"Disk: {cfg['disk_gb']}GB on {storage} ({_slot}){' [discard=on]' if _discard_suffix else ''}")
+            ok(f"Disk: {cfg['disk_gb']}GB on {storage} ({_slot}){' [discard=on]' if _discard_suffix else ''} [serial={_serial}]")
         except Exception as e:
             warn(f"Failed to add disk {_slot}: {e} — add manually")
 
