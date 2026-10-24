@@ -38,7 +38,7 @@
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRBRK001<br/>Cisco ISR 4331 · WAN edge<br/>192.168.136.1"]
+    O_RTR["📡 EXARTRBRK001<br/>Debian 12 · WAN edge router<br/>192.168.136.1"]
     O_DCR["🗝️ EXADCRBRK001<br/>DC · DNS/Netlogon/KDC services stopped, hosted on the vCe...<br/>192.168.136.10"]
     O_DON["🍩 EXADONBRK001<br/>VxWorks · Donut vending<br/>192.168.136.60"]
     O_ESX1["💾 EXAESXBRK001<br/>HP ML310e, VMware ESXi 1<br/>192.168.136.5"]

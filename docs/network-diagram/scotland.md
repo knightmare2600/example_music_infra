@@ -364,7 +364,7 @@ graph TD
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTREDI001<br/>Cisco ISR 4331 · WAN edge<br/>192.168.131.1"]
+    O_RTR["📡 EXARTREDI001<br/>Debian 12 · WAN edge router<br/>192.168.131.1"]
     O_SWI1["🔀 EXASWIEDI001<br/>Cisco Catalyst 2960X · Floor switch<br/>192.168.131.250"]
     O_SWI2["🔀 EXASWIEDI002<br/>Cisco Catalyst 2960X · 48-port switch<br/>192.168.131.251"]
     O_DCR2["🗝️ EXADCREDI002<br/>Windows Server 2022 · DC secondary needs rebuild corrected to .12<br/>192.168.131.12"]
@@ -694,7 +694,7 @@ graph TD
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRCLY001<br/>Cisco ISR 4331 · WAN edge<br/>192.168.41.1"]
+    O_RTR["📡 EXARTRCLY001<br/>Debian 12 · WAN edge router<br/>192.168.41.1"]
     O_SWI["🔀 EXASWICLY001<br/>Cisco Catalyst 9300 · Core switch<br/>192.168.41.250"]
     O_DCR1["🗝️ EXADCRCLY001<br/>DC Primary<br/>192.168.41.10"]
     O_DCR2["🗝️ EXADCRCLY002<br/>DC Secondary<br/>192.168.41.11"]
@@ -855,7 +855,7 @@ graph TD
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRDUN001<br/>Cisco ISR 4331 · WAN edge<br/>192.168.138.1"]
+    O_RTR["📡 EXARTRDUN001<br/>Debian 12 · WAN edge router<br/>192.168.138.1"]
     O_DCR["🗝️ EXADCRDUN001<br/>DC · Windows Server 2003, unmaintained<br/>192.168.138.10"]
     O_RAC["🔧 EXARACDUN001<br/>HP iLO on HP ML310e · never deployed<br/>192.168.138.2"]
     O_PHN["📞 EXAPHNDUN001-002<br/>2 x Office Phones<br/>No IP Address"]
@@ -1184,7 +1184,7 @@ graph TD
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRABD001<br/>Cisco ISR 4331 · WAN edge<br/>192.168.224.1"]
+    O_RTR["📡 EXARTRABD001<br/>Debian 12 · WAN edge router<br/>192.168.224.1"]
     O_DCR["🗝️ EXADCRABD001<br/>DC · Windows Server 2008R2, bare metal, no ESX layer<br/>192.168.224.10"]
     O_RAC["🔧 EXARACABD001<br/>HP iLO on HP ML310e<br/>192.168.224.2"]
     O_MBP["💻 EXAMBPABD001-002<br/>2 x MacBook Pros<br/>192.168.224.124,137"]
@@ -1273,7 +1273,7 @@ graph TD
     T_DCS["🗝️ EXADCSABD001<br/>DCS 1<br/>192.168.224.10"]
     T_SBC["🛡️ EXASBCABD001<br/>SBC<br/>192.168.224.48"]
     T_SBC["🛡️ EXASBCABD001<br/>SBC 1<br/>192.168.224.48 — planned"]
-    T_FWL["🧱 EXAFWLABD001<br/>Enterprise Edge Firewall<br/>192.168.224.253"]
+    T_FWL["🧱 EXAFWLABD001<br/>LAN Face<br/>192.168.224.253"]
     T_PVE --> T_DCS --> T_SBC --> T_SBC --> T_FWL
     T_OTH_MBP["💻 EXAMBPABD001-002<br/>2 x MacBook Pros<br/>192.168.224.124,137"]
     T_OTH_PHN["📞 EXAPHNABD001-002<br/>2 x Office Phones<br/>No IP Address"]
