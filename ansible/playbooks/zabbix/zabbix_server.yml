@@ -57,6 +57,16 @@
 # Tags: zabbix, monitoring
 # =============================================================================
 # Changelog:
+#   2026-10-24  Real live bug, EXAZABCLD001 -- the first run of this file ever to reach a
+#               real box: "[Base packages] Download MIBs (download-mibs)" had no when:
+#               gate at all, so it tried to run a binary that doesn't exist whenever
+#               snmp-mibs-downloader fails to install (confirmed live: "No package
+#               matching 'snmp-mibs-downloader' is available") -- failed_when: false kept
+#               it from failing the play, but changed_when: true is hardcoded, so it
+#               showed up as "changed" with a real "Error executing command" instead of a
+#               clean skip. Gated on the same signal the WARN task two above it already
+#               uses. Verified all three real cases (already installed, install
+#               succeeded, install failed) in isolation before trusting it.
 #   2026-10-16  Real need found live: EXAZABCLD001 was just rebuilt via zabbixme.sh itself
 #               (confirmed still solid), which generated and already rotated its own real
 #               DB/Admin passwords (/root/.zabbix_db_credentials, /root/.zabbix_api_credentials)
@@ -260,11 +270,22 @@
       failed_when: false
       tags: [zabbix, monitoring]
 
+    # 2026-10-24, real live failure, EXAZABCLD001, first real run of this task ever:
+    # unconditional, no when: gate at all -- when snmp-mibs-downloader isn't installable
+    # (true here, confirmed live: "No package matching 'snmp-mibs-downloader' is
+    # available"), the download-mibs BINARY it provides doesn't exist either, so this
+    # threw a real "Error executing command" every time. failed_when: false stopped it
+    # from failing the play, but changed_when: true is hardcoded, so it showed as
+    # "changed" with a genuine error instead of a clean skip -- the same signal the
+    # WARN task two above already uses for exactly this case, just never applied here too.
     - name: "[Base packages] Download MIBs (download-mibs)"
       ansible.builtin.command: download-mibs
       register: zbx_download_mibs
       changed_when: true
       failed_when: false
+      when: >-
+        zbx_mibs_check.rc == 0
+        or (zbx_mibs_install is defined and zbx_mibs_install is not skipped and zbx_mibs_install is succeeded)
       tags: [zabbix, monitoring]
 
     # =========================================================================
