@@ -29,7 +29,7 @@
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRBON001<br/>Cisco ISR 4331 · WAN edge<br/>192.168.228.1"]
+    O_RTR["📡 EXARTRBON001<br/>Debian 12 · WAN edge router<br/>192.168.228.1"]
     O_SWI["🔀 EXASWIBON001<br/>Cisco Catalyst 2960X · Office switch<br/>192.168.228.250"]
     O_CAM["🎥 EXACAMBON001<br/>Axis P3245-LVE · CCTV camera<br/>192.168.228.17"]
     O_DCR["🗝️ EXADCRBON001<br/>DC · Schema Master, DN Master, HP ML310e bare metal<br/>192.168.228.10"]
@@ -193,7 +193,7 @@ graph TD
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRBER001<br/>Cisco ISR 4331 · WAN edge<br/>192.168.113.1"]
+    O_RTR["📡 EXARTRBER001<br/>Debian 12 · WAN edge router<br/>192.168.113.1"]
     O_DCR["🗝️ EXADCRBER001<br/>DC · PDC Emulator, RID/Infra Master, WS2019, Dell OptiPlex<br/>192.168.113.10"]
     O_RAC["🔧 EXARACBER001<br/>PCI remote-power card on OptiPlex, not a real BMC<br/>192.168.113.2"]
     O_INET --> O_RTR

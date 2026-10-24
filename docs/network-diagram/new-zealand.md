@@ -31,7 +31,7 @@
 %%{init: {'flowchart': {'curve': 'stepAfter'}}}%%
 graph TD
     O_INET["🌐 Internet"]
-    O_RTR["📡 EXARTRAKL001<br/>Cisco ISR 4331 · WAN edge<br/>192.168.93.1"]
+    O_RTR["📡 EXARTRAKL001<br/>Debian 12 · WAN edge router<br/>192.168.93.1"]
     O_SWI1["🔀 EXASWIAKL001<br/>Cisco Catalyst 9300 · Core switch<br/>192.168.93.250"]
     O_SWI2["🔀 EXASWIAKL002<br/>Cisco Catalyst 2960 · Access switch<br/>192.168.93.251"]
     O_CAM["🎥 EXACAMAKL001<br/>Axis · Camera<br/>192.168.93.82"]
