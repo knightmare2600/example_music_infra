@@ -3,15 +3,14 @@
 # playbooks/20-storage.yml
 # Example Music Limited — TrueNAS: pools/datasets/shares
 # =============================================================================
-# DELIBERATELY MINIMAL. There is no benarbejde/ spec yet for what
-# datasets/shares each site's NAS actually needs -- inventing one here would
-# be guessing at real business requirements this repo's own conventions
-# explicitly avoid doing (see benarbejde/extracted_credentials.json's own
-# "never invented, guessed, or defaulted without a real source" rule,
-# same principle applied here to storage layout, not credentials). This
-# creates exactly one general-purpose dataset as a safe, reviewable
-# starting point -- treat it as a placeholder to build on once real
-# per-site requirements exist, not a finished design.
+# Real spec now exists (2026-10-24, Robert's call): each site's NAS exports one
+# NFS share -- a Proxmox Backup Server datastore that doubles as a PVE
+# restore-browse target. NFS was picked over iSCSI deliberately: see the dedicated
+# comment on the dataset/share tasks below for the full reasoning (automation
+# complexity vs raw throughput). Still DELIBERATELY MINIMAL beyond that one real
+# use case -- no other dataset/share layout exists, and nothing here invents one
+# (see benarbejde/extracted_credentials.json's own "never invented, guessed, or
+# defaulted without a real source" rule, same principle applied to storage layout).
 #
 # Pool creation: arensb/ansible-truenas has no module for it at all (checked its
 # full module list, 2026-07-22 -- 24 modules, none create a pool), so this uses a
@@ -54,6 +53,14 @@
 # (wipes whatever's currently on the disks it's given).
 # =============================================================================
 # Changelog:
+#   2026-10-24  Added the real pbs-datastore dataset + NFS share/service setup -- Robert's
+#               call, NFS over iSCSI (asked and discussed, not guessed -- automation
+#               complexity was the deciding factor, see the dedicated comment on the new
+#               tasks). Replaces the old "general" placeholder dataset for new runs; an
+#               already-created "general" dataset on an existing box is left alone, not
+#               deleted automatically. maproot_group's real value (root vs wheel) is looked
+#               up live via GET /group?gid=0 rather than assumed, since it genuinely differs
+#               between TrueNAS CORE and SCALE.
 #   2026-10-24  Real live failure, EXANASFAL001 -- the disk-wipe fix below immediately hit
 #               "[Errno 16] Device or resource busy: '/dev/sda'". Confirmed via GET
 #               /boot/get_disks: sda is this box's own BOOT disk -- GET /disk's pool field
@@ -329,13 +336,159 @@
         - nas_unused_disks | default([]) | length > 0
         - ansible_check_mode
 
-    - name: "1 | Ensure a general-purpose dataset exists"
+    # ── PBS backup datastore / PVE restore target, over NFS ─────────────────────────
+    # 2026-10-24, Robert's call (asked, not guessed -- see
+    # docs/proxmox/proxmox-dcm-pbs-planning.md's Site Storage section for the broader
+    # context): NFS, not iSCSI. iSCSI gives somewhat better raw throughput, but
+    # automating it reliably means scripting BOTH the TrueNAS side (zvol/target/
+    # extent/portal) AND every consuming PVE/PBS node (iscsiadm discovery/login,
+    # filesystem creation, mount) -- far more moving parts for Ansible to get right
+    # consistently than NFS, which Proxmox Backup Server officially supports mounting
+    # its datastore from directly. This supersedes the old "no real spec exists yet"
+    # placeholder dataset -- the real spec is: one NFS export, read/write for this
+    # site's own LAN, used as both a PBS datastore and a PVE restore-browse target.
+    # Deliberately does NOT touch/remove any pre-existing "general" placeholder
+    # dataset on a box that already has one from before this change -- that's a
+    # manual cleanup call for Robert, not something to delete unasked.
+    - name: "1 | Ensure the pbs-datastore dataset exists"
       arensb.truenas.filesystem:
-        name: "{{ nas_pool_name }}/general"
+        name: "{{ nas_pool_name }}/pbs-datastore"
         type: FILESYSTEM
-        comments: "Ansible-managed placeholder dataset — real per-site layout not yet specified"
+        comments: "PBS backup datastore + PVE restore target, exported via NFS"
         create_ancestors: true
         state: present
+
+    # Same GET-service/start/enable pattern 00-rest-bootstrap.yml already uses for
+    # SSH -- not re-invented here, just applied to a different service.
+    - name: "2 | List services (to find nfs's numeric id and current state)"
+      ansible.builtin.uri:
+        url: "https://{{ truenas_target_ip | default(ansible_host) }}/api/v2.0/service"
+        method: GET
+        user: "{{ truenas_rest_bootstrap_user }}"
+        password: "{{ truenas_rest_bootstrap_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ truenas_rest_validate_certs | default(false) }}"
+        status_code: 200
+      register: _nas_services
+      delegate_to: localhost
+      check_mode: false
+      vars:
+        ansible_connection: local
+
+    - name: "2 | Identify the nfs service entry"
+      ansible.builtin.set_fact:
+        _nas_nfs_service: "{{ _nas_services.json | selectattr('service', 'equalto', 'nfs') | list | first }}"
+
+    - name: "2 | Start the NFS service"
+      ansible.builtin.uri:
+        url: "https://{{ truenas_target_ip | default(ansible_host) }}/api/v2.0/service/start"
+        method: POST
+        user: "{{ truenas_rest_bootstrap_user }}"
+        password: "{{ truenas_rest_bootstrap_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ truenas_rest_validate_certs | default(false) }}"
+        body_format: json
+        body:
+          service: nfs
+        status_code: 200
+      when:
+        - _nas_nfs_service.state != "RUNNING"
+        - not ansible_check_mode
+      delegate_to: localhost
+      vars:
+        ansible_connection: local
+
+    - name: "2 | Enable the NFS service at boot"
+      ansible.builtin.uri:
+        url: "https://{{ truenas_target_ip | default(ansible_host) }}/api/v2.0/service/id/{{ _nas_nfs_service.id }}"
+        method: PUT
+        user: "{{ truenas_rest_bootstrap_user }}"
+        password: "{{ truenas_rest_bootstrap_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ truenas_rest_validate_certs | default(false) }}"
+        body_format: json
+        body:
+          enable: true
+        status_code: 200
+      when:
+        - not _nas_nfs_service.enable
+        - not ansible_check_mode
+      delegate_to: localhost
+      vars:
+        ansible_connection: local
+
+    # root's real primary group NAME genuinely differs between TrueNAS CORE
+    # (FreeBSD, "wheel") and SCALE (Debian-based, "root") -- queried live rather
+    # than guessed, same rigour this whole chain has used for every TrueNAS-version-
+    # specific detail today.
+    - name: "3 | Look up root's primary group name (gid 0) for NFS maproot_group"
+      ansible.builtin.uri:
+        url: "https://{{ truenas_target_ip | default(ansible_host) }}/api/v2.0/group?gid=0"
+        method: GET
+        user: "{{ truenas_rest_bootstrap_user }}"
+        password: "{{ truenas_rest_bootstrap_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ truenas_rest_validate_certs | default(false) }}"
+        status_code: 200
+      register: _nas_root_group_lookup
+      delegate_to: localhost
+      check_mode: false
+      vars:
+        ansible_connection: local
+
+    - name: "3 | Set root group name fact"
+      ansible.builtin.set_fact:
+        nas_root_group: "{{ _nas_root_group_lookup.json[0].group }}"
+
+    # networks: scoped to this site's own LAN subnet -- nas_site_row.Subnet, the
+    # same sites.csv-sourced fact 00-preflight.yml's own site-lookup play already
+    # resolved earlier in this run, not re-derived here. Every PVE/PBS host at this
+    # site can reach it; nothing outside the site can. maproot_user/_group: root --
+    # PBS runs as root and needs full read/write/chown on its own datastore; NFS's
+    # default root-squash would otherwise silently break that. Idempotent: checks
+    # for an existing share at this path first.
+    - name: "4 | Check whether an NFS share for pbs-datastore already exists"
+      ansible.builtin.uri:
+        url: "https://{{ truenas_target_ip | default(ansible_host) }}/api/v2.0/sharing/nfs?path=/mnt/{{ nas_pool_name }}/pbs-datastore"
+        method: GET
+        user: "{{ truenas_rest_bootstrap_user }}"
+        password: "{{ truenas_rest_bootstrap_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ truenas_rest_validate_certs | default(false) }}"
+        status_code: 200
+      register: _nas_nfs_share_lookup
+      delegate_to: localhost
+      check_mode: false
+      vars:
+        ansible_connection: local
+
+    - name: "4 | Set share-already-exists fact"
+      ansible.builtin.set_fact:
+        nas_nfs_share_already_exists: "{{ _nas_nfs_share_lookup.json | length > 0 }}"
+
+    - name: "4 | Create the pbs-datastore NFS share"
+      ansible.builtin.uri:
+        url: "https://{{ truenas_target_ip | default(ansible_host) }}/api/v2.0/sharing/nfs"
+        method: POST
+        user: "{{ truenas_rest_bootstrap_user }}"
+        password: "{{ truenas_rest_bootstrap_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ truenas_rest_validate_certs | default(false) }}"
+        body_format: json
+        body:
+          path: "/mnt/{{ nas_pool_name }}/pbs-datastore"
+          comment: "PBS backup datastore + PVE restore target"
+          networks:
+            - "{{ nas_site_row.Subnet }}"
+          maproot_user: root
+          maproot_group: "{{ nas_root_group }}"
+        status_code: 200
+      when:
+        - not nas_nfs_share_already_exists
+        - not ansible_check_mode
+      delegate_to: localhost
+      vars:
+        ansible_connection: local
 
     - name: "Summary"
       debug:
@@ -347,9 +500,12 @@
               {{ '  ' }}Pool     : {{ nas_pool_name }} ({{ 'already existed, nothing to do' if nas_pool_already_exists
               else (nas_pool_vdev_type ~ ' across ' ~ (nas_unused_disks | length) ~ ' disk(s): ' ~ (nas_unused_disks | join(', ')) if not ansible_check_mode
               else 'not created, check mode') }})
-          - "  Dataset  : {{ nas_pool_name }}/general (placeholder only)"
+          - "  Dataset  : {{ nas_pool_name }}/pbs-datastore"
+          - >-
+              {{ '  ' }}NFS share: /mnt/{{ nas_pool_name }}/pbs-datastore -> {{ nas_site_row.Subnet | default('?') }}
+              ({{ 'already existed' if nas_nfs_share_already_exists | default(false) else 'created this run' }})
           - "  ════════════════════════════════════════════════════════════════"
-          - "  NOT DONE: real per-site dataset/share layout — this stage only"
-          - "  creates one general-purpose dataset until a real spec exists."
-          - "  No shares (NFS/SMB) configured at all yet."
+          - "  Mount from a PVE/PBS node at this site with:"
+          - >-
+              {{ '  ' }}mount -t nfs {{ truenas_target_ip | default(ansible_host) }}:/mnt/{{ nas_pool_name }}/pbs-datastore /mnt/pve/pbs-{{ host_site | lower }}
           - "  ════════════════════════════════════════════════════════════════"
