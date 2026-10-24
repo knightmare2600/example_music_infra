@@ -1493,9 +1493,16 @@ class IdentityScreen(WizardScreen):
                 )
             else:
                 yield Select([("No image-capable storage found", "")], id="storage", allow_blank=False)
+        # 2026-10-24, Robert's ask: NAS role needs at least 2 disks (boot + a real
+        # data disk for TrueNAS pool creation, same reasoning as create-vm.py's own
+        # fix) -- default this field to 2 for that role instead of the global
+        # default of 1, same lazy "resolved from role default" pattern as console
+        # above. Only applies while disk_count is still at its untouched default
+        # (<=1); doesn't fight a value the operator already set deliberately.
+        default_disk_count = 2 if (self.draft.role == "NAS" and self.draft.disk_count <= 1) else self.draft.disk_count
         with Horizontal(classes="field-row"):
             yield Label("Number of Disks:", classes="field-label")
-            yield Input(value=str(self.draft.disk_count), id="disk-count", type="integer", classes="field-input-narrow")
+            yield Input(value=str(default_disk_count), id="disk-count", type="integer", classes="field-input-narrow")
         yield Checkbox("Same size for all disks", value=self.draft.same_disk_size, id="same-disk-size")
         yield Vertical(id="disk-sliders")
 
@@ -1656,6 +1663,14 @@ class IdentityScreen(WizardScreen):
         n = self._disk_count()
         sliders = self.query_one("#disk-sliders", Vertical).query(Slider)
         slider_values = [s.value for s in sliders]
+        # Safety net for the compose()-time default above: if the operator still
+        # typed 1 for a NAS build, floor-enforce 2 here too rather than let it
+        # through -- pad slider_values so disk_sizes stays the same length as
+        # disk_count regardless of which path got here (same_size or per-disk).
+        if self.draft.role == "NAS" and n < 2:
+            n = 2
+            if slider_values:
+                slider_values = slider_values + [slider_values[-1]] * (n - len(slider_values))
         self.draft.disk_count = n
         self.draft.same_disk_size = same_size
         self.draft.disk_sizes = [slider_values[0]] * n if same_size else slider_values
