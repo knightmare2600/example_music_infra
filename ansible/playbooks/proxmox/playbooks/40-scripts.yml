@@ -10,6 +10,7 @@
 #
 # Files deployed (source: ansible/playbooks/proxmox/files/):
 #   /usr/local/bin/enable_vm_trim_discard.sh          -- TRIM/discard helper
+#   /usr/local/bin/add_missing_disk_serials.sh        -- disk serial= retrofit helper
 #   /usr/local/bin/pve-monthly-hoover.sh              -- monthly cleanup script
 #   /usr/local/bin/pve-snapshot-check.py              -- snapshot audit script
 #   /usr/local/bin/proxmox-replica-nic-guard.py       -- NIC link_down guard for replicas
@@ -55,6 +56,12 @@
 # Tags: scripts
 # =============================================================================
 # Changelog:
+#   2026-10-24  Added add_missing_disk_serials.sh to the deploy loop -- Robert's ask,
+#               same shape as enable_vm_trim_discard.sh (colour vars, qemu-server/*.conf
+#               loop, running-vs-stopped safety split, confirm-before-changing prompt).
+#               Retrofits serial= onto existing VMs' disks -- create-vm.py/
+#               create-vm-tui.py (2026-10-24) only generate one for disks created going
+#               forward, not anything built before that fix.
 #   2026-08-27  Added create-vm-tui.py to the deploy loop -- the Textual TUI
 #               v2 of create-vm.py (bootstrap/web/proxmox/create-vm-tui.py),
 #               built alongside create-vm.py, not replacing it. Target nodes
@@ -126,6 +133,7 @@
         mode: '0755'
       loop:
         - enable_vm_trim_discard.sh
+        - add_missing_disk_serials.sh
         - pve-monthly-hoover.sh
         - pve-snapshot-check.py
         - proxmox-replica-nic-guard.py
