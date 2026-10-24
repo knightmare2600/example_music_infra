@@ -2583,7 +2583,7 @@
                 "uuid": "aa2334c0b27c4e278fad69720dbabd5b",
                 "expression": "last(/TacticalRMM (Example Music)/vfs.file.exists[/meshcentral/meshcentral-data/.trmm_admin_setup_done])=0",
                 "name": "{HOST.NAME} - install marker missing: /meshcentral/meshcentral-data/.trmm_admin_setup_done",
-                "priority": "INFORMATION",
+                "priority": "INFO",
                 "description": "MeshCentral admin account + TacticalRMM device group setup (Section 19) has not completed (or this marker was removed after it had). If this host is supposed to be fully installed, re-run tacticalrmm_server.yml and investigate why -- this is informational severity, not an active-outage signal.",
                 "tags": [
                   {
@@ -2623,7 +2623,7 @@
                 "uuid": "ffe03fd1768e433a8f07dbdbd651176a",
                 "expression": "last(/TacticalRMM (Example Music)/vfs.file.exists[/rmm/api/tacticalrmm/nats-rmm.conf])=0",
                 "name": "{HOST.NAME} - install marker missing: /rmm/api/tacticalrmm/nats-rmm.conf",
-                "priority": "INFORMATION",
+                "priority": "INFO",
                 "description": "NATS init -- initial_db_setup/reload_nats/sync_mesh_with_trmm (Section 20) has not completed (or this marker was removed after it had). If this host is supposed to be fully installed, re-run tacticalrmm_server.yml and investigate why -- this is informational severity, not an active-outage signal.",
                 "tags": [
                   {
@@ -2663,7 +2663,7 @@
                 "uuid": "2fdf47a19552497e9a1f6aec37c6d074",
                 "expression": "last(/TacticalRMM (Example Music)/vfs.file.exists[/var/www/rmm/dist/env-config.js])=0",
                 "name": "{HOST.NAME} - install marker missing: /var/www/rmm/dist/env-config.js",
-                "priority": "INFORMATION",
+                "priority": "INFO",
                 "description": "Frontend SPA build downloaded + extracted (Section 18) has not completed (or this marker was removed after it had). If this host is supposed to be fully installed, re-run tacticalrmm_server.yml and investigate why -- this is informational severity, not an active-outage signal.",
                 "tags": [
                   {
