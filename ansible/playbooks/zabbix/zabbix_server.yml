@@ -57,6 +57,19 @@
 # Tags: zabbix, monitoring
 # =============================================================================
 # Changelog:
+#   2026-10-24  Robert's ask: browsing straight to the box's own hostname (or "/") should
+#               show the Zabbix login page directly, not via an Alias+redirect indirection
+#               -- the same indirection docs/zabbix_templates/import_template.py's own
+#               first real configuration.import attempt hit a 404 against (it called
+#               /api_jsonrpc.php at the document root, which was always empty). Rewrote
+#               templates/zabbix.vhost.conf.j2 to mount the real frontend directly at
+#               DocumentRoot instead of /var/www/html+Alias+RedirectMatch -- zabbix.<domain>,
+#               the box's own real hostname, and the static IP all now serve the login page
+#               straight from "/". Swept this same file for every OTHER reference to the
+#               old /zabbix/api_jsonrpc.php path -- found and fixed 8 internal API calls
+#               (API-wait, Admin login/rotation, auto-registration) this playbook makes to
+#               itself over localhost, which would have silently 404'd against the new vhost
+#               otherwise, plus one diagnostic message's own curl example.
 #   2026-10-24  Real live bug, EXAZABCLD001 -- the first run of this file ever to reach a
 #               real box: "[Base packages] Download MIBs (download-mibs)" had no when:
 #               gate at all, so it tried to run a binary that doesn't exist whenever
@@ -889,7 +902,7 @@
 
     - name: "[API] Wait for the Zabbix API to respond (up to 2 minutes)"
       ansible.builtin.uri:
-        url: "http://localhost/zabbix/api_jsonrpc.php"
+        url: "http://localhost/api_jsonrpc.php"
         method: POST
         headers:
           Content-Type: "application/json-rpc"
@@ -912,7 +925,7 @@
         msg: >-
           Zabbix API did not respond within 2 minutes -- skipping Admin password
           rotation and auto-registration setup. Re-run once the frontend/API are
-          confirmed reachable: curl -v http://localhost/zabbix/api_jsonrpc.php
+          confirmed reachable: curl -v http://localhost/api_jsonrpc.php
       when: zbx_api_ready.status is not defined or zbx_api_ready.status != 200
       tags: [zabbix, monitoring]
 
@@ -946,7 +959,7 @@
 
     - name: "[API] Attempt login with the Zabbix default (Admin/zabbix)"
       ansible.builtin.uri:
-        url: "http://localhost/zabbix/api_jsonrpc.php"
+        url: "http://localhost/api_jsonrpc.php"
         method: POST
         headers:
           Content-Type: "application/json-rpc"
@@ -967,7 +980,7 @@
 
     - name: "[API] Rotate Admin password off the default (passwd, not password -- real 7.0 API field name)"
       ansible.builtin.uri:
-        url: "http://localhost/zabbix/api_jsonrpc.php"
+        url: "http://localhost/api_jsonrpc.php"
         method: POST
         headers:
           Content-Type: "application/json-rpc"
@@ -992,7 +1005,7 @@
 
     - name: "[API] Re-authenticate (new password if just rotated, otherwise the existing KeePass one)"
       ansible.builtin.uri:
-        url: "http://localhost/zabbix/api_jsonrpc.php"
+        url: "http://localhost/api_jsonrpc.php"
         method: POST
         headers:
           Content-Type: "application/json-rpc"
@@ -1028,7 +1041,7 @@
 
     - name: "[Auto-registration] Get the auto-registration host group"
       ansible.builtin.uri:
-        url: "http://localhost/zabbix/api_jsonrpc.php"
+        url: "http://localhost/api_jsonrpc.php"
         method: POST
         headers:
           Content-Type: "application/json-rpc"
@@ -1048,7 +1061,7 @@
 
     - name: "[Auto-registration] Create the host group, if it doesn't exist yet"
       ansible.builtin.uri:
-        url: "http://localhost/zabbix/api_jsonrpc.php"
+        url: "http://localhost/api_jsonrpc.php"
         method: POST
         headers:
           Content-Type: "application/json-rpc"
@@ -1078,7 +1091,7 @@
 
     - name: "[Auto-registration] Get the autoregistration action"
       ansible.builtin.uri:
-        url: "http://localhost/zabbix/api_jsonrpc.php"
+        url: "http://localhost/api_jsonrpc.php"
         method: POST
         headers:
           Content-Type: "application/json-rpc"
@@ -1104,7 +1117,7 @@
     # autoregistration action -- not a guess.
     - name: "[Auto-registration] Create the action, if it doesn't exist yet"
       ansible.builtin.uri:
-        url: "http://localhost/zabbix/api_jsonrpc.php"
+        url: "http://localhost/api_jsonrpc.php"
         method: POST
         headers:
           Content-Type: "application/json-rpc"
