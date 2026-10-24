@@ -54,6 +54,15 @@
 # (wipes whatever's currently on the disks it's given).
 # =============================================================================
 # Changelog:
+#   2026-10-24  Real live failure, EXANASFAL001 -- the first run of the pool-creation code
+#               ever to reach midclt: "[EINVAL] pool_dataset_create.name: Please specify a
+#               pool which exists", right after pool creation itself reported success.
+#               POST /pool is one of TrueNAS's "job" methods -- the synchronous HTTP
+#               response is just a job id (confirmed: it returned "OK (2 bytes)"), not the
+#               finished pool; the documented full-pool-object response schema in
+#               docs/api2.txt is the job's eventual RESULT, not what the POST itself
+#               returns. Added a POST /core/job_wait task right after pool creation,
+#               confirmed against its own schema before writing it.
 #   2026-10-23  Added REST-based pool creation (name defaults to the new estate-wide
 #               "PBSBackups" convention, topology auto-picked by unused-disk count:
 #               1=STRIPE, 2=MIRROR, 3+=RAIDZ1) -- Robert's explicit ask, reversing this
@@ -165,6 +174,42 @@
                 disks: "{{ nas_unused_disks }}"
         status_code: 200
       register: _nas_pool_create
+      when:
+        - not nas_pool_already_exists
+        - nas_unused_disks | default([]) | length > 0
+        - not ansible_check_mode
+      delegate_to: localhost
+      vars:
+        ansible_connection: local
+
+    # 2026-10-24, real live failure, EXANASFAL001 (first run of the pool-creation code
+    # ever to reach midclt): the task above returned "OK (2 bytes)" -- a job id, not the
+    # finished pool. POST /pool is one of TrueNAS's "job" methods (confirmed against
+    # docs/api2.txt's own /pool POST response schema, which documents the FULL pool
+    # object -- that's the job's eventual RESULT, not what the synchronous HTTP call
+    # actually returns). We moved straight on to creating the dataset before the
+    # ZFS pool creation job had actually finished server-side, so it failed "[EINVAL]
+    # pool_dataset_create.name: Please specify a pool which exists". Fixed with the
+    # dedicated POST /core/job_wait endpoint (confirmed against its own schema: takes
+    # the bare job id as the request body, a single-arg method -- same convention
+    # /disk/get_used's own single-arg request body already uses in this file's sibling
+    # tasks), which blocks until the job completes and returns its real result.
+    # timeout: 300, generous for a real ZFS pool create, matching this chain's existing
+    # pattern for "wait for something slow to actually finish" (00-rest-bootstrap.yml's
+    # own checkin_timeout=300).
+    - name: "0 | Wait for the pool-creation job to finish (POST /pool is async -- returns a job id, not the finished pool)"
+      ansible.builtin.uri:
+        url: "https://{{ truenas_target_ip | default(ansible_host) }}/api/v2.0/core/job_wait"
+        method: POST
+        user: "{{ truenas_rest_bootstrap_user }}"
+        password: "{{ truenas_rest_bootstrap_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ truenas_rest_validate_certs | default(false) }}"
+        body_format: json
+        body: "{{ _nas_pool_create.json }}"
+        status_code: 200
+        timeout: 300
+      register: _nas_pool_create_wait
       when:
         - not nas_pool_already_exists
         - nas_unused_disks | default([]) | length > 0
