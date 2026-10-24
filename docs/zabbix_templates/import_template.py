@@ -32,14 +32,21 @@ Usage:
 
 =============================================================================
 Changelog:
+    2026-10-24  Robert's ask: the vhost (playbooks/zabbix/templates/zabbix.vhost.conf.j2)
+                has been rewritten to mount the frontend directly at DocumentRoot --
+                /api_jsonrpc.php is now the real path on a freshly-applied vhost, with
+                the old Alias-mounted /zabbix/api_jsonrpc.php gone. Boxes that haven't
+                had zabbix_server.yml re-run yet still have the old vhost, though -- this
+                script now probes both via apiinfo.version (no auth needed) and uses
+                whichever one actually answers, root-mounted path tried first, so it
+                works unmodified against either vhost generation.
     2026-10-24  Real live 404 on first use: hardcoded /api_jsonrpc.php at the document
-                root. The real vhost (playbooks/zabbix/templates/zabbix.vhost.conf.j2)
-                mounts the frontend via "Alias /zabbix <frontend_root>", not at the
-                document root -- fixed to /zabbix/api_jsonrpc.php. That same vhost also
-                restricts this exact path to Require ip <VRK/FRD provisioning subnets>
-                plus every real site's own LAN subnet -- EXAANSCLD001 sits on CLD's own
-                192.168.69.0/24, which is in that list, so this should reach it fine
-                from there.
+                root. The real vhost at the time mounted the frontend via
+                "Alias /zabbix <frontend_root>", not at the document root -- fixed to
+                /zabbix/api_jsonrpc.php. That same vhost also restricts this exact path
+                to Require ip <VRK/FRD provisioning subnets> plus every real site's own
+                LAN subnet -- EXAANSCLD001 sits on CLD's own 192.168.69.0/24, which is in
+                that list, so this should reach it fine from there.
     2026-10-24  Initial script. Robert's ask: test-import the 8 companion templates
                 built so far against the real, now-confirmed-working EXAZABCLD001.
 =============================================================================
@@ -88,6 +95,47 @@ def rpc(url, method, params, auth=None, req_id=1):
     return body["result"]
 
 
+def discover_url(scheme, host):
+    # 2026-10-24: the vhost is mid-migration from Alias-mounted /zabbix/api_jsonrpc.php
+    # to root-mounted /api_jsonrpc.php (playbooks/zabbix/templates/zabbix.vhost.conf.j2)
+    # -- caters for both, root-mounted path tried first since that's the new default,
+    # falling back to the old alias path for any box that hasn't had zabbix_server.yml
+    # re-run with the new template yet. apiinfo.version needs no auth, so a real
+    # JSON-RPC reply (even an error one) proves the path is live; only a 404 means
+    # "wrong path, try the other one".
+    candidates = [
+        f"{scheme}://{host}/api_jsonrpc.php",
+        f"{scheme}://{host}/zabbix/api_jsonrpc.php",
+    ]
+    probe = json.dumps(
+        {"jsonrpc": "2.0", "method": "apiinfo.version", "params": {}, "id": 0}
+    ).encode("utf-8")
+
+    for url in candidates:
+        req = urllib.request.Request(
+            url,
+            data=probe,
+            headers={"Content-Type": "application/json-rpc"},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                resp.read()
+            return url
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                continue
+            return url
+        except urllib.error.URLError:
+            continue
+
+    print(
+        f"[ERROR] Neither {candidates[0]} nor {candidates[1]} answered -- "
+        "is the vhost up and reachable from here?"
+    )
+    sys.exit(1)
+
+
 def detect_format(path):
     if path.endswith(".json"):
         return "json"
@@ -130,10 +178,8 @@ def main():
     ap.add_argument("files", nargs="+", help="Template export file(s) to import")
     args = ap.parse_args()
 
-    # The frontend is mounted via Apache's "Alias /zabbix <frontend_root>" (confirmed
-    # against the real zabbix.vhost.conf.j2 this estate's own zabbix_server.yml writes --
-    # not guessed), not at the document root -- 2026-10-24, real live 404 on first use.
-    url = f"{args.scheme}://{args.host}/zabbix/api_jsonrpc.php"
+    url = discover_url(args.scheme, args.host)
+    print(f"[*] API reachable at {url}")
     password = getpass.getpass(f"Zabbix API password for {args.user}: ")
 
     print(f"[*] Logging in to {url} as {args.user}...")
