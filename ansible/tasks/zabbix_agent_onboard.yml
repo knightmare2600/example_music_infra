@@ -67,6 +67,23 @@
 # the ambiguity entirely rather than gambling on untested path-resolution semantics.
 # =============================================================================
 # Changelog:
+#   2026-10-24  Robert's ask: handle every real outcome of the API registration step, not
+#               just "new host" and "already there, do nothing" --
+#                 1. New host: added an agent-type interface (own IP) and a description
+#                    to host.create -- cosmetic/UX, not required for active checks, but
+#                    the host list/graphs read better with a real interface attached.
+#                 2. API unreachable or any other registration failure: wrapped the whole
+#                    section in block/rescue -- prints a WARN (via the standard debug:
+#                    pattern this repo's exa_pretty callback already renders) with the
+#                    PSK/PSKID for manual entry, and crucially does NOT propagate the
+#                    failure up into linux/tools.yml's own outer rescue, whose message is
+#                    about hostname-not-EXA-convention yet and would have been actively
+#                    misleading for an unrelated Zabbix outage.
+#               3/4. Already-registered host: added a host.update call that pushes the
+#                    on-disk PSK/PSKID unconditionally (disk always wins) -- host.get
+#                    never returns the current tls_psk value to diff against (write-only
+#                    field), so there's nothing to usefully compare; pushing unconditionally
+#                    is a no-op when nothing's changed and self-heals real drift when it has.
 #   2026-10-16  Extracted the zabbix-release install logic into tasks/zabbix_repo_install.yml
 #               -- zabbix_server.yml (new, Ansible port of zabbixme.sh) needs the exact same
 #               arch-aware install, and duplicating it a second time would be the same
@@ -202,149 +219,224 @@
   tags: [zabbix, monitoring]
 
 # ── API registration -- idempotent throughout: get before create, every object ─────────
+#
+# 2026-10-24, Robert's ask: four possible outcomes once a host (new or already-known)
+# reaches this point --
+#   1. New host: register it (host.create), using the real "Linux by Zabbix agent
+#      active" template (the pre-6.0 "Template OS Linux" it replaced is gone in 7.0 --
+#      already confirmed against the real docs when this file was first written), an
+#      agent interface carrying the host's own IP (even though checks are active-only --
+#      having a real interface lets the frontend show/sort the host's address properly),
+#      and a description recording how/when it was onboarded.
+#   2. Zabbix API unreachable, or any other registration-step failure (EXAZABCLD001
+#      offline, a real API-level error, etc.) -- non-critical: warn and carry on rather
+#      than failing the whole play, with the PSK/PSKID printed so it can be typed in by
+#      hand once the server's back.
+#   3. Host already registered, but the PSK on disk differs from what Zabbix has on file
+#      (e.g. this box's PSK file got regenerated, or it's a re-image under the same
+#      hostname) -- on-disk always wins, pushed via host.update.
+#   4. Host already registered and already in sync -- host.update is a no-op in effect
+#      either way (the API gives no "nothing to change" signal for this call, so Ansible
+#      reports it as changed regardless -- harmless, matches every other Zabbix uri:
+#      task in this repo already).
+#
+# All of it lives inside one block/rescue so a genuine API-reachability failure can't
+# leak up into linux/tools.yml's own outer block/rescue around this include -- that
+# outer rescue's own message is specifically about the hostname not matching EXA
+# convention yet, confirmed by reading that caller's text directly; letting an unrelated
+# Zabbix outage fall through to it would print a real, misleading diagnostic.
+- name: "[Zabbix] API registration/sync (self-healing, never fatal)"
+  block:
+    - name: "[Zabbix] Check whether this host is already registered"
+      ansible.builtin.uri:
+        url: "http://{{ site_services.zabbix.ip }}/zabbix/api_jsonrpc.php"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ vault_zabbix_api_token }}"
+        body_format: json
+        body:
+          jsonrpc: "2.0"
+          method: host.get
+          params:
+            filter:
+              host: ["{{ zbx_real_hostname }}"]
+          id: 1
+        status_code: 200
+      register: zbx_host_check
+      delegate_to: localhost
+      become: false
 
-- name: "[Zabbix] Check whether this host is already registered"
-  ansible.builtin.uri:
-    url: "http://{{ site_services.zabbix.ip }}/zabbix/api_jsonrpc.php"
-    method: POST
-    headers:
-      Authorization: "Bearer {{ vault_zabbix_api_token }}"
-    body_format: json
-    body:
-      jsonrpc: "2.0"
-      method: host.get
-      params:
-        filter:
-          host: ["{{ zbx_real_hostname }}"]
-      id: 1
-    status_code: 200
-  register: zbx_host_check
-  delegate_to: localhost
-  become: false
-  tags: [zabbix, monitoring]
+    - name: "[Zabbix] Get the auto-registration host group"
+      ansible.builtin.uri:
+        url: "http://{{ site_services.zabbix.ip }}/zabbix/api_jsonrpc.php"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ vault_zabbix_api_token }}"
+        body_format: json
+        body:
+          jsonrpc: "2.0"
+          method: hostgroup.get
+          params:
+            filter:
+              name: ["auto-registration"]
+          id: 1
+        status_code: 200
+      register: zbx_autoreg_group
+      delegate_to: localhost
+      become: false
+      when: zbx_host_check.json.result | length == 0
 
-- name: "[Zabbix] Get the auto-registration host group"
-  ansible.builtin.uri:
-    url: "http://{{ site_services.zabbix.ip }}/zabbix/api_jsonrpc.php"
-    method: POST
-    headers:
-      Authorization: "Bearer {{ vault_zabbix_api_token }}"
-    body_format: json
-    body:
-      jsonrpc: "2.0"
-      method: hostgroup.get
-      params:
-        filter:
-          name: ["auto-registration"]
-      id: 1
-    status_code: 200
-  register: zbx_autoreg_group
-  delegate_to: localhost
-  become: false
-  when: zbx_host_check.json.result | length == 0
-  tags: [zabbix, monitoring]
+    - name: "[Zabbix] Get-or-create this site's own host group (Site - {{ host_site }})"
+      ansible.builtin.uri:
+        url: "http://{{ site_services.zabbix.ip }}/zabbix/api_jsonrpc.php"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ vault_zabbix_api_token }}"
+        body_format: json
+        body:
+          jsonrpc: "2.0"
+          method: hostgroup.get
+          params:
+            filter:
+              name: ["Site - {{ host_site }}"]
+          id: 1
+        status_code: 200
+      register: zbx_site_group_check
+      delegate_to: localhost
+      become: false
+      when: zbx_host_check.json.result | length == 0
 
-- name: "[Zabbix] Get-or-create this site's own host group (Site - {{ host_site }})"
-  ansible.builtin.uri:
-    url: "http://{{ site_services.zabbix.ip }}/zabbix/api_jsonrpc.php"
-    method: POST
-    headers:
-      Authorization: "Bearer {{ vault_zabbix_api_token }}"
-    body_format: json
-    body:
-      jsonrpc: "2.0"
-      method: hostgroup.get
-      params:
-        filter:
-          name: ["Site - {{ host_site }}"]
-      id: 1
-    status_code: 200
-  register: zbx_site_group_check
-  delegate_to: localhost
-  become: false
-  when: zbx_host_check.json.result | length == 0
-  tags: [zabbix, monitoring]
+    - name: "[Zabbix] Create this site's host group, if it doesn't exist yet"
+      ansible.builtin.uri:
+        url: "http://{{ site_services.zabbix.ip }}/zabbix/api_jsonrpc.php"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ vault_zabbix_api_token }}"
+        body_format: json
+        body:
+          jsonrpc: "2.0"
+          method: hostgroup.create
+          params:
+            name: "Site - {{ host_site }}"
+          id: 1
+        status_code: 200
+      register: zbx_site_group_create
+      delegate_to: localhost
+      become: false
+      when:
+        - zbx_host_check.json.result | length == 0
+        - zbx_site_group_check.json.result | length == 0
 
-- name: "[Zabbix] Create this site's host group, if it doesn't exist yet"
-  ansible.builtin.uri:
-    url: "http://{{ site_services.zabbix.ip }}/zabbix/api_jsonrpc.php"
-    method: POST
-    headers:
-      Authorization: "Bearer {{ vault_zabbix_api_token }}"
-    body_format: json
-    body:
-      jsonrpc: "2.0"
-      method: hostgroup.create
-      params:
-        name: "Site - {{ host_site }}"
-      id: 1
-    status_code: 200
-  register: zbx_site_group_create
-  delegate_to: localhost
-  become: false
-  when:
-    - zbx_host_check.json.result | length == 0
-    - zbx_site_group_check.json.result | length == 0
-  tags: [zabbix, monitoring]
+    - name: "[Zabbix] Get the Linux by Zabbix agent active template ID"
+      ansible.builtin.uri:
+        url: "http://{{ site_services.zabbix.ip }}/zabbix/api_jsonrpc.php"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ vault_zabbix_api_token }}"
+        body_format: json
+        body:
+          jsonrpc: "2.0"
+          method: template.get
+          params:
+            filter:
+              host: ["Linux by Zabbix agent active"]
+          id: 1
+        status_code: 200
+      register: zbx_template_check
+      delegate_to: localhost
+      become: false
+      when: zbx_host_check.json.result | length == 0
 
-- name: "[Zabbix] Get the Linux by Zabbix agent active template ID"
-  ansible.builtin.uri:
-    url: "http://{{ site_services.zabbix.ip }}/zabbix/api_jsonrpc.php"
-    method: POST
-    headers:
-      Authorization: "Bearer {{ vault_zabbix_api_token }}"
-    body_format: json
-    body:
-      jsonrpc: "2.0"
-      method: template.get
-      params:
-        filter:
-          host: ["Linux by Zabbix agent active"]
-      id: 1
-    status_code: 200
-  register: zbx_template_check
-  delegate_to: localhost
-  become: false
-  when: zbx_host_check.json.result | length == 0
-  tags: [zabbix, monitoring]
+    - name: "[Zabbix] Register host via host.create (own agent interface + description)"
+      ansible.builtin.uri:
+        url: "http://{{ site_services.zabbix.ip }}/zabbix/api_jsonrpc.php"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ vault_zabbix_api_token }}"
+        body_format: json
+        body:
+          jsonrpc: "2.0"
+          method: host.create
+          params:
+            host: "{{ zbx_real_hostname }}"
+            description: "Managed by Ansible (linux/tools.yml). Site: {{ host_site }}. Onboarded {{ ansible_date_time.date | default('') }}."
+            groups: >-
+              {{
+                [{'groupid': zbx_autoreg_group.json.result[0].groupid}] +
+                ([{'groupid': zbx_site_group_check.json.result[0].groupid}] if zbx_site_group_check.json.result | length > 0
+                 else [{'groupid': zbx_site_group_create.json.result.groupids[0]}])
+              }}
+            templates:
+              - templateid: "{{ zbx_template_check.json.result[0].templateid }}"
+            interfaces:
+              - type: 1
+                main: 1
+                useip: 1
+                ip: "{{ (ansible_default_ipv4.address if ansible_default_ipv4 is defined else (ansible_host | default(zbx_real_hostname))) }}"
+                dns: ""
+                port: "10050"
+            tls_connect: 2
+            tls_accept: 2
+            tls_psk_identity: "{{ zbx_real_hostname }}-psk"
+            tls_psk: "{{ zbx_psk_value }}"
+          id: 1
+        status_code: 200
+      register: zbx_host_create
+      delegate_to: localhost
+      become: false
+      no_log: true
+      when: zbx_host_check.json.result | length == 0
 
-- name: "[Zabbix] Register host via host.create"
-  ansible.builtin.uri:
-    url: "http://{{ site_services.zabbix.ip }}/zabbix/api_jsonrpc.php"
-    method: POST
-    headers:
-      Authorization: "Bearer {{ vault_zabbix_api_token }}"
-    body_format: json
-    body:
-      jsonrpc: "2.0"
-      method: host.create
-      params:
-        host: "{{ zbx_real_hostname }}"
-        groups: >-
-          {{
-            [{'groupid': zbx_autoreg_group.json.result[0].groupid}] +
-            ([{'groupid': zbx_site_group_check.json.result[0].groupid}] if zbx_site_group_check.json.result | length > 0
-             else [{'groupid': zbx_site_group_create.json.result.groupids[0]}])
-          }}
-        templates:
-          - templateid: "{{ zbx_template_check.json.result[0].templateid }}"
-        tls_connect: 2
-        tls_accept: 2
-        tls_psk_identity: "{{ zbx_real_hostname }}-psk"
-        tls_psk: "{{ zbx_psk_value }}"
-      id: 1
-    status_code: 200
-  register: zbx_host_create
-  delegate_to: localhost
-  become: false
-  no_log: true
-  when: zbx_host_check.json.result | length == 0
-  tags: [zabbix, monitoring]
+    # Host already registered -- disk always wins. No prior comparison attempted: the
+    # Zabbix API doesn't return the current tls_psk value on host.get (it's a write-only
+    # secret field, confirmed against the real 7.0 host object docs), so there's nothing
+    # to usefully diff against -- push unconditionally instead. Harmless when nothing's
+    # actually different (outcome 4); corrects real drift when it is (outcome 3).
+    - name: "[Zabbix] Sync PSK/PSKID for an already-registered host (on-disk value always wins)"
+      ansible.builtin.uri:
+        url: "http://{{ site_services.zabbix.ip }}/zabbix/api_jsonrpc.php"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ vault_zabbix_api_token }}"
+        body_format: json
+        body:
+          jsonrpc: "2.0"
+          method: host.update
+          params:
+            hostid: "{{ zbx_host_check.json.result[0].hostid }}"
+            description: "Managed by Ansible (linux/tools.yml). Site: {{ host_site }}. Last synced {{ ansible_date_time.date | default('') }}."
+            tls_connect: 2
+            tls_accept: 2
+            tls_psk_identity: "{{ zbx_real_hostname }}-psk"
+            tls_psk: "{{ zbx_psk_value }}"
+          id: 1
+        status_code: 200
+      register: zbx_host_update
+      delegate_to: localhost
+      become: false
+      no_log: true
+      when: zbx_host_check.json.result | length > 0
 
-- name: "[Zabbix] Registration summary"
-  ansible.builtin.debug:
-    msg: >-
-      {{ (zbx_host_check.json.result | length > 0)
-         | ternary('Already registered in Zabbix.',
-                    'Newly registered in Zabbix, group "Site - ' + host_site + '", template "Linux by Zabbix agent active".') }}
+    - name: "[Zabbix] Registration summary"
+      ansible.builtin.debug:
+        msg: >-
+          {{ (zbx_host_check.json.result | length > 0)
+             | ternary('Already registered in Zabbix -- PSK/PSKID synced from disk.',
+                        'Newly registered in Zabbix, group "Site - ' + host_site + '", template "Linux by Zabbix agent active".') }}
+  rescue:
+    # Deliberately NOT no_log -- Robert's explicit ask is to print the PSK/PSKID here so
+    # it can be typed into the Zabbix UI by hand. Every OTHER task above stays no_log:
+    # true; this is the one place it's meant to be visible.
+    - name: "[Zabbix] WARN -- could not register/sync {{ zbx_real_hostname }} with the Zabbix API"
+      ansible.builtin.debug:
+        msg: >-
+          WARN: Zabbix API registration/sync failed for {{ zbx_real_hostname }}
+          (EXAZABCLD001 unreachable, or a real API-level error -- non-critical,
+          continuing the rest of this play). Add it by hand once the server's reachable
+          again:
+            Host: {{ zbx_real_hostname }}
+            Group: Site - {{ host_site }} (+ auto-registration)
+            Template: Linux by Zabbix agent active
+            PSK identity: {{ zbx_real_hostname }}-psk
+            PSK value: {{ zbx_psk_value }}
   tags: [zabbix, monitoring]
