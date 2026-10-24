@@ -211,6 +211,20 @@
 #   # DHCP address here; leave blank only if already on the target address.
 # =============================================================================
 # Changelog:
+#   2026-10-24  Robert's ask, live on EXANASFAL001 ("TrueNAS, like all playbooks ought to be
+#               adding stuff, if the play prompts it ought to writeback"): a human-typed
+#               REST bootstrap password used to be resolved and used for that one run, then
+#               silently discarded -- never written to KeePass, requiring the exact same
+#               manual re-entry every future run. Fixed via tasks/keepass_credential_sync.yml's
+#               own new kcs_prompt_text/kcs_prompt_echo params (see that file's own
+#               changelog) -- the REST bootstrap password's own KeePass-sync call now prompts
+#               directly and files the answer itself; removed the separate "Prompt for REST
+#               API password" task and that credential's own line in "Resolve parameter
+#               facts" (now redundant -- the sync call's kcs_result_var already fully
+#               resolves it). The username prompt is unaffected in substance, just re-gated
+#               on its own defined-ness directly instead of the now-removed combined
+#               "vault configured" flag. Verified in isolation (mocked prompt results, all
+#               four branch combinations) before touching this file.
 #   2026-10-23  Real live bug, EXANASFAL001: the interface move succeeded on an earlier run,
 #               but gateway-setting (step 9) never completed (a different failure cut that
 #               run short first) -- the NAS was left with NO default route at all, confirmed
@@ -352,29 +366,42 @@
 
   tasks:
 
-    # ── KeePass check-defer: REST bootstrap password ──────────────────────────
+    # ── KeePass check-defer-prompt-write: REST bootstrap password ──────────────
     # 2026-10-01, Robert's explicit, confirmed-via-AskUserQuestion reversal of the
     # one-way KeePass flow -- externally-sourced-only credential, check-and-defer
     # ONLY (kcs_can_generate: false), no generation offered: this password is set
     # externally during TrueNAS's own first-boot wizard, Ansible has no way to
-    # produce it. Runs ahead of the existing vault-placeholder check below, so a
-    # real KeePass value is deferred to and the prompt is skipped entirely; falls
-    # through to exactly today's existing pause-prompt behaviour, unchanged, if
-    # KeePass has nothing either. host_site isn't set in this play (that normally
-    # comes from hostname_facts.yml, included in the second play below, not this
-    # one) -- derived directly from inventory_hostname here instead, same regex
+    # produce it. host_site isn't set in this play (that normally comes from
+    # hostname_facts.yml, included in the second play below, not this one) --
+    # derived directly from inventory_hostname here instead, same regex
     # windows_bootstrap/00-preflight.yml's own [A3] task uses.
     #
     # kcs_current_value deliberately treats the known vault placeholder
-    # ("REPLACE_WITH_TRUENAS_ADMIN_PASSWORD") as blank, same test
-    # _truenas_vault_configured below already uses -- otherwise a KeePass-empty
-    # run would file the literal placeholder string into KeePass as if it were a
-    # real credential.
+    # ("REPLACE_WITH_TRUENAS_ADMIN_PASSWORD") as blank, so a genuinely-untouched
+    # vault.yml doesn't get filed into KeePass as if it were a real credential.
+    #
+    # 2026-10-24 UPDATE, Robert's ask ("if the play prompts it ought to writeback"):
+    # kcs_prompt_text now makes this ONE call fully self-contained -- if KeePass has
+    # a real value, it's deferred to with no prompt at all; if not, it prompts
+    # directly and files whatever's typed as a first filing, so the next run doesn't
+    # need the exact same value re-typed from scratch. The separate "Prompt for REST
+    # API password" task and the password line of "Resolve parameter facts" that
+    # used to handle the no-KeePass-value case are both gone -- this one call now
+    # covers everything that used to take three.
 
     - name: "[KeePass sync] Derive site code from inventory_hostname (host_site isn't set in this play)"
       ansible.builtin.set_fact:
         _truenas_site_code: "{{ inventory_hostname | upper | regex_search('^EXA[A-Z]{2,4}([A-Z]{3})[0-9]{3}$', '\\1') | first }}"
 
+    # 2026-10-24, Robert's ask, live on EXANASFAL001 ("TrueNAS, like all playbooks ought
+    # to be adding stuff, if the play prompts it ought to writeback"): this call now
+    # passes kcs_prompt_text/kcs_prompt_echo -- when KeePass has nothing and generation
+    # isn't offered (true here, as always for this credential), the shared task now
+    # prompts directly and files whatever's typed as a first filing, instead of leaving
+    # truenas_rest_bootstrap_password blank for this file's own separate prompt (removed
+    # below) to resolve and then silently discard every single run. See
+    # tasks/keepass_credential_sync.yml's own changelog for the full detail -- this is
+    # the concrete case that prompted the fix, applied here first.
     - name: "[KeePass sync] TrueNAS REST bootstrap password"
       include_tasks: ../../../tasks/keepass_credential_sync.yml
       vars:
@@ -386,29 +413,21 @@
              if (truenas_rest_bootstrap_password | default('') not in ['', 'REPLACE_WITH_TRUENAS_ADMIN_PASSWORD'])
              else '' }}
         kcs_can_generate:           false
+        kcs_prompt_text:            "TrueNAS admin password for the REST API"
+        kcs_prompt_echo:            false
         kcs_credentials_json_role:  "TRUENAS_REST_BOOTSTRAP"
         kcs_result_var:             "truenas_rest_bootstrap_password"
 
-    - name: "Determine whether the vault actually has real credentials"
-      ansible.builtin.set_fact:
-        _truenas_vault_configured: >-
-          {{ (truenas_rest_bootstrap_password | default(''))
-             not in ['', 'REPLACE_WITH_TRUENAS_ADMIN_PASSWORD'] }}
-
     - name: "Prompt for REST API username (if not already set via vault/-e)"
+      # Gated directly on the username's own resolved state now, not a combined
+      # "vault configured" flag -- the password side is fully resolved by the single
+      # KeePass-sync call above regardless of which of its own branches fired, so there's
+      # no longer a meaningful shared "is everything configured" flag covering both.
       ansible.builtin.pause:
         prompt: "TrueNAS admin username for the REST API (blank = truenas_admin)"
         echo: true
       register: _truenas_user_prompt
-      when: not _truenas_vault_configured
-
-    - name: "Prompt for REST API password (if not already set via vault/-e)"
-      ansible.builtin.pause:
-        prompt: "TrueNAS admin password for the REST API"
-        echo: false
-      register: _truenas_pass_prompt
-      when: not _truenas_vault_configured
-      no_log: true
+      when: truenas_rest_bootstrap_user is not defined
 
     - name: "Prompt for the box's CURRENT reachable IP (if not already set via -e)"
       # 2026-10-23, Robert's ask, live on EXANASFAL001: the old wording ("if not yet moved
@@ -432,14 +451,19 @@
       register: _truenas_current_ip_prompt
       when: truenas_current_ip is not defined
 
+    # truenas_rest_bootstrap_password is deliberately NOT resolved here any more -- the
+    # KeePass-sync call above already fully resolves it via kcs_result_var, whichever of
+    # its own branches fired (cached value / KeePass hit / fresh prompt-and-file). Kept
+    # only for truenas_rest_bootstrap_user (not run through KeePass sync at all -- a
+    # username default, not a secret) and truenas_current_ip (unrelated to credentials).
+    # The self-reference below (truenas_rest_bootstrap_user | default(...)) is safe here
+    # specifically because this is a pre_tasks/tasks set_fact, not a vars: block --
+    # this estate's own standing fix for that exact footgun
+    # ([[feedback_self_referencing_vars_default_idiom]]).
     - name: "Resolve parameter facts"
       ansible.builtin.set_fact:
         truenas_rest_bootstrap_user: >-
-          {{ truenas_rest_bootstrap_user if _truenas_vault_configured
-             else (_truenas_user_prompt.user_input | default('truenas_admin', true)) }}
-        truenas_rest_bootstrap_password: >-
-          {{ truenas_rest_bootstrap_password if _truenas_vault_configured
-             else (_truenas_pass_prompt.user_input | default('', true)) }}
+          {{ truenas_rest_bootstrap_user | default(_truenas_user_prompt.user_input | default('truenas_admin', true)) }}
         truenas_current_ip: >-
           {{ truenas_current_ip
              | default(_truenas_current_ip_prompt.user_input
