@@ -71,6 +71,17 @@
 #               _maybe_show_verbose, minus the verbosity gate -- and call it from
 #               v2_runner_on_failed and v2_runner_on_unreachable (when not suppressed)
 #               regardless of -v. ok/changed/skipped are unaffected, still verbosity-gated.
+#   2026-10-24  Real, live, visible bug -- Robert spotted it looking at a genuine
+#               multi-line summary box (20-storage.yml's STORAGE SETUP COMPLETE banner):
+#               continuation lines of a multi-line msg sat 2 columns LEFT of where the
+#               first line's own text started, so border/content lines never actually
+#               lined up with the heading above them. v2_runner_on_ok/v2_runner_on_failed
+#               both computed indent_width as 4 + len(ip) + 2 -- that's ok()/err()'s own
+#               "[+] "/"[✗] " (4 chars) plus the "  " AFTER ip (2), but it forgot the "  "
+#               BEFORE ip that the same f-string also adds, so the real prefix is
+#               4 + 2 + len(ip) + 2, not 4 + len(ip) + 2. Fixed both; verified by
+#               reconstructing the exact prefix string and comparing its real length
+#               against the new indent_width (match), not just eyeballing the output.
 # =================================================================================================
 
 from __future__ import absolute_import, division, print_function
@@ -295,10 +306,15 @@ class CallbackModule(CallbackBase):
     host    = result._host.get_name()
     raw_msg = _looped_item_msgs(result._result) or result._result.get("msg", "")
     ip      = fmt_ip(host)
-    # Host column width: "[+] " (4) + ip column width, so wrapped lines of a
-    # multi-line msg align under the first line's text rather than under
-    # column zero.
-    indent_width = 4 + len(ip) + 2
+    # Host column width -- must match the EXACT prefix built below character for
+    # character: "[+] " (4, from ok()/chg()) + "  " (2, before ip) + ip + "  " (2,
+    # after ip) = 8 + len(ip). 2026-10-24, Robert spotted it live (real multi-line
+    # summary boxes, e.g. 20-storage.yml's STORAGE SETUP COMPLETE banner): this was
+    # computed as 4 + len(ip) + 2 = 6 + len(ip), 2 columns short -- it accounted for
+    # ok()'s own "[+] " and the "  " AFTER ip, but forgot the "  " BEFORE ip, so
+    # every continuation line (the border/content lines after the first) sat 2
+    # columns left of where the first line's own text actually starts.
+    indent_width = 4 + 2 + len(ip) + 2
     msg = fmt_msg(raw_msg, indent_width)
 
     if changed:
@@ -312,7 +328,9 @@ class CallbackModule(CallbackBase):
     host    = result._host.get_name()
     raw_msg = _looped_item_msgs(result._result) or result._result.get("msg", result._result.get("stderr", "unknown error"))
     ip      = fmt_ip(host)
-    indent_width = 4 + len(ip) + 2
+    # Same off-by-2 fix as v2_runner_on_ok above, same reason -- identical prefix
+    # shape (err()'s "[✗] " + "  " + ip + "  ").
+    indent_width = 4 + 2 + len(ip) + 2
     msg = fmt_msg(raw_msg, indent_width)
 
     self._display.display(err(f"  {C.WHITE}{ip}{C.RESET}  {msg}"))
