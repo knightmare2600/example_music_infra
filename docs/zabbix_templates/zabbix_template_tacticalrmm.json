@@ -3310,7 +3310,6 @@
             "status": "ENABLED",
             "steps": [
               {
-                "uuid": "c80121eb5b234fe18b11189d75a9fc78",
                 "name": "Load /",
                 "url": "https://{$TACTICALRMM.FRONTEND_SUBDOMAIN}.{$TACTICALRMM.DOMAIN}/",
                 "no": "1",
@@ -3328,7 +3327,6 @@
             "status": "ENABLED",
             "steps": [
               {
-                "uuid": "19925a8a829749eea15777bb1f9bcabc",
                 "name": "Load /",
                 "url": "https://{$TACTICALRMM.BACKEND_SUBDOMAIN}.{$TACTICALRMM.DOMAIN}/",
                 "no": "1",
@@ -3346,7 +3344,6 @@
             "status": "ENABLED",
             "steps": [
               {
-                "uuid": "c2bcf5ce94184c8497f71be8860b9332",
                 "name": "Load /",
                 "url": "https://{$TACTICALRMM.MESH_SUBDOMAIN}.{$TACTICALRMM.DOMAIN}/",
                 "no": "1",
