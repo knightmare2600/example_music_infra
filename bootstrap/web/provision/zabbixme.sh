@@ -487,6 +487,15 @@
 #                     the terminal output alone, indistinguishable from something having quietly
 #                     failed. Added a success line for that path so future runs make the recovery
 #                     visible instead of implicit.
+# v1.21.0 2026-10-24  Real live bug, found via zabbix_server.yml (the Ansible port of this script)
+#                     on EXAZABCLD001: Section 14's weekly DB-optimise systemd timer calls
+#                     /usr/bin/mysqlcheck, which doesn't exist on Debian trixie -- confirmed via
+#                     `dpkg -L mariadb-client`/`which`, not guessed. MariaDB 11.4's client package
+#                     on trixie doesn't ship the legacy mysql*-named compat symlinks, only the real
+#                     mariadb-* names. Matches an already-documented finding in this repo's own
+#                     group_vars/cloudpanel_servers/main.yml ("MariaDB 11.4 gets the mysql->mariadb
+#                     symlinks on Debian (12) but NOT on Ubuntu" -- same underlying packaging gap,
+#                     different OS version). Fixed to the real binary name (mariadb-check) directly.
 # -------------------------------------------------------------------------------------------------
 
 set -euo pipefail
@@ -1369,7 +1378,7 @@ After=mariadb.service
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/mysqlcheck -u${ZABBIX_DB_USER} -p${ZABBIX_DB_PASSWORD} --optimize ${ZABBIX_DB_NAME}
+ExecStart=/usr/bin/mariadb-check -u${ZABBIX_DB_USER} -p${ZABBIX_DB_PASSWORD} --optimize ${ZABBIX_DB_NAME}
 EOF
 cat > /etc/systemd/system/zabbix-db-optimize.timer << 'EOF'
 [Unit]

@@ -57,6 +57,16 @@
 # Tags: zabbix, monitoring
 # =============================================================================
 # Changelog:
+#   2026-10-24  Real live bug, EXAZABCLD001's weekly DB-optimise timer: ExecStart called
+#               /usr/bin/mysqlcheck, which doesn't exist on this box -- confirmed via
+#               `dpkg -L mariadb-client`/`which`, not guessed: Debian trixie's MariaDB
+#               11.4 client package doesn't ship the legacy mysql*-named compat symlinks,
+#               only the real mariadb-* names (mariadb-check, not mysqlcheck). Matches an
+#               already-documented finding in group_vars/cloudpanel_servers/main.yml's own
+#               cloudpanel_mariadb_symlinks list ("MariaDB 11.4 gets the mysql->mariadb
+#               symlinks on Debian (12) but NOT on Ubuntu" -- this box is on 13/trixie,
+#               same underlying gap). Fixed to the real binary name directly rather than
+#               relying on a compat symlink that isn't present.
 #   2026-10-24  Robert's ask: let EXAZABCLD001 monitor itself -- added a UFW rule allowing
 #               127.0.0.1 to the trapper port (10051/tcp). The companion templates
 #               (docs/zabbix_templates/*.json) all use ZABBIX_ACTIVE items, so the local
@@ -794,7 +804,7 @@
 
           [Service]
           Type=oneshot
-          ExecStart=/usr/bin/mysqlcheck -uzabbix -p{{ zbx_db_password }} --optimize zabbix
+          ExecStart=/usr/bin/mariadb-check -uzabbix -p{{ zbx_db_password }} --optimize zabbix
         mode: "0600"
       no_log: true
       notify: Reload systemd (zabbix)
