@@ -37,6 +37,17 @@ zabbix_export:
           Assign the template to each Proxmox host (or a dedicated monitor host
           that has the agent deployed on the PVE node).
 
+        REAL LIVE FINDING, 2026-10-24: first import attempt against a real Zabbix 7.0
+        server was rejected with "Invalid tag .../template(1): unexpected tag
+        'triggers'" -- this file had a standalone top-level triggers: block for the
+        one staleness trigger, even though that trigger only ever references the
+        master item's own key (a single-item expression, not cross-item). Moved it
+        into that master item's own nested triggers: list instead, matching the
+        pattern every item-level trigger elsewhere in this file (and every other
+        template in docs/zabbix_templates/) already uses successfully. UNVERIFIED --
+        not re-attempted since this fix, this file was never part of the planned
+        companion-template import run (it predates that series).
+
       groups:
         - name: Templates/Proxmox
 
@@ -64,6 +75,25 @@ zabbix_export:
               value: proxmox-nic-guard
             - tag: item-type
               value: master
+          triggers:
+            - uuid: a3b4c5d6-e7f8-4a9b-0c1d-e2f3a4b5c6d7
+              expression: >-
+                nodata(/Proxmox Replica NIC Guard/vfs.file.contents[/var/log/proxmox-replica-nic-guard.json],5h)=1
+              name: 'NIC Guard: no report received for >5 hours — guard may have stopped'
+              priority: WARNING
+              description: |
+                The guard has not produced a new JSON report in over 5 hours.
+                For a 4-hour schedule this means at least one run was missed.
+
+                Check:
+                  systemctl status proxmox-replica-nic-guard.timer
+                  systemctl status proxmox-replica-nic-guard.service
+                  journalctl -u proxmox-replica-nic-guard.service -n 30
+              tags:
+                - tag: component
+                  value: proxmox-nic-guard
+                - tag: scope
+                  value: availability
 
         # ── NICs connected on stopped replicas (PRIMARY ALERT METRIC) ────────
         - uuid: b2c3d4e5-f6a7-4b8c-9d0e-f1a2b3c4d5e6
@@ -316,30 +346,6 @@ zabbix_export:
           tags:
             - tag: component
               value: proxmox-nic-guard
-
-      # ──────────────────────────────────────────────────────────────────────
-      # TEMPLATE-LEVEL TRIGGERS
-      # (staleness check — depends on master item, not a dependent item)
-      # ──────────────────────────────────────────────────────────────────────
-      triggers:
-        - uuid: a3b4c5d6-e7f8-4a9b-0c1d-e2f3a4b5c6d7
-          expression: >-
-            nodata(/Proxmox Replica NIC Guard/vfs.file.contents[/var/log/proxmox-replica-nic-guard.json],5h)=1
-          name: 'NIC Guard: no report received for >5 hours — guard may have stopped'
-          priority: WARNING
-          description: |
-            The guard has not produced a new JSON report in over 5 hours.
-            For a 4-hour schedule this means at least one run was missed.
-
-            Check:
-              systemctl status proxmox-replica-nic-guard.timer
-              systemctl status proxmox-replica-nic-guard.service
-              journalctl -u proxmox-replica-nic-guard.service -n 30
-          tags:
-            - tag: component
-              value: proxmox-nic-guard
-            - tag: scope
-              value: availability
 
       # ──────────────────────────────────────────────────────────────────────
       # DASHBOARDS — optional starter dashboard (import separately if wanted)
