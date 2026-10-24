@@ -67,6 +67,21 @@
 # the ambiguity entirely rather than gambling on untested path-resolution semantics.
 # =============================================================================
 # Changelog:
+#   2026-10-24  Real live bug, EXAZABCLD001: `systemctl restart zabbix-agent` timed out
+#               and restart-looped even though the daemon itself started fine (collector
+#               + 10 listeners + active-checks worker all genuinely running, confirmed via
+#               `systemctl status`'s own CGroup listing). Real cause: this file's own
+#               `copy: content:` does a FULL replace of the Debian package's shipped
+#               zabbix_agentd.conf, which normally carries `PidFile=/run/zabbix/
+#               zabbix_agentd.pid` matching the systemd unit's own Type=forking PIDFile=
+#               expectation (`systemctl status`'s own error names that exact path) -- our
+#               replacement never re-added it, so the daemon silently fell back to its own
+#               compiled-in default path, which systemd never checks, so the unit waits
+#               forever and times out. This is a SHARED file (included by every Linux
+#               host's own linux/tools.yml run, not just this box) -- every agent in the
+#               estate has had this same latent gap since the file was first written;
+#               simply never surfaced before because nothing had done a manual
+#               `systemctl restart` on an agent until now. Added the missing PidFile= line.
 #   2026-10-24  Robert's ask: handle every real outcome of the API registration step, not
 #               just "new host" and "already there, do nothing" --
 #                 1. New host: added an agent-type interface (own IP) and a description
@@ -184,6 +199,7 @@
   ansible.builtin.copy:
     content: |
       # Managed by Ansible (tasks/zabbix_agent_onboard.yml) -- do not edit by hand.
+      PidFile=/run/zabbix/zabbix_agentd.pid
       LogFile=/var/log/zabbix/zabbix_agentd.log
       LogFileSize=1
       Server={{ site_services.zabbix.ip }}
