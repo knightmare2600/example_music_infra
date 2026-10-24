@@ -70,6 +70,18 @@
 # package maintainer ships or changes it to in a future version.
 # =============================================================================
 # Changelog:
+#   2026-10-24  Real live bug, EXAZABCLD001's own zabbix_agentd.log: "failed to accept
+#               an incoming connection: connection from 127.0.0.1 rejected, allowed
+#               hosts: 192.168.69.13" -- the server and this agent are co-located on
+#               the same box (self-monitoring), and the server's own periodic agent-
+#               availability check against its own IP routes via loopback at the
+#               kernel level, arriving as 127.0.0.1 even though Server= correctly has
+#               the real IP. Robert's ask: fix this up front for every agent, not just
+#               patch this one host, since he'll hit the same thing anywhere else a
+#               server/agent end up co-located. Added 127.0.0.1 alongside the real
+#               server IP to Server= (harmless everywhere -- loopback can only
+#               originate from the same machine). ServerActive untouched, it governs
+#               outgoing connections, never the problem here.
 #   2026-10-24  Robert's explicit ask, after confirming the real bug below: rewrote the
 #               config-writing task from a single copy: content: (full-file overwrite)
 #               to a series of ansible.builtin.lineinfile tasks against the real,
@@ -242,7 +254,18 @@
     # Stock ships LogFileSize=0 (no rotation) -- 1MB rotation instead, deliberate choice.
     - { regexp: "^LogFileSize=", line: "LogFileSize=1" }
     # Stock ships Server=127.0.0.1/ServerActive=127.0.0.1 (loopback placeholders).
-    - { regexp: "^Server=", line: "Server={{ site_services.zabbix.ip }}" }
+    # Server= (governs INCOMING connections TO this agent) also allows 127.0.0.1
+    # alongside the real server IP -- real live finding, EXAZABCLD001: when the
+    # Zabbix server and an agent are co-located on the same box (self-monitoring),
+    # the server's own periodic agent-availability check against its own IP routes
+    # via loopback at the kernel level, so the connection arrives FROM 127.0.0.1 and
+    # gets rejected ("allowed hosts: 192.168.69.13" in zabbix_agentd.log) even though
+    # the real server IP is correctly configured. Harmless to allow on every agent
+    # estate-wide, not just this one host -- loopback can only ever originate from
+    # the same machine, so this doesn't widen what can actually reach a remote
+    # agent's listener. ServerActive doesn't need this -- it governs OUTGOING
+    # connections the agent itself initiates, which was never the problem here.
+    - { regexp: "^Server=", line: "Server={{ site_services.zabbix.ip }},127.0.0.1" }
     - { regexp: "^ServerActive=", line: "ServerActive={{ site_services.zabbix.ip }}" }
     # Stock ships the literal placeholder Hostname=Zabbix server.
     - { regexp: "^Hostname=", line: "Hostname={{ zbx_real_hostname }}" }
