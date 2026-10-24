@@ -1,14 +1,18 @@
 # Managed by Ansible (playbooks/zabbix/zabbix_server.yml) -- do not edit by hand.
-# Hitting "/" 301-redirects to the Zabbix WebUI, same as asking for the FQDN directly --
-# both land on the same vhost, both redirect to /zabbix/.
+# 2026-10-24, Robert's ask: the frontend used to be Alias-mounted at /zabbix (with a
+# 301 redirect from "/"), which is also what docs/zabbix_templates/import_template.py's
+# own configuration.import call hit a real 404 against -- it was calling /api_jsonrpc.php
+# at the document root, which was always empty (/var/www/html, Apache's own default).
+# Mounted the real frontend directly AT the document root instead: zabbix.{{ zbx_domain }},
+# the box's own real hostname, and the static IP all now serve the Zabbix login page
+# straight from "/", no alias/redirect indirection to reason about. api_jsonrpc.php
+# moves to the root alongside it, same access restriction as before, just at the new path.
 <VirtualHost *:80>
     ServerName zabbix.{{ zbx_domain }}
+    ServerAlias {{ zbx_real_hostname | lower }}.{{ zbx_domain }}
     ServerAlias {{ zbx_static_ip }}
 
-    DocumentRoot /var/www/html
-    Alias /zabbix {{ zbx_frontend_root_path }}
-
-    RedirectMatch 301 ^/$ /zabbix/
+    DocumentRoot {{ zbx_frontend_root_path }}
 
     <Directory {{ zbx_frontend_root_path }}>
         Options FollowSymLinks
@@ -21,7 +25,7 @@
     # covers 127.0.0.0/8 AND ::1 AND Unix domain sockets -- curl resolving "localhost" to
     # ::1 first (tries IPv6 before IPv4 by default) needs this alongside the IPv4-only
     # site-subnet Require ip lines below, or every loopback API check gets a clean 403.
-    <Location /zabbix/api_jsonrpc.php>
+    <Location /api_jsonrpc.php>
         Require local
         Require ip {{ site_services.provisioning_edinburgh.subnet }}
         Require ip {{ site_services.provisioning_fredericia_havn.subnet }}
