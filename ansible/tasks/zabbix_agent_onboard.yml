@@ -70,6 +70,19 @@
 # package maintainer ships or changes it to in a future version.
 # =============================================================================
 # Changelog:
+#   2026-10-24  Real finding while onboarding EXAFWLCLD001, Robert's ask: host.create's
+#               template lookup was always "Linux by Zabbix agent active" (Zabbix's own
+#               stock template) -- none of this series' 8 real companion templates
+#               (docs/zabbix_templates/*.json) were ever linked to any host, including
+#               EXAZABCLD001's own self-registration. Fixed, going forward only (not
+#               retrofitting already-registered hosts -- Robert's explicit call): every
+#               new registration now gets "Linux by Zabbix agent" (passive, swapped in
+#               for the active stock template per Robert's own call -- inbound
+#               10050/10051 from LAN is already allowed on every firewall role host,
+#               confirmed in 07_nftables.yml before relying on it) + our own
+#               linuxtools_examplemusic (base) + a role-specific companion template,
+#               if one exists for host_role (FWL/NAS/CLP/DNS/ANS/PVE/RMM -- the 7 roles
+#               with a real dedicated template; everything else just gets the base two).
 #   2026-10-24  Real live bug, EXAZABCLD001's own zabbix_agentd.log: "failed to accept
 #               an incoming connection: connection from 127.0.0.1 rejected, allowed
 #               hosts: 192.168.69.13" -- the server and this agent are co-located on
@@ -405,7 +418,35 @@
         - zbx_host_check.json.result | length == 0
         - zbx_site_group_check.json.result | length == 0
 
-    - name: "[Zabbix] Get the Linux by Zabbix agent active template ID"
+    # 2026-10-24, real finding while onboarding EXAFWLCLD001: this lookup was always
+    # "Linux by Zabbix agent active" -- Zabbix's own STOCK active-check template, never
+    # any of the 8 companion templates this whole series built (docs/zabbix_templates/
+    # *.json). Every host ever onboarded through this file, including EXAZABCLD001's
+    # own self-registration, only ever got the generic stock template -- confirmed by
+    # reading this exact filter, not assumed. Robert's explicit calls on the real fix:
+    #   - stock template swapped to "Linux by Zabbix agent" (passive, not active) --
+    #     "does the same job and is passive". Inbound 10050/10051 from LAN is already
+    #     allowed on every firewall role host (07_nftables.yml, confirmed before this
+    #     change, not assumed), so passive checks work out of the box.
+    #   - every host also gets our own linuxtools_examplemusic (base companion) PLUS
+    #     its own role-specific companion template, if one exists for host_role.
+    #   - going forward only -- already-registered hosts (EXAZABCLD001 included) are
+    #     NOT retrofitted here; that's an explicit, separate follow-up if ever wanted.
+    - name: "[Zabbix] Resolve this host's role-specific companion template name, if any"
+      set_fact:
+        zbx_role_template_name: "{{ zbx_role_template_map[host_role | upper] | default('') }}"
+      vars:
+        zbx_role_template_map:
+          FWL: firewall_examplemusic
+          NAS: truenas_examplemusic
+          CLP: cloudpanel_examplemusic
+          DNS: bind9_examplemusic
+          ANS: ansible_examplemusic
+          PVE: proxmox_examplemusic
+          RMM: tacticalrmm_examplemusic
+      when: zbx_host_check.json.result | length == 0
+
+    - name: "[Zabbix] Get the base passive stock template ID (Linux by Zabbix agent)"
       ansible.builtin.uri:
         url: "http://{{ site_services.zabbix.ip }}/zabbix/api_jsonrpc.php"
         method: POST
@@ -417,13 +458,55 @@
           method: template.get
           params:
             filter:
-              host: ["Linux by Zabbix agent active"]
+              host: ["Linux by Zabbix agent"]
           id: 1
         status_code: 200
-      register: zbx_template_check
+      register: zbx_template_stock
       delegate_to: localhost
       become: false
       when: zbx_host_check.json.result | length == 0
+
+    - name: "[Zabbix] Get our own base companion template ID (linuxtools_examplemusic)"
+      ansible.builtin.uri:
+        url: "http://{{ site_services.zabbix.ip }}/zabbix/api_jsonrpc.php"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ vault_zabbix_api_token }}"
+        body_format: json
+        body:
+          jsonrpc: "2.0"
+          method: template.get
+          params:
+            filter:
+              host: ["linuxtools_examplemusic"]
+          id: 1
+        status_code: 200
+      register: zbx_template_linuxtools
+      delegate_to: localhost
+      become: false
+      when: zbx_host_check.json.result | length == 0
+
+    - name: "[Zabbix] Get this host's role-specific companion template ID, if one exists"
+      ansible.builtin.uri:
+        url: "http://{{ site_services.zabbix.ip }}/zabbix/api_jsonrpc.php"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ vault_zabbix_api_token }}"
+        body_format: json
+        body:
+          jsonrpc: "2.0"
+          method: template.get
+          params:
+            filter:
+              host: ["{{ zbx_role_template_name }}"]
+          id: 1
+        status_code: 200
+      register: zbx_template_role_specific
+      delegate_to: localhost
+      become: false
+      when:
+        - zbx_host_check.json.result | length == 0
+        - zbx_role_template_name != ''
 
     - name: "[Zabbix] Register host via host.create (own agent interface + description)"
       ansible.builtin.uri:
@@ -444,8 +527,16 @@
                 ([{'groupid': zbx_site_group_check.json.result[0].groupid}] if zbx_site_group_check.json.result | length > 0
                  else [{'groupid': zbx_site_group_create.json.result.groupids[0]}])
               }}
-            templates:
-              - templateid: "{{ zbx_template_check.json.result[0].templateid }}"
+            templates: >-
+              {{
+                [
+                  {'templateid': zbx_template_stock.json.result[0].templateid},
+                  {'templateid': zbx_template_linuxtools.json.result[0].templateid}
+                ]
+                + ([{'templateid': zbx_template_role_specific.json.result[0].templateid}]
+                   if (zbx_role_template_name != '' and zbx_template_role_specific.json.result | length > 0)
+                   else [])
+              }}
             interfaces:
               - type: 1
                 main: 1
