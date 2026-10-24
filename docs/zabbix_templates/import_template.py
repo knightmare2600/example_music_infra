@@ -32,6 +32,14 @@ Usage:
 
 =============================================================================
 Changelog:
+    2026-10-24  Real live 404 on first use: hardcoded /api_jsonrpc.php at the document
+                root. The real vhost (playbooks/zabbix/templates/zabbix.vhost.conf.j2)
+                mounts the frontend via "Alias /zabbix <frontend_root>", not at the
+                document root -- fixed to /zabbix/api_jsonrpc.php. That same vhost also
+                restricts this exact path to Require ip <VRK/FRD provisioning subnets>
+                plus every real site's own LAN subnet -- EXAANSCLD001 sits on CLD's own
+                192.168.69.0/24, which is in that list, so this should reach it fine
+                from there.
     2026-10-24  Initial script. Robert's ask: test-import the 8 companion templates
                 built so far against the real, now-confirmed-working EXAZABCLD001.
 =============================================================================
@@ -122,7 +130,10 @@ def main():
     ap.add_argument("files", nargs="+", help="Template export file(s) to import")
     args = ap.parse_args()
 
-    url = f"{args.scheme}://{args.host}/api_jsonrpc.php"
+    # The frontend is mounted via Apache's "Alias /zabbix <frontend_root>" (confirmed
+    # against the real zabbix.vhost.conf.j2 this estate's own zabbix_server.yml writes --
+    # not guessed), not at the document root -- 2026-10-24, real live 404 on first use.
+    url = f"{args.scheme}://{args.host}/zabbix/api_jsonrpc.php"
     password = getpass.getpass(f"Zabbix API password for {args.user}: ")
 
     print(f"[*] Logging in to {url} as {args.user}...")
