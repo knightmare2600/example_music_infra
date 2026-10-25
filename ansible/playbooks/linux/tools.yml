@@ -4,6 +4,20 @@
 #   ansible-playbook playbooks/linux/tools.yml -i configs/inventory
 #
 # Changelog:
+#   2026-10-25  Real live bug, Robert, EXAANSCLD001: ansible_dir/inventory/ssh_key were
+#               entirely missing from the control node's own nodeinfo.json -- NOT a
+#               preservation bug (tasks/nodeinfo.yml's own 2026-10-17 extras-preservation
+#               fix is working correctly), confirmed by grep that NO Ansible playbook has
+#               ever set these fields at all -- only bootstrap/web/provision/ansibleme.sh's
+#               own bash-side nodeinfo write does, and this box's bootstrapped_by is
+#               "linux/tools.yml", not "ansibleme.sh" -- meaning this box's very first
+#               nodeinfo write was genuinely from this file, with nothing from ansibleme.sh
+#               to preserve in the first place. Added a conditional nodeinfo_extra (ANS
+#               role only) with the 3 fixed, estate-wide ansible_dir/inventory/ssh_key
+#               paths ansibleme.sh itself always uses (ANSIBLE_HOME=/home/ansible, same
+#               convention this repo's own ansible.cfg/"control node runs as ansible, not
+#               root" notes already assume elsewhere) -- not per-host computed, since
+#               they're the same on every control node by convention.
 #   2026-10-22  NAS-safe mode (Robert's ask, found live while deliberately testing this
 #               playbook against a disposable TrueNAS box): truenas/README.md and
 #               10-access.yml's own header already said outright that this playbook's
@@ -703,6 +717,28 @@
             nodeinfo_postal_code: "{{ _tools_site_row.PostalCode | default('') }}"
             nodeinfo_environment: "{{ resolved_environment }}"
             nodeinfo_bootstrapped_by: "linux/tools.yml"
+            # ANS role only -- ansible_dir/inventory/ssh_key. Real live finding,
+            # 2026-10-25 (Robert, EXAANSCLD001): these 3 fields were missing from the
+            # control node's own nodeinfo.json entirely, not a preservation bug -- no
+            # Ansible playbook has EVER set them (confirmed by grep across every real
+            # playbook, none reference ansible_dir), only bootstrap/web/provision/
+            # ansibleme.sh's own bash-side nodeinfo write does (ANSIBLE_DIR/CONFIGS_DIR/
+            # inventory/KEY_FILE), and this box's bootstrapped_by is "linux/tools.yml",
+            # not "ansibleme.sh" -- meaning linux/tools.yml's own very first write here
+            # was a genuine first-ever write with nothing from ansibleme.sh to preserve in
+            # the first place, not something tasks/nodeinfo.yml's extras-preservation
+            # mechanism (2026-10-17) ever had a chance to protect. Fixed values, not
+            # per-host computed -- ansibleme.sh's own ANSIBLE_HOME="/home/ansible" is a
+            # fixed, estate-wide convention (same one ansible.cfg/every "control node runs
+            # as ansible, not root" note already assumes elsewhere in this repo), not
+            # something that varies per control node.
+            nodeinfo_extra: >-
+              {{
+                {'ansible_dir': '/home/ansible/ansible',
+                 'inventory': '/home/ansible/ansible/configs/inventory',
+                 'ssh_key': '/home/ansible/ansible/configs/ansible-id_rsa'}
+                if (host_role | upper == 'ANS') else {}
+              }}
 
         # nodeinfo.json now carries the environment (above), so the legacy
         # standalone file is redundant -- clean it up once it's confirmed
