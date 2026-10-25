@@ -23,10 +23,10 @@ root-ssh-keys = [
 [network]
 source = "from-dhcp"
 
-# Pakhus only implements a 2-disk ZFS mirror (installer/config.py rejects anything else), so
-# unlike the PVE files there is no VRK-pdm-degraded.toml single-disk variant. sda/sdb is
-# carried over from VRK-answer.toml as a presumption -- unverified for whatever PDM host
-# this ends up installing.
+# The standard build: a 2-disk ZFS mirror. Correction 2026-10-25: like the PVE files, there
+# is now a single-disk VRK-pdm-degraded.toml too (pakhus 7949a0f, menu.ipxe v2.20), which
+# the installer fetches instead when fewer than 2 disks are present. sda/sdb is carried over
+# from VRK-answer.toml as a presumption -- unverified for whatever PDM host this ends up installing.
 [disk-setup]
 filesystem = "zfs"
 zfs.raid = "raid1"

@@ -67,6 +67,8 @@ ANSWER_TOMLS = [
     # Projekt Pakhus (PDM), menu.ipxe :pakhus -- added 2026-10-25.
     "bootstrap/web/proxmox/VRK-pdm-answer.toml",
     "bootstrap/web/proxmox/FRD-pdm-answer.toml",
+    "bootstrap/web/proxmox/VRK-pdm-degraded.toml",
+    "bootstrap/web/proxmox/FRD-pdm-degraded.toml",
 ]
 
 
