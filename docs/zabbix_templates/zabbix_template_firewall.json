@@ -12,15 +12,10 @@
         "uuid": "327a661a7fe14be386ba9af2a62ab47f",
         "template": "firewall_examplemusic",
         "name": "Firewall-Router (Example Music)",
-        "description": "2026-10-25 BUG FIX, Robert, live on EXAFWLCLD001: all 9 firewall-specific nodeinfo fields (lan_ip/lan_iface/ansible_ip/wg_role/wg_tunnel_ip/wg_hub/wan_iface/wan_mode/wan_ip) were returning no data despite the real file having correct values. Root cause: the original master item was a vfs.file.regexp expecting those 9 keys to appear consecutively in one exact literal order (firewallme.sh's own bash/jq field order). Ansible's ansible.builtin.copy + to_nice_json (used by every Ansible-side nodeinfo write, incl. linux/tools.yml which runs against every host on every re-run) always re-serializes the file with keys sorted ALPHABETICALLY, so that literal-order assumption never matched the real on-disk file. Fixed by switching to the same proven cross-template DEPENDENT-item pattern already live on templates 6/7 (bind9/tacticalrmm, see feedback_zabbix_duplicate_item_keys_across_templates.md): each of the 9 items now points its master_item at linuxtools_examplemusic's own vfs.file.contents[/etc/example-music/nodeinfo.json] item (real JSONPATH against real JSON, immune to key order) instead of redeclaring a home-grown regex master item of its own. Added the top-level \"templates\" parent-link entry this cross-template reference needs at import time. NOT YET VERIFIED against a real re-import -- same caveat bind9/tacticalrmm's own fix still carries.\n\nCompanion template for bootstrap/web/provision/firewallme.sh + ansible/playbooks/firewallme -- built by copying zabbix_template_ansible.json's generator and editing it. Same flat, native, one-item-per-thing design.\n\nDELIBERATELY NOT CHECKED (Robert's explicit calls, 2026-10-17)\n  - cockpit-navigator: a one-off GitHub .deb, not an apt package -- no stable copyright path. Revisit next week.\n  - /home/ansible/.zshrc, /root/.zshrc, ansible user's shell=zsh: already covered by linuxtools' template (linked to every Linux node, firewalls included) -- not duplicated here.\n  - /etc/cockpit/cockpit.conf, /etc/cockpit/ws-certs.d/0-self-signed.cert: skipped for now.\n  - /etc/wireguard/{private,public,preshared}.key and wg0.conf: NOT checked. The directory itself is mode 0700 (both firewallme.sh and the Ansible role set this) -- the zabbix-agent user has no search permission into it at all, so this isn't just the usual 'can't read file contents' caveat, nothing inside this directory is even stat-able.\n  - nftables RULESET CONTENT: not checked. Role- and site-conditional (WAN SSH, WireGuard port, CLD-only rules) -- Robert's call: 'too much can go wrong, this is an advanced thing.' Only the file's existence is checked.\n  - wg0.conf peer registration (which spokes are actually registered on their hub) and the whole hub/spoke role-aware design: deferred, backlog.\n  - /etc/resolv.conf: written chattr +i (immutable) by the role -- a plain vfs.file.exists can't see that attribute, and existence alone is nearly always true anyway. Backlogged, not built.\n  - root's shell=zsh on a firewall host: not covered by linuxtools (that template's root-shell check is the ansible-control-node-specific one, a different host) -- backlogged, not built here either.\n\nDESIGN NOTES\n  - Package list is fw_packages minus the 11 packages already in common_packages (computed programmatically, not by hand) -- linuxtools' template already covers those on every Linux node.\n  - /etc/dnsmasq.d/lan.conf and NetworkManager.conf's managed=false check are both INVERTED (trigger fires on the bad state being PRESENT, not absent) -- a legacy file that should be gone, and a line that should have been corrected away.\n  - PasswordAuthentication/ChallengeResponseAuthentication check the directive EXISTS, not which value it has -- fw_ssh_password_auth_enabled is a genuine per-host policy choice (default true), not a single correct value to assert estate-wide.\n  - Service checks use systemctl is-enabled via system.run (AllowKey=system.run[*] already in every deployed agent config) rather than 'is it running' -- several services are legitimately enabled-but-not-started when fw_wan_activate=false (a fresh, not-yet-activated box). Also used for the /etc/network/interfaces ifupdown-stanza check -- the real WAN/LAN interface names are detected per-host at runtime, not a fixed literal a static template item can know, but grep -v on the literal string 'lo' needs no such knowledge.\n  - nodeinfo.json's 9 firewall-specific fields (lan_ip/lan_iface/ansible_ip/wg_role/wg_tunnel_ip/wg_hub/wan_iface/wan_mode/wan_ip, 90-firewall.yml's own nodeinfo_extra) ARE extracted here -- added 2026-10-17 once ansible/tasks/nodeinfo.yml's extras-preservation fix (32e288f) landed, confirming WireGuard/firewall-specific nodeinfo fields belong in THIS template, not linuxtools' generic one (Robert's explicit design call).\n\nIMPORT: configuration.import, rules: createMissing+updateExisting+deleteMissing on items/triggers, createMissing+updateExisting on template_groups/templates.",
+        "description": "2026-10-25 CORRECTION to the note immediately below, same day: the cross-template DEPENDENT-item fix described there (master_item pointing at linuxtools_examplemusic's own vfs.file.contents[...] item, with a \"templates\" parent-link entry) was REJECTED live by configuration.import: \"Cannot link template 'linuxtools_examplemusic' to template 'firewall_examplemusic', because it would be linked to host 'EXAFWLCLD001' twice.\" Confirmed against real Zabbix community reports of the identical error class (forum: \"cannot link template because its parent template would be linked twice\"; ZBX-9842: \"template cannot be linked to another template more than once even through other templates\") -- this is a hard Zabbix constraint on the host's own template graph, not an import-tooling quirk, and it fires precisely BECAUSE every host here gets linuxtools_examplemusic linked directly regardless of role, which is the whole point of the template design. This ALSO means bind9/tacticalrmm's own identical \"templates\" parent-link pattern (referenced below) would hit the exact same wall the first time either is actually linked to a real host alongside linuxtools_examplemusic -- flagged separately, not yet fixed on those two. REPLACED with the fix described in the next paragraph: an independently-keyed local master item, no parent-link, no host-linking conflict.\n\n2026-10-25 ACTUAL FIX (supersedes the parent-link approach above): added this template's own vfs.file.contents[/etc/example-music/nodeinfo.json,UTF-8] master item (see its own description for why the UTF-8 param exists) and repointed all 9 firewall-specific dependent items at it instead of linuxtools' item. Same file, read independently by each template that needs its own extras -- no cross-template reference, no parent-link, no collision (confirmed: distinct key string from linuxtools' own bare-key item). NOT YET VERIFIED against a real re-import.\n\n2026-10-25 BUG FIX, Robert, live on EXAFWLCLD001: all 9 firewall-specific nodeinfo fields (lan_ip/lan_iface/ansible_ip/wg_role/wg_tunnel_ip/wg_hub/wan_iface/wan_mode/wan_ip) were returning no data despite the real file having correct values. Root cause: the original master item was a vfs.file.regexp expecting those 9 keys to appear consecutively in one exact literal order (firewallme.sh's own bash/jq field order). Ansible's ansible.builtin.copy + to_nice_json (used by every Ansible-side nodeinfo write, incl. linux/tools.yml which runs against every host on every re-run) always re-serializes the file with keys sorted ALPHABETICALLY, so that literal-order assumption never matched the real on-disk file. Fixed by switching to the same proven cross-template DEPENDENT-item pattern already live on templates 6/7 (bind9/tacticalrmm, see feedback_zabbix_duplicate_item_keys_across_templates.md): each of the 9 items now points its master_item at linuxtools_examplemusic's own vfs.file.contents[/etc/example-music/nodeinfo.json] item (real JSONPATH against real JSON, immune to key order) instead of redeclaring a home-grown regex master item of its own. Added the top-level \"templates\" parent-link entry this cross-template reference needs at import time. NOT YET VERIFIED against a real re-import -- same caveat bind9/tacticalrmm's own fix still carries.\n\nCompanion template for bootstrap/web/provision/firewallme.sh + ansible/playbooks/firewallme -- built by copying zabbix_template_ansible.json's generator and editing it. Same flat, native, one-item-per-thing design.\n\nDELIBERATELY NOT CHECKED (Robert's explicit calls, 2026-10-17)\n  - cockpit-navigator: a one-off GitHub .deb, not an apt package -- no stable copyright path. Revisit next week.\n  - /home/ansible/.zshrc, /root/.zshrc, ansible user's shell=zsh: already covered by linuxtools' template (linked to every Linux node, firewalls included) -- not duplicated here.\n  - /etc/cockpit/cockpit.conf, /etc/cockpit/ws-certs.d/0-self-signed.cert: skipped for now.\n  - /etc/wireguard/{private,public,preshared}.key and wg0.conf: NOT checked. The directory itself is mode 0700 (both firewallme.sh and the Ansible role set this) -- the zabbix-agent user has no search permission into it at all, so this isn't just the usual 'can't read file contents' caveat, nothing inside this directory is even stat-able.\n  - nftables RULESET CONTENT: not checked. Role- and site-conditional (WAN SSH, WireGuard port, CLD-only rules) -- Robert's call: 'too much can go wrong, this is an advanced thing.' Only the file's existence is checked.\n  - wg0.conf peer registration (which spokes are actually registered on their hub) and the whole hub/spoke role-aware design: deferred, backlog.\n  - /etc/resolv.conf: written chattr +i (immutable) by the role -- a plain vfs.file.exists can't see that attribute, and existence alone is nearly always true anyway. Backlogged, not built.\n  - root's shell=zsh on a firewall host: not covered by linuxtools (that template's root-shell check is the ansible-control-node-specific one, a different host) -- backlogged, not built here either.\n\nDESIGN NOTES\n  - Package list is fw_packages minus the 11 packages already in common_packages (computed programmatically, not by hand) -- linuxtools' template already covers those on every Linux node.\n  - /etc/dnsmasq.d/lan.conf and NetworkManager.conf's managed=false check are both INVERTED (trigger fires on the bad state being PRESENT, not absent) -- a legacy file that should be gone, and a line that should have been corrected away.\n  - PasswordAuthentication/ChallengeResponseAuthentication check the directive EXISTS, not which value it has -- fw_ssh_password_auth_enabled is a genuine per-host policy choice (default true), not a single correct value to assert estate-wide.\n  - Service checks use systemctl is-enabled via system.run (AllowKey=system.run[*] already in every deployed agent config) rather than 'is it running' -- several services are legitimately enabled-but-not-started when fw_wan_activate=false (a fresh, not-yet-activated box). Also used for the /etc/network/interfaces ifupdown-stanza check -- the real WAN/LAN interface names are detected per-host at runtime, not a fixed literal a static template item can know, but grep -v on the literal string 'lo' needs no such knowledge.\n  - nodeinfo.json's 9 firewall-specific fields (lan_ip/lan_iface/ansible_ip/wg_role/wg_tunnel_ip/wg_hub/wan_iface/wan_mode/wan_ip, 90-firewall.yml's own nodeinfo_extra) ARE extracted here -- added 2026-10-17 once ansible/tasks/nodeinfo.yml's extras-preservation fix (32e288f) landed, confirming WireGuard/firewall-specific nodeinfo fields belong in THIS template, not linuxtools' generic one (Robert's explicit design call).\n\nIMPORT: configuration.import, rules: createMissing+updateExisting+deleteMissing on items/triggers, createMissing+updateExisting on template_groups/templates.",
         "groups": [
           {
             "name": "Templates/Example Music"
-          }
-        ],
-        "templates": [
-          {
-            "name": "linuxtools_examplemusic"
           }
         ],
         "items": [
@@ -2193,6 +2188,31 @@
             ]
           },
           {
+            "uuid": "32458ff17b9743098d8e542b8287df94",
+            "name": "nodeinfo.json contents, firewall extras (master)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.contents[/etc/example-music/nodeinfo.json,UTF-8]",
+            "delay": "1h",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Raw nodeinfo.json content -- master item for this template's own 9 firewall-specific examplemusic.nodeinfo.* dependent items below. Deliberately a SEPARATE item from linuxtools_examplemusic's own vfs.file.contents[/etc/example-music/nodeinfo.json] master (same file, read twice -- negligible cost, a local file read), NOT a cross-template DEPENDENT reference to it. 2026-10-25 real finding: Zabbix refuses to link a template declaring another template as a parent (the \"templates\" field, needed to resolve a cross-template master_itemid) to any host that ALSO links that parent template directly -- \"cannot link template ... because it would be linked to host ... twice\" -- and every host here gets linuxtools_examplemusic directly regardless of role. The UTF-8 encoding param exists purely to give this item a distinct key from linuxtools' own bare-key item (both read the identical file independently) -- real file content either way, no functional difference, avoids the duplicate-key collision the template-1-5 backlog item already warns about (feedback_zabbix_duplicate_item_keys_across_templates.md). No staleness trigger of its own -- linuxtools' own master item's nodata() trigger already covers this same file going stale, one alert, not duplicated here.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "firewall"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              },
+              {
+                "tag": "item-type",
+                "value": "master"
+              }
+            ]
+          },
+          {
             "uuid": "09bfeb433e234f9499d461b2d893d863",
             "name": "nodeinfo: lan_ip",
             "type": "DEPENDENT",
@@ -2213,7 +2233,7 @@
               }
             ],
             "master_item": {
-              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json,UTF-8]"
             },
             "preprocessing": [
               {
@@ -2246,7 +2266,7 @@
               }
             ],
             "master_item": {
-              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json,UTF-8]"
             },
             "preprocessing": [
               {
@@ -2279,7 +2299,7 @@
               }
             ],
             "master_item": {
-              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json,UTF-8]"
             },
             "preprocessing": [
               {
@@ -2312,7 +2332,7 @@
               }
             ],
             "master_item": {
-              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json,UTF-8]"
             },
             "preprocessing": [
               {
@@ -2345,7 +2365,7 @@
               }
             ],
             "master_item": {
-              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json,UTF-8]"
             },
             "preprocessing": [
               {
@@ -2378,7 +2398,7 @@
               }
             ],
             "master_item": {
-              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json,UTF-8]"
             },
             "preprocessing": [
               {
@@ -2411,7 +2431,7 @@
               }
             ],
             "master_item": {
-              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json,UTF-8]"
             },
             "preprocessing": [
               {
@@ -2444,7 +2464,7 @@
               }
             ],
             "master_item": {
-              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json,UTF-8]"
             },
             "preprocessing": [
               {
@@ -2477,7 +2497,7 @@
               }
             ],
             "master_item": {
-              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json,UTF-8]"
             },
             "preprocessing": [
               {
