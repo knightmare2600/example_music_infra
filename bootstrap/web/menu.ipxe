@@ -17,6 +17,18 @@
 #
 # Version history:
 #
+#   v2.20  :pakhus gains the degraded (single-disk) build, the same change as v2.19 made for
+#          :saekkevogn (Robert, 2026-10-25). Both :pakhus kernel lines now also pass
+#          toml_url_degraded=${boot-url}/proxmox/${site-prefix}-pdm-degraded.toml; the
+#          installer (pakhus 7949a0f) counts whole disks the same way select-pve-answer.sh does
+#          and fetches that file instead of toml_url= when fewer than 2 exist. New
+#          bootstrap/web/proxmox/VRK-pdm-degraded.toml and FRD-pdm-degraded.toml (zfs.raid =
+#          "raid0", disk-list = ["sda"], otherwise identical to the -pdm-answer.toml files),
+#          registered in check_ssh_keys.py; the -pdm-answer.toml files' "there is no
+#          -pdm-degraded.toml" comment corrected. UNTESTED until a pakhus release containing
+#          7949a0f is published -- the current installer ignores toml_url_degraded= and still
+#          needs 2 disks.
+#
 #   v2.19  :saekkevogn gains the degraded (single-disk) build, replicating PVE's own
 #          <SITE>-answer.toml / <SITE>-degraded.toml pair (Robert, 2026-10-25). A real PXE
 #          boot on a one-disk VM failed with "/dev/sdb does not exist" -- Sækkevogn only had the
@@ -807,12 +819,12 @@ boot
 iseq ${arch} arm64 && goto pakhus-arm64 || goto pakhus-amd64
 
 :pakhus-amd64
-kernel ${boot-url}/proxmox/pakhus/amd64/vmlinuz toml_url=${boot-url}/proxmox/${site-prefix}-pdm-answer.toml confirm-wipe no-reboot
+kernel ${boot-url}/proxmox/pakhus/amd64/vmlinuz toml_url=${boot-url}/proxmox/${site-prefix}-pdm-answer.toml toml_url_degraded=${boot-url}/proxmox/${site-prefix}-pdm-degraded.toml confirm-wipe no-reboot
 initrd ${boot-url}/proxmox/pakhus/amd64/installer-initrd.img
 boot
 
 :pakhus-arm64
-kernel ${boot-url}/proxmox/pakhus/arm64/vmlinuz-arm64 toml_url=${boot-url}/proxmox/${site-prefix}-pdm-answer.toml confirm-wipe no-reboot
+kernel ${boot-url}/proxmox/pakhus/arm64/vmlinuz-arm64 toml_url=${boot-url}/proxmox/${site-prefix}-pdm-answer.toml toml_url_degraded=${boot-url}/proxmox/${site-prefix}-pdm-degraded.toml confirm-wipe no-reboot
 initrd ${boot-url}/proxmox/pakhus/arm64/installer-initrd-arm64.img
 boot
 
