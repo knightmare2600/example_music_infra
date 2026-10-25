@@ -170,7 +170,13 @@
     "            fail to fetch until a release with arm64 assets is published.",
     "2026-10-25  UPDATE: saekkevogn-20261025-trixie-2 published with amd64 + arm64 assets --",
     "            all six saekkevogn entries' asset names checked present in it via",
-    "            `gh release view --json assets`. Now fetchable."
+    "            `gh release view --json assets`. Now fetchable.",
+    "2026-10-25  Added pakhus (github.com/knightmare2600/pakhus, the Proxmox Datacenter",
+    "            Manager member of the klargoring/saekkevogn family) -- menu.ipxe v2.18's",
+    "            :pakhus, replacing the :proxmox-dcm placeholder. Six entries, amd64 + arm64,",
+    "            dest paths/asset names mirroring saekkevogn's exactly. Asset names checked",
+    "            present in the real pakhus-20261025-trixie-1 release (run 40183728834) via",
+    "            `gh release view --json assets`."
   ],
 
   "assets": [
@@ -191,6 +197,12 @@
     { "dest": "proxmox/saekkevogn/arm64/vmlinuz-arm64", "source_type": "github_release", "repo": "knightmare2600/saekkevogn", "tag": "latest", "asset_name": "vmlinuz-arm64" },
     { "dest": "proxmox/saekkevogn/arm64/installer-initrd-arm64.img", "source_type": "github_release", "repo": "knightmare2600/saekkevogn", "tag": "latest", "asset_name": "installer-initrd-arm64.img" },
     { "dest": "proxmox/saekkevogn/arm64/KERNEL_VERSION-arm64", "source_type": "github_release", "repo": "knightmare2600/saekkevogn", "tag": "latest", "asset_name": "KERNEL_VERSION-arm64" },
+    { "dest": "proxmox/pakhus/amd64/vmlinuz", "source_type": "github_release", "repo": "knightmare2600/pakhus", "tag": "latest", "asset_name": "vmlinuz-amd64" },
+    { "dest": "proxmox/pakhus/amd64/installer-initrd.img", "source_type": "github_release", "repo": "knightmare2600/pakhus", "tag": "latest", "asset_name": "installer-initrd-amd64.img" },
+    { "dest": "proxmox/pakhus/amd64/KERNEL_VERSION", "source_type": "github_release", "repo": "knightmare2600/pakhus", "tag": "latest", "asset_name": "KERNEL_VERSION-amd64" },
+    { "dest": "proxmox/pakhus/arm64/vmlinuz-arm64", "source_type": "github_release", "repo": "knightmare2600/pakhus", "tag": "latest", "asset_name": "vmlinuz-arm64" },
+    { "dest": "proxmox/pakhus/arm64/installer-initrd-arm64.img", "source_type": "github_release", "repo": "knightmare2600/pakhus", "tag": "latest", "asset_name": "installer-initrd-arm64.img" },
+    { "dest": "proxmox/pakhus/arm64/KERNEL_VERSION-arm64", "source_type": "github_release", "repo": "knightmare2600/pakhus", "tag": "latest", "asset_name": "KERNEL_VERSION-arm64" },
 
     { "dest": "winpe/x86_64/wimboot", "source_type": "github_release", "repo": "ipxe/wimboot", "tag": "v2.9.0", "asset_name": "wimboot" },
     { "dest": "winpe/x86_64/wimboot.i386", "source_type": "github_release", "repo": "ipxe/wimboot", "tag": "v2.9.0", "asset_name": "wimboot.i386" },

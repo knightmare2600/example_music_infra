@@ -2,7 +2,7 @@
 
 **Document ID:** NET-PLAN-PDM-001
 **Classification:** Internal — Network Operations
-**Last Updated:** 2026-07-19
+**Last Updated:** 2026-10-25
 **Status:** PLANNING — not yet in implementation
 
 > This document covers two related Proxmox products: Proxmox Datacenter
@@ -278,6 +278,10 @@ During the lab evaluation, test and document:
 Once licensing is in place, the production PDM deployment — this estate names it
 `EXADCMCLD001`, following the `Proxmox DCM` label `bootstrap/web/menu.ipxe` already uses for
 this product, rather than a bare `PDM` role code:
+
+> **2026-10-25:** that `Proxmox DCM` menu placeholder has since been replaced by `Projekt
+> Pakhus` (`menu.ipxe` v2.18, github.com/knightmare2600/pakhus), a PXE installer for PDM on
+> Debian + ZFS. The `DCM` role code and `EXADCMCLD001` name are unaffected.
 
 ### DCM Server
 

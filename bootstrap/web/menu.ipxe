@@ -17,6 +17,31 @@
 #
 # Version history:
 #
+#   v2.18  :proxmox-dcm placeholder ("Proxmox DCM boot not yet configured", x86_64 only)
+#          replaced by :pakhus -- Projekt Pakhus (github.com/knightmare2600/pakhus), the PDM
+#          member of the klargoring/saekkevogn family (Robert, 2026-10-25). Same initrd, same
+#          TOML answer-file contract, PDM repo/packages instead of PVE's or PBS's. "Pakhus" is
+#          Danish for warehouse. amd64 installs proxmox-datacenter-manager-meta from the
+#          official PDM repo. ARM64 is supported: Proxmox's own PDM repo is amd64-only
+#          (Release: "Architectures: amd64", binary-arm64/ a 404 -- checked 2026-10-25), so
+#          the installer fetches the UNOFFICIAL server/client/UI .debs from
+#          github.com/qemus/proxmox-datacenter-arm64 at install time, each pinned by SHA-256,
+#          and takes everything else from the official PVE arm64 repo plus the PDM repo's
+#          Architecture: all packages -- see pakhus's README "arm64". Nothing PDM-specific is
+#          served from this web server; the initrd is plain Debian on both arches.
+#
+#          :pakhus-amd64/:pakhus-arm64 use literal paths mirroring :saekkevogn's exactly
+#          (asymmetric filenames, same check_bootstrap_assets.py reasoning). toml_url= points at
+#          ${site-prefix}-pdm-answer.toml, following v2.16's "-pbs-" convention -- the "-pdm-"
+#          infix is a PRESUMPTION pending Robert's confirmation; no VRK-/FRD-pdm-answer.toml
+#          exists yet. The :proxmox-dcm label is removed outright (nothing else goto'd it);
+#          the menu item now sits with the other Projekt entries.
+#
+#          benarbejde/asset_manifest.json gained six github_release entries (see its own
+#          2026-10-25 changelog line). Asset names checked present in the real
+#          pakhus-20261025-trixie-1 release (run 40183728834, all five jobs green) via
+#          `gh release view --json assets`. UNTESTED: no install has been run on either arch.
+#
 #   v2.17  :saekkevogn now supports ARM64 (Robert, 2026-10-25) -- CORRECTS v2.16's "x86_64
 #          only". Proxmox still publishes no arm64 PBS (PBS trixie repo Release:
 #          "Architectures: amd64"); gyptazy, asked directly: "Not that I'm aware of", pointing
@@ -430,9 +455,9 @@ item openbsd-inter-s  OpenBSD 7.9  Interactive   (ttyS0 serial)
 item --gap --
 item --gap --         -- Hypervisors --
 item proxmox-ve       Proxmox VE 9   (x86_64 only)
-item proxmox-dcm      Proxmox DCM 9  (x86_64 only)
 item klargoring             Projekt klargoring  (custom live Proxmox installer, x86_64 or ARM64)
 item saekkevogn             Projekt Sækkevogn   (custom live Proxmox Backup Server installer, x86_64 or ARM64 -- UNTESTED)
+item pakhus                 Projekt Pakhus      (custom live Proxmox Datacenter Manager installer, x86_64 or ARM64 -- UNTESTED)
 item --gap --
 item --gap --         -- Utilities --
 item gparted          GParted Live
@@ -670,14 +695,6 @@ prompt Press any key to return to menu...
 goto main
 
 # ===========================================================================
-# PROXMOX DCM
-# ===========================================================================
-:proxmox-dcm
-echo Proxmox DCM boot not yet configured
-prompt Press any key to return to menu...
-goto main
-
-# ===========================================================================
 # PROJEKT klargoring
 # Robert's own hand-rolled live Proxmox installer distro, built separately --
 # NOT the Proxmox-official auto-install ISO path that :proxmox-ve's own
@@ -745,6 +762,32 @@ boot
 :saekkevogn-arm64
 kernel ${boot-url}/proxmox/saekkevogn/arm64/vmlinuz-arm64 toml_url=${boot-url}/proxmox/${site-prefix}-pbs-answer.toml confirm-wipe no-reboot
 initrd ${boot-url}/proxmox/saekkevogn/arm64/installer-initrd-arm64.img
+boot
+
+# ===========================================================================
+# PROJEKT PAKHUS
+# The Proxmox Datacenter Manager member of the klargoring/saekkevogn family
+# (github.com/knightmare2600/pakhus) -- same initrd design and cmdline
+# contract as :klargoring/:saekkevogn above, PDM repo/packages instead.
+# Replaces the old :proxmox-dcm placeholder. See v2.18 for the full detail.
+#
+# ARM64 via unofficial qemus PDM packages fetched by the installer itself;
+# paths mirror :saekkevogn's asymmetric layout exactly.
+#
+# toml_url= uses ${site-prefix}-pdm-answer.toml, distinct from the PVE and
+# PBS answer files -- "-pdm-" infix presumed, pending confirmation.
+# ===========================================================================
+:pakhus
+iseq ${arch} arm64 && goto pakhus-arm64 || goto pakhus-amd64
+
+:pakhus-amd64
+kernel ${boot-url}/proxmox/pakhus/amd64/vmlinuz toml_url=${boot-url}/proxmox/${site-prefix}-pdm-answer.toml confirm-wipe no-reboot
+initrd ${boot-url}/proxmox/pakhus/amd64/installer-initrd.img
+boot
+
+:pakhus-arm64
+kernel ${boot-url}/proxmox/pakhus/arm64/vmlinuz-arm64 toml_url=${boot-url}/proxmox/${site-prefix}-pdm-answer.toml confirm-wipe no-reboot
+initrd ${boot-url}/proxmox/pakhus/arm64/installer-initrd-arm64.img
 boot
 
 # ===========================================================================
