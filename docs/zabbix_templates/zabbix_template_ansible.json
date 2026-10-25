@@ -2565,7 +2565,7 @@
             "uuid": "3433501ae63344218f97a9bf30590bad",
             "name": "nodeinfo: ansible_dir",
             "type": "DEPENDENT",
-            "key": "examplemusic.nodeinfo.ansible_dir",
+            "key": "nodeinfo.ansible_dir[{$NODEINFO.KEY_PREFIX}]",
             "delay": "0",
             "history": "7d",
             "trends": "0",
@@ -2598,7 +2598,7 @@
             "uuid": "6c8aba23492d48bd98b8eab699e95501",
             "name": "nodeinfo: inventory",
             "type": "DEPENDENT",
-            "key": "examplemusic.nodeinfo.inventory",
+            "key": "nodeinfo.inventory[{$NODEINFO.KEY_PREFIX}]",
             "delay": "0",
             "history": "7d",
             "trends": "0",
@@ -2631,7 +2631,7 @@
             "uuid": "1f2974032714411e8e6ab243470e8a7d",
             "name": "nodeinfo: ssh_key",
             "type": "DEPENDENT",
-            "key": "examplemusic.nodeinfo.ssh_key",
+            "key": "nodeinfo.ssh_key[{$NODEINFO.KEY_PREFIX}]",
             "delay": "0",
             "history": "7d",
             "trends": "0",
@@ -2665,6 +2665,13 @@
           {
             "tag": "target",
             "value": "ansible-node"
+          }
+        ],
+        "macros": [
+          {
+            "macro": "{$NODEINFO.KEY_PREFIX}",
+            "value": "examplemusic",
+            "description": "Item-key namespace prefix for every examplemusic.nodeinfo.* dependent item in this template series. Was hardcoded as a literal string in ~74 item keys across 7 templates -- Robert's explicit ask (2026-10-16 design brief: \"macros wherever sensible\"), 2026-10-25: a single macro here instead, so this repo's own harness can find/verify/change the one real source of truth per template instead of grepping scattered literals."
           }
         ]
       }

@@ -1129,7 +1129,7 @@
             "uuid": "520ef8f26753426699257d03ed95f80d",
             "name": "nodeinfo: dns_ip (bind9-specific)",
             "type": "DEPENDENT",
-            "key": "examplemusic.nodeinfo.dns_ip",
+            "key": "nodeinfo.dns_ip[{$NODEINFO.KEY_PREFIX}]",
             "delay": "0",
             "history": "7d",
             "trends": "0",
@@ -1162,7 +1162,7 @@
             "uuid": "df72e255e5914918808c666d679dfaf2",
             "name": "nodeinfo: zone (bind9-specific)",
             "type": "DEPENDENT",
-            "key": "examplemusic.nodeinfo.zone",
+            "key": "nodeinfo.zone[{$NODEINFO.KEY_PREFIX}]",
             "delay": "0",
             "history": "7d",
             "trends": "0",
@@ -1195,7 +1195,7 @@
             "uuid": "7a2371992eaa4ad0943df05d78e138e8",
             "name": "nodeinfo: zone_serial (bind9-specific)",
             "type": "DEPENDENT",
-            "key": "examplemusic.nodeinfo.zone_serial",
+            "key": "nodeinfo.zone_serial[{$NODEINFO.KEY_PREFIX}]",
             "delay": "0",
             "history": "7d",
             "trends": "0",
@@ -1228,7 +1228,7 @@
             "uuid": "627d9470ff5b465b8123a220628dbc5c",
             "name": "nodeinfo: interface (bind9-specific)",
             "type": "DEPENDENT",
-            "key": "examplemusic.nodeinfo.interface",
+            "key": "nodeinfo.interface[{$NODEINFO.KEY_PREFIX}]",
             "delay": "0",
             "history": "7d",
             "trends": "0",
@@ -1298,6 +1298,11 @@
             "macro": "{$BIND9.CKSUM.CHECKBIND}",
             "value": "1314966930",
             "description": "Expected cksum of /usr/local/bin/checkbind's rendered content (domain=jukebox.internal substituted, computed by parsing bind9-dns.yml's own real YAML). Update this macro's value if that script's content, or the domain itself, ever changes."
+          },
+          {
+            "macro": "{$NODEINFO.KEY_PREFIX}",
+            "value": "examplemusic",
+            "description": "Item-key namespace prefix for every examplemusic.nodeinfo.* dependent item in this template series. Was hardcoded as a literal string in ~74 item keys across 7 templates -- Robert's explicit ask (2026-10-16 design brief: \"macros wherever sensible\"), 2026-10-25: a single macro here instead, so this repo's own harness can find/verify/change the one real source of truth per template instead of grepping scattered literals."
           }
         ],
         "tags": [

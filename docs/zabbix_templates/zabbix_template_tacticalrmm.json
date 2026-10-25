@@ -3271,7 +3271,7 @@
             "uuid": "84719f9135a84948b3aa3791d5b2dfa7",
             "name": "nodeinfo: static_ip (tacticalrmm-specific)",
             "type": "DEPENDENT",
-            "key": "examplemusic.nodeinfo.static_ip",
+            "key": "nodeinfo.static_ip[{$NODEINFO.KEY_PREFIX}]",
             "delay": "0",
             "history": "7d",
             "trends": "0",
@@ -3433,6 +3433,11 @@
             "macro": "{$MESHCENTRALSERVICE}",
             "value": "542597736",
             "description": "Expected cksum of /etc/systemd/system/meshcentral.service (348 bytes -- computed by parsing tacticalrmm_server.yml's own real YAML, rendering rmm_service_user=tacticalrmm). Update this macro's value if that file's own source content ever changes."
+          },
+          {
+            "macro": "{$NODEINFO.KEY_PREFIX}",
+            "value": "examplemusic",
+            "description": "Item-key namespace prefix for every examplemusic.nodeinfo.* dependent item in this template series. Was hardcoded as a literal string in ~74 item keys across 7 templates -- Robert's explicit ask (2026-10-16 design brief: \"macros wherever sensible\"), 2026-10-25: a single macro here instead, so this repo's own harness can find/verify/change the one real source of truth per template instead of grepping scattered literals."
           }
         ],
         "tags": [
