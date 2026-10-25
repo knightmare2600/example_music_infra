@@ -37,6 +37,9 @@
 #          saekkevogn-20261022-trixie-1 release is amd64-only (built before arm64 returned to
 #          saekkevogn's CI matrix), so these three fail to fetch until a release with arm64
 #          assets is published.
+#          UPDATE 2026-10-25: saekkevogn-20261025-trixie-2 published (run 40181170038, all
+#          five jobs green), carrying both arches -- all six saekkevogn manifest asset names
+#          checked present in it via `gh release view --json assets`. Now fetchable.
 #
 #   v2.16  Added :saekkevogn -- Projekt Sækkevogn (github.com/knightmare2600/saekkevogn),
 #          klargoring's companion for Proxmox Backup Server: same initrd, same TOML answer-file
