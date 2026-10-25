@@ -2,9 +2,20 @@
 # Install with: ansible-galaxy collection install -r requirements.yml
 #
 # These collections provide the Windows modules used by windows_hygiene.
+#
+# Changelog:
+#   2026-10-25  Added community.windows -- win_lineinfile, used by the new
+#               25-zabbix-agent.yml stage (tasks/zabbix_agent_onboard_windows.yml)
+#               to sync an already-installed agent's config, same "add/replace
+#               only, never a full-file rewrite" discipline the Linux estate's own
+#               zabbix_agent_onboard.yml already uses. Already a pinned
+#               requirement in windows_bootstrap/requirements.yml (win_firewall_rule/
+#               win_unzip there) -- this is the first use in windows_hygiene itself.
 
 collections:
   - name: ansible.windows        # win_regedit, win_shell
+    version: ">=2.0.0"
+  - name: community.windows      # win_lineinfile
     version: ">=2.0.0"
   - name: chocolatey.chocolatey  # win_chocolatey
     version: ">=1.5.0"

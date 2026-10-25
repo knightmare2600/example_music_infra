@@ -1,0 +1,484 @@
+---
+# =============================================================================
+# tasks/zabbix_agent_onboard_windows.yml
+# Example Music Limited — Zabbix agent install, PSK, API registration (Windows)
+# =============================================================================
+# The Windows counterpart to tasks/zabbix_agent_onboard.yml -- same overall shape
+# (PSK generate-once/file-into-KeePass, API host.create/host.update, on-disk-PSK-
+# always-wins sync for an already-registered host) but Windows-native mechanics
+# throughout: msiexec instead of apt, ansible.windows.win_lineinfile instead of
+# lineinfile, a registry-based "already installed, which version" check instead
+# of a package-manager one (same pattern windows_bootstrap/playbooks/
+# 82-salt-minion.yml already proved for the Salt minion MSI, not invented fresh).
+#
+# Classic zabbix-agent only (NOT agent2), matching the Linux file's own "agent is
+# agent not agent2, I am not using agent2" rule -- Robert's explicit call for
+# Linux, applied consistently here rather than re-decided per platform.
+#
+# 2026-10-25, Robert's explicit call: this reverses the EARLIER documented plan
+# that Windows agent rollout was Salt's job, not Ansible's (zabbix_agent_onboard.
+# yml's own original header, docs/zabbix_templates/README.md, and
+# benarbejde/role_codes.csv's ZAB row all said so). Confirmed directly with
+# Robert before building, not assumed: "Salt will not be handling it going
+# forward. I am planning to restore salt, but not quite yet."
+#
+# Shared file, included from TWO callers (same convention as the Linux file's
+# own two callers, linux/tools.yml + zabbix_agent.yml):
+#   - windows_bootstrap/playbooks/83-zabbix-agent.yml  (new host build chain)
+#   - windows_hygiene/playbooks/25-zabbix-agent.yml    (routine re-run, own tag
+#     -- deliberately NOT dragging hygiene's other, slower stages in. Robert's
+#     own explicit ask: "add it as part of hygiene too, so we can run hygiene
+#     without pestering bootstrap which is a considerably long run too." Same
+#     "independent tag" discipline windows_hygiene/playbooks/
+#     35-winupdate-policy.yml already established for exactly this reason.)
+#
+# Install mechanics -- confirmed against Zabbix's own official docs
+# (zabbix.com/documentation/7.0/en/manual/installation/install_from_packages/
+# win_msi), not guessed: the MSI installer accepts the whole agent config as
+# command-line properties (SERVER=/SERVERACTIVE=/HOSTNAME=/TLSCONNECT=/
+# TLSACCEPT=/TLSPSKIDENTITY=/TLSPSKVALUE=/ALLOWDENYKEY=), so a first install
+# bakes in the complete config in one msiexec call -- no separate "write the
+# conf file" step needed the way the Linux file needs lineinfile against the
+# package's own shipped default. TLSPSKVALUE writes the literal key value
+# straight into the path given by TLSPSKFILE for us. Robert's own framing for
+# the already-installed case: "once it's installed, you'd be able to just
+# update configs and restart the service in windows" -- that's the
+# win_lineinfile + win_service: restarted path below, used only when the agent
+# is already present (PSK/Server/Hostname might need syncing, same reasoning as
+# the Linux file's own "disk always wins" sync for an existing registration).
+#
+# MSI pinned to a specific version (zbx_agent_msi_version below) and downloaded
+# fresh each run rather than committed to this repo -- same "fail loudly on a
+# version mismatch, don't silently auto-upgrade" discipline 82-salt-minion.yml
+# already uses for its own pinned Salt MSI. Confirmed live, 2026-10-25, that
+# this exact version genuinely exists: cdn.zabbix.com/zabbix/binaries/stable/
+# 7.0/<version>/zabbix_agent-<version>-windows-amd64-openssl.msi returns a real
+# HTTP 200 with a real .msi body. No checksum file exists alongside it on
+# Zabbix's own CDN (confirmed directly, not assumed) -- same accepted, already-
+# documented gap class as gparted's own entry in benarbejde/asset_manifest.json
+# (SourceForge doesn't publish an equivalent checksum file either), not
+# something invented a workaround for here.
+#
+# No Windows companion Zabbix template exists yet (confirmed with Robert
+# directly, 2026-10-25: "no windows template quite yet, we're still ironing out
+# issues like this") -- zbx_win_role_template_map below is deliberately EMPTY
+# for now, same mechanism as the Linux file's own map, ready to extend the
+# moment a real Windows-role companion template exists. Every Windows host
+# gets only the stock "Windows by Zabbix agent" template (passive, matching the
+# Linux file's own active->passive stock-template swap) until then.
+#
+# Required vars (set by the caller before including this file):
+#   nodeinfo_repo_root   same var, same value the caller already computes for
+#                        tasks/nodeinfo_windows.yml's own sake -- reused here
+#                        for KeePass's repo-relative paths rather than a second,
+#                        differently-named var for the identical directory.
+#
+# gather_facts: false on both real caller plays (matches 82-salt-minion.yml's
+# own choice -- WinRM fact-gathering is slow and neither caller otherwise needs
+# it) -- this file does NOT force a gather_facts call the way the Linux file's
+# own ansible_date_time-driven tasks do; the one cosmetic "own IP" field on
+# host.create falls back to ansible_host directly rather than attempting
+# ansible_default_ipv4 (never gathered here, so never worth probing for).
+# =============================================================================
+# Changelog:
+#   2026-10-25  Initial file. Robert's ask: Windows Zabbix agent onboarding,
+#               mirroring tasks/zabbix_agent_onboard.yml, wired into both
+#               windows_bootstrap and windows_hygiene (own tag on the hygiene
+#               side so routine hygiene runs don't get dragged into
+#               bootstrap's own considerably longer chain). Confirmed with
+#               Robert directly this supersedes the earlier documented
+#               "Windows is Salt's job" plan -- Salt isn't being restored yet.
+# =============================================================================
+
+- name: "[Zabbix] Include hostname facts"
+  ansible.builtin.include_tasks: hostname_facts.yml
+  tags: [zabbix, monitoring]
+
+- name: "[Zabbix] Resolve the real hostname (matches hostname_facts.yml's own precedence)"
+  ansible.builtin.set_fact:
+    zbx_win_hostname: "{{ target_hostname | default(ansible_hostname | default(inventory_hostname)) }}"
+  tags: [zabbix, monitoring]
+
+# ── Already-installed check -- registry-based, same reasoning as
+#    82-salt-minion.yml's own "don't trust win_package's ProductCode idempotency
+#    alone, a version bump changes it too" pattern, ported not invented. ──
+
+- name: "[Zabbix] Check for an already-installed Zabbix Agent (any version)"
+  ansible.windows.win_shell: >-
+    (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*'
+    -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -eq 'Zabbix Agent' } |
+    Select-Object -First 1 -ExpandProperty DisplayVersion)
+  register: zbx_win_installed_check
+  changed_when: false
+  tags: [zabbix, monitoring]
+
+- name: "[Zabbix] Set already-installed fact"
+  ansible.builtin.set_fact:
+    zbx_win_already_installed: "{{ (zbx_win_installed_check.stdout | trim | length) > 0 }}"
+    zbx_win_install_folder: "C:\\Program Files\\Zabbix Agent"
+    zbx_agent_msi_version: "7.0.31"
+  tags: [zabbix, monitoring]
+
+# ── PSK: generate once, never regenerate (would desync from what's already
+#    registered) -- same reasoning as the Linux file's own PSK section. The
+#    folder is ensured here (not left to the installer) because the PSK, once
+#    generated, needs somewhere real to live even before a first install runs. ──
+
+- name: "[Zabbix] Ensure the agent install folder exists (PSK file lives here even before install)"
+  ansible.windows.win_file:
+    path: "{{ zbx_win_install_folder }}"
+    state: directory
+  tags: [zabbix, monitoring]
+
+- name: "[Zabbix] Check for an existing PSK file"
+  ansible.windows.win_stat:
+    path: "{{ zbx_win_install_folder }}\\psk.key"
+  register: zbx_win_psk_stat
+  tags: [zabbix, monitoring]
+
+- name: "[Zabbix] Generate PSK (first onboarding only -- 32 random bytes, hex-encoded)"
+  ansible.windows.win_shell: >-
+    $bytes = New-Object byte[] 32;
+    (New-Object Security.Cryptography.RNGCryptoServiceProvider).GetBytes($bytes);
+    [System.BitConverter]::ToString($bytes).Replace('-','').ToLower() |
+    Out-File -Encoding ascii -NoNewline "{{ zbx_win_install_folder }}\psk.key"
+  when: not zbx_win_psk_stat.stat.exists
+  tags: [zabbix, monitoring]
+
+- name: "[Zabbix] Read the PSK back (needed below, whether just-generated or pre-existing)"
+  ansible.windows.win_shell: "Get-Content -Raw '{{ zbx_win_install_folder }}\\psk.key'"
+  register: zbx_win_psk_raw
+  changed_when: false
+  tags: [zabbix, monitoring]
+
+- name: "[Zabbix] Set PSK fact (trimmed)"
+  ansible.builtin.set_fact:
+    zbx_psk_value: "{{ zbx_win_psk_raw.stdout | trim }}"
+  no_log: true
+  tags: [zabbix, monitoring]
+
+- name: "[Zabbix] File the PSK into KeePass (already generated above -- this just files it)"
+  include_tasks: keepass_credential_sync.yml
+  vars:
+    kcs_repo_root: "{{ nodeinfo_repo_root }}"
+    kcs_keepass_path: "Infrastructure/{{ host_site }}/{{ zbx_win_hostname }}-zabbix-psk"
+    kcs_username: "{{ zbx_win_hostname }}-psk"
+    kcs_current_value: "{{ zbx_psk_value }}"
+    kcs_can_generate: false
+    kcs_credentials_json_role: "ZABBIX"
+    kcs_result_var: zbx_psk_filed
+  tags: [zabbix, monitoring]
+
+# ── Install (first time only) -- the whole config is baked in via MSI
+#    properties, confirmed against Zabbix's own real docs (see this file's own
+#    header), not guessed. ──
+
+- name: "[Zabbix] Download the Zabbix Agent MSI (pinned version {{ zbx_agent_msi_version }})"
+  ansible.windows.win_get_url:
+    url: "https://cdn.zabbix.com/zabbix/binaries/stable/7.0/{{ zbx_agent_msi_version }}/zabbix_agent-{{ zbx_agent_msi_version }}-windows-amd64-openssl.msi"
+    dest: "C:\\Windows\\Temp\\zabbix_agent-{{ zbx_agent_msi_version }}-windows-amd64-openssl.msi"
+  when: not zbx_win_already_installed
+  tags: [zabbix, monitoring]
+
+# AllowKey=system.run[*] kept exactly as the Linux file's own choice -- Robert's
+# explicit, knowing call on the security tradeoff, applied consistently across
+# both platforms rather than re-decided here.
+- name: "[Zabbix] Install Zabbix Agent via msiexec (config baked in via MSI properties)"
+  ansible.windows.win_package:
+    path: "C:\\Windows\\Temp\\zabbix_agent-{{ zbx_agent_msi_version }}-windows-amd64-openssl.msi"
+    state: present
+    arguments: >-
+      SERVER={{ site_services.zabbix.ip }}
+      SERVERACTIVE={{ site_services.zabbix.ip }}
+      HOSTNAME={{ zbx_win_hostname }}
+      INSTALLFOLDER="{{ zbx_win_install_folder }}"
+      TLSCONNECT=psk
+      TLSACCEPT=psk
+      TLSPSKIDENTITY="{{ zbx_win_hostname }}-psk"
+      TLSPSKVALUE={{ zbx_psk_value }}
+      TLSPSKFILE="{{ zbx_win_install_folder }}\psk.key"
+      ALLOWDENYKEY="AllowKey=system.run[*]"
+      ENABLEPATH=1
+  when: not zbx_win_already_installed
+  no_log: true
+  tags: [zabbix, monitoring]
+
+- name: "[Zabbix] Remove staged MSI"
+  ansible.windows.win_file:
+    path: "C:\\Windows\\Temp\\zabbix_agent-{{ zbx_agent_msi_version }}-windows-amd64-openssl.msi"
+    state: absent
+  when: not zbx_win_already_installed
+  tags: [zabbix, monitoring]
+
+# ── Already installed -- Robert's own framing: "just update configs and
+#    restart the service". win_lineinfile only (never a full-file rewrite --
+#    same discipline the Linux file's own rework learned the hard way), against
+#    the config file the MSI itself already wrote on first install. ──
+
+- name: "[Zabbix] Sync config on an already-installed agent (lineinfile -- add/replace only)"
+  ansible.windows.win_lineinfile:
+    path: "{{ zbx_win_install_folder }}\\zabbix_agentd.conf"
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    backup: true
+  loop:
+    - { regexp: "^Server=", line: "Server={{ site_services.zabbix.ip }}" }
+    - { regexp: "^ServerActive=", line: "ServerActive={{ site_services.zabbix.ip }}" }
+    - { regexp: "^Hostname=", line: "Hostname={{ zbx_win_hostname }}" }
+  loop_control:
+    label: "{{ item.regexp }}"
+  register: zbx_win_conf_sync
+  when: zbx_win_already_installed
+  tags: [zabbix, monitoring]
+
+- name: "[Zabbix] Restart the agent service if its config actually changed"
+  ansible.windows.win_service:
+    name: "Zabbix Agent"
+    state: restarted
+  when:
+    - zbx_win_already_installed
+    - zbx_win_conf_sync is defined
+    - zbx_win_conf_sync.results is defined
+    - zbx_win_conf_sync.results | selectattr('changed') | list | length > 0
+  tags: [zabbix, monitoring]
+
+# ── API registration -- idempotent throughout: get before create, every
+#    object. Pure REST, delegate_to: localhost throughout -- no OS-specific
+#    logic needed here at all, identical in shape to the Linux file's own
+#    registration section, just the stock template name/role map differ. ──
+
+- name: "[Zabbix] API registration/sync (self-healing, never fatal)"
+  block:
+  - name: "[Zabbix] Resolve this host's role-specific companion template name, if any"
+    set_fact:
+      zbx_role_template_name: "{{ zbx_win_role_template_map[host_role | upper] | default('') }}"
+    vars:
+      # Deliberately empty -- no Windows companion Zabbix template exists yet
+      # (confirmed with Robert directly, 2026-10-25). Extend this the moment one
+      # does, same shape as the Linux file's own FWL/NAS/CLP/DNS/ANS/PVE/RMM map.
+      zbx_win_role_template_map: {}
+
+  - name: "[Zabbix] Check whether this host is already registered"
+    ansible.builtin.uri:
+      url: "http://{{ site_services.zabbix.ip }}/api_jsonrpc.php"
+      method: POST
+      headers:
+        Authorization: "Bearer {{ vault_zabbix_api_token }}"
+      body_format: json
+      body:
+        jsonrpc: "2.0"
+        method: host.get
+        params:
+          filter:
+            host: ["{{ zbx_win_hostname }}"]
+        id: 1
+      status_code: 200
+    register: zbx_host_check
+    delegate_to: localhost
+    become: false
+
+  - name: "[Zabbix] Get the auto-registration host group"
+    ansible.builtin.uri:
+      url: "http://{{ site_services.zabbix.ip }}/api_jsonrpc.php"
+      method: POST
+      headers:
+        Authorization: "Bearer {{ vault_zabbix_api_token }}"
+      body_format: json
+      body:
+        jsonrpc: "2.0"
+        method: hostgroup.get
+        params:
+          filter:
+            name: ["auto-registration"]
+        id: 1
+      status_code: 200
+    register: zbx_autoreg_group
+    delegate_to: localhost
+    become: false
+    when: zbx_host_check.json.result | length == 0
+
+  - name: "[Zabbix] Get-or-create this site's own host group (Site - {{ host_site }})"
+    ansible.builtin.uri:
+      url: "http://{{ site_services.zabbix.ip }}/api_jsonrpc.php"
+      method: POST
+      headers:
+        Authorization: "Bearer {{ vault_zabbix_api_token }}"
+      body_format: json
+      body:
+        jsonrpc: "2.0"
+        method: hostgroup.get
+        params:
+          filter:
+            name: ["Site - {{ host_site }}"]
+        id: 1
+      status_code: 200
+    register: zbx_site_group_check
+    delegate_to: localhost
+    become: false
+    when: zbx_host_check.json.result | length == 0
+
+  - name: "[Zabbix] Create this site's host group, if it doesn't exist yet"
+    ansible.builtin.uri:
+      url: "http://{{ site_services.zabbix.ip }}/api_jsonrpc.php"
+      method: POST
+      headers:
+        Authorization: "Bearer {{ vault_zabbix_api_token }}"
+      body_format: json
+      body:
+        jsonrpc: "2.0"
+        method: hostgroup.create
+        params:
+          name: "Site - {{ host_site }}"
+        id: 1
+      status_code: 200
+    register: zbx_site_group_create
+    delegate_to: localhost
+    become: false
+    when:
+      - zbx_host_check.json.result | length == 0
+      - zbx_site_group_check.json.result | length == 0
+
+  - name: "[Zabbix] Get the base passive stock template ID (Windows by Zabbix agent)"
+    ansible.builtin.uri:
+      url: "http://{{ site_services.zabbix.ip }}/api_jsonrpc.php"
+      method: POST
+      headers:
+        Authorization: "Bearer {{ vault_zabbix_api_token }}"
+      body_format: json
+      body:
+        jsonrpc: "2.0"
+        method: template.get
+        params:
+          filter:
+            host: ["Windows by Zabbix agent"]
+        id: 1
+      status_code: 200
+    register: zbx_template_stock
+    delegate_to: localhost
+    become: false
+    when: zbx_host_check.json.result | length == 0
+
+  - name: "[Zabbix] Get this host's role-specific companion template ID, if one exists"
+    ansible.builtin.uri:
+      url: "http://{{ site_services.zabbix.ip }}/api_jsonrpc.php"
+      method: POST
+      headers:
+        Authorization: "Bearer {{ vault_zabbix_api_token }}"
+      body_format: json
+      body:
+        jsonrpc: "2.0"
+        method: template.get
+        params:
+          filter:
+            host: ["{{ zbx_role_template_name }}"]
+        id: 1
+      status_code: 200
+    register: zbx_template_role_specific
+    delegate_to: localhost
+    become: false
+    when:
+      - zbx_host_check.json.result | length == 0
+      - zbx_role_template_name != ''
+
+  - name: "[Zabbix] Register host via host.create (own agent interface + description)"
+    ansible.builtin.uri:
+      url: "http://{{ site_services.zabbix.ip }}/api_jsonrpc.php"
+      method: POST
+      headers:
+        Authorization: "Bearer {{ vault_zabbix_api_token }}"
+      body_format: json
+      body:
+        jsonrpc: "2.0"
+        method: host.create
+        params:
+          host: "{{ zbx_win_hostname }}"
+          description: "Managed by Ansible (windows_bootstrap/windows_hygiene). Site: {{ host_site }}."
+          groups: >-
+            {{
+              [{'groupid': zbx_autoreg_group.json.result[0].groupid}] +
+              ([{'groupid': zbx_site_group_check.json.result[0].groupid}] if zbx_site_group_check.json.result | length > 0
+               else [{'groupid': zbx_site_group_create.json.result.groupids[0]}])
+            }}
+          templates: >-
+            {{
+              [{'templateid': zbx_template_stock.json.result[0].templateid}]
+              + ([{'templateid': zbx_template_role_specific.json.result[0].templateid}]
+                 if (zbx_role_template_name != '' and zbx_template_role_specific.json.result | length > 0)
+                 else [])
+            }}
+          interfaces:
+            - type: 1
+              main: 1
+              useip: 1
+              ip: "{{ ansible_host | default(zbx_win_hostname) }}"
+              dns: ""
+              port: "10050"
+          tls_connect: 2
+          tls_accept: 2
+          tls_psk_identity: "{{ zbx_win_hostname }}-psk"
+          tls_psk: "{{ zbx_psk_value }}"
+        id: 1
+      status_code: 200
+    register: zbx_host_create
+    delegate_to: localhost
+    become: false
+    no_log: true
+    when: zbx_host_check.json.result | length == 0
+
+  # Host already registered -- disk always wins, same reasoning as the Linux
+  # file's own sync task: host.get never returns the real tls_psk value to diff
+  # against (write-only field), so push unconditionally rather than compare.
+  - name: "[Zabbix] Sync PSK/PSKID for an already-registered host (on-disk value always wins)"
+    ansible.builtin.uri:
+      url: "http://{{ site_services.zabbix.ip }}/api_jsonrpc.php"
+      method: POST
+      headers:
+        Authorization: "Bearer {{ vault_zabbix_api_token }}"
+      body_format: json
+      body:
+        jsonrpc: "2.0"
+        method: host.update
+        params:
+          hostid: "{{ zbx_host_check.json.result[0].hostid }}"
+          tls_connect: 2
+          tls_accept: 2
+          tls_psk_identity: "{{ zbx_win_hostname }}-psk"
+          tls_psk: "{{ zbx_psk_value }}"
+        id: 1
+      status_code: 200
+    register: zbx_host_update
+    delegate_to: localhost
+    become: false
+    no_log: true
+    when: zbx_host_check.json.result | length > 0
+
+  - name: "[Zabbix] Registration summary"
+    ansible.builtin.debug:
+      msg: >-
+        {{ (zbx_host_check.json.result | length > 0)
+           | ternary('Already registered in Zabbix -- PSK/PSKID synced from disk.',
+                      'Newly registered in Zabbix, group "Site - ' + host_site + '", templates: ' +
+                      (['Windows by Zabbix agent']
+                       + ([zbx_role_template_name] if (zbx_role_template_name | default('')) != '' else [])) | join(', ') + '.') }}
+  rescue:
+    # Deliberately NOT no_log -- Robert's explicit ask (Linux file, applied the same way
+    # here) is to print the PSK/PSKID here so it can be typed into the Zabbix UI by hand.
+    # Every OTHER task above stays no_log: true; this is the one place it's meant to be
+    # visible.
+    #
+    # zbx_role_template_name may never have been set if the block failed before reaching
+    # that task (e.g. the very first API call, host.get, timed out) -- defaulted to ''
+    # rather than assumed defined.
+    - name: "[Zabbix] WARN -- could not register/sync {{ zbx_win_hostname }} with the Zabbix API"
+      ansible.builtin.debug:
+        msg: >-
+          WARN: Zabbix API registration/sync failed for {{ zbx_win_hostname }}
+          (EXAZABCLD001 unreachable, or a real API-level error -- non-critical,
+          continuing the rest of this play). Add it by hand once the server's reachable
+          again:
+            Host: {{ zbx_win_hostname }}
+            Group: Site - {{ host_site }} (+ auto-registration)
+            Templates: Windows by Zabbix agent{{ (', ' + zbx_role_template_name) if (zbx_role_template_name | default('')) != '' else '' }}
+            PSK identity: {{ zbx_win_hostname }}-psk
+            PSK value: {{ zbx_psk_value }}
+  tags: [zabbix, monitoring]

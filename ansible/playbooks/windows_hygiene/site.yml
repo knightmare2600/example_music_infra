@@ -13,6 +13,11 @@
 #                              ask, 2026-09-25 -- see that file's own header)
 #   10-dism                    DISM component store cleanup + ResetBase
 #   20-hibernation-pagefile    Hibernation by chassis type + pagefile clear
+#   25-zabbix-agent            Zabbix agent install/sync + API registration
+#                              (Robert's ask, 2026-10-25 -- own tag, same
+#                              "don't pester the slow stages" reasoning as
+#                              35-winupdate-policy; see that stage's own
+#                              header for the shared tasks file this includes)
 #   30-choco                   Chocolatey upgrade all + WinDirStat + SDelete
 #   35-winupdate-policy        Set Windows Update to manual download/install
 #                              (Robert's ask, 2026-10-10 -- stops background
@@ -48,6 +53,11 @@
 #   ansible-playbook playbooks/windows_hygiene/site.yml \
 #     -i configs/inventory --limit <host> --tags winupdate_policy
 #
+#   Zabbix agent sync only (never triggers any other, slower stage --
+#   same guarantee as --tags winupdate_policy above):
+#   ansible-playbook playbooks/windows_hygiene/site.yml \
+#     -i configs/inventory --limit <host> --tags zabbix
+#
 #   Skip DISM (quick hygiene pass):
 #   ansible-playbook playbooks/windows_hygiene/site.yml \
 #     -i configs/inventory --limit <host> --skip-tags dism
@@ -58,10 +68,19 @@
 # (20-hibernation-pagefile.yml and 50-summary.yml need 00-preflight.yml's
 # facts — run those together, or via site.yml, rather than standalone.)
 #
-# Tags: preflight, example_music_files, dism, hibernation, pagefile, choco,
-#       winupdate_policy, shutdown_without_logon, winupdate, summary
+# Tags: preflight, example_music_files, dism, hibernation, pagefile, zabbix,
+#       choco, winupdate_policy, shutdown_without_logon, winupdate, summary
 # =============================================================================
 # Changelog:
+#   2026-10-25  Added 25-zabbix-agent.yml (Robert's ask): Windows Zabbix agent
+#               install/sync + API registration, mirroring the Linux estate's own
+#               tasks/zabbix_agent_onboard.yml. Own tag (zabbix), same reasoning as
+#               winupdate_policy's own separate tag -- a routine hygiene pass can
+#               keep an already-onboarded host's Zabbix registration in sync without
+#               needing windows_bootstrap's own, considerably longer chain. Confirmed
+#               with Robert directly this supersedes the earlier documented "Windows
+#               agent rollout is Salt's job" plan -- see that shared tasks file's own
+#               header for the full context.
 #   2026-10-11  Added 36-shutdown-without-logon.yml (Robert's ask): Windows Server
 #               hides Shutdown/Restart on the login screen by default, unlike
 #               client/desktop Windows. New stage sets ShutdownWithoutLogon=1 (the
@@ -109,6 +128,9 @@
 
 - import_playbook: playbooks/20-hibernation-pagefile.yml
   tags: [hibernation, pagefile]
+
+- import_playbook: playbooks/25-zabbix-agent.yml
+  tags: zabbix
 
 - import_playbook: playbooks/30-choco.yml
   tags: choco
