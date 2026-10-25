@@ -91,6 +91,7 @@
 #          UPDATE 2026-10-25: bootstrap/web/proxmox/VRK-pdm-answer.toml and FRD-pdm-answer.toml
 #          added (validated against pakhus's own installer/config.py), so toml_url= now
 #          resolves at both sites. The "-pdm-" infix itself is still a presumption.
+#          UPDATE 2026-10-25: Robert confirmed the "-pdm-" infix -- no longer a presumption.
 #
 #   v2.17  :saekkevogn now supports ARM64 (Robert, 2026-10-25) -- CORRECTS v2.16's "x86_64
 #          only". Proxmox still publishes no arm64 PBS (PBS trixie repo Release:
@@ -835,7 +836,7 @@ boot
 # paths mirror :saekkevogn's asymmetric layout exactly.
 #
 # toml_url= uses ${site-prefix}-pdm-answer.toml, distinct from the PVE and
-# PBS answer files -- "-pdm-" infix presumed, pending confirmation.
+# PBS answer files -- "-pdm-" infix confirmed by Robert, 2026-10-25.
 # ===========================================================================
 :pakhus
 iseq ${arch} arm64 && goto pakhus-arm64 || goto pakhus-amd64
