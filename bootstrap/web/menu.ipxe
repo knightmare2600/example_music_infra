@@ -17,6 +17,16 @@
 #
 # Version history:
 #
+#   v2.21  item proxmox-ve's label corrected from "(x86_64 only)" to "(x86_64 or ARM64 --
+#          official ISO, mount via iLO/BMC)" -- Robert's ask, confirmed wrong by checking
+#          Proxmox's own real ISO mirror (enterprise.proxmox.com/iso/): proxmox-ve_9.2-1-
+#          arm64.iso genuinely exists, alongside the amd64 one. Not guessed, not inherited
+#          from klargoring's own arm64 support (a different mechanism entirely -- this
+#          item is the official, manually BMC-mounted ISO path, klargoring is Robert's own
+#          custom PXE build). For contrast, the same mirror has NO arm64 ISO for
+#          proxmox-backup-server or proxmox-datacenter-manager -- confirms the existing
+#          "unofficial arm64 via qemus" framing for :saekkevogn/:pakhus is still accurate,
+#          only :proxmox-ve's own label was stale.
 #   v2.20  :pakhus gains the degraded (single-disk) build, the same change as v2.19 made for
 #          :saekkevogn (Robert, 2026-10-25). Both :pakhus kernel lines now also pass
 #          toml_url_degraded=${boot-url}/proxmox/${site-prefix}-pdm-degraded.toml; the
@@ -492,7 +502,7 @@ item openbsd-auto-s   OpenBSD 7.9  Auto install  (ttyS0 serial)
 item openbsd-inter-s  OpenBSD 7.9  Interactive   (ttyS0 serial)
 item --gap --
 item --gap --         -- Hypervisors --
-item proxmox-ve       Proxmox VE 9   (x86_64 only)
+item proxmox-ve       Proxmox VE 9   (x86_64 or ARM64 -- official ISO, mount via iLO/BMC)
 item klargoring             Projekt klargoring  (custom live Proxmox installer, x86_64 or ARM64)
 item saekkevogn             Projekt Saekkevogn  (custom live Proxmox Backup Server installer, x86_64 or ARM64 -- UNTESTED)
 item pakhus                 Projekt Pakhus      (custom live Proxmox Datacenter Manager installer, x86_64 or ARM64 -- UNTESTED)
