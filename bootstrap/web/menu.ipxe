@@ -68,6 +68,11 @@
 #          UPDATE 2026-10-25: saekkevogn-20261025-trixie-2 published (run 40181170038, all
 #          five jobs green), carrying both arches -- all six saekkevogn manifest asset names
 #          checked present in it via `gh release view --json assets`. Now fetchable.
+#          UPDATE 2026-10-25: the menu item's display text now reads "Saekkevogn" (plain
+#          ASCII) instead of "Sækkevogn" -- Robert's ask, iPXE's own text rendering doesn't
+#          handle the æ character correctly. Quickest real fix on our side; the actual bug
+#          is iPXE's, not this file's. Comments/changelog entries (this file, not rendered
+#          by iPXE) keep the real spelling -- only the rendered `item` line changed.
 #
 #   v2.16  Added :saekkevogn -- Projekt Sækkevogn (github.com/knightmare2600/saekkevogn),
 #          klargoring's companion for Proxmox Backup Server: same initrd, same TOML answer-file
@@ -464,7 +469,7 @@ item --gap --
 item --gap --         -- Hypervisors --
 item proxmox-ve       Proxmox VE 9   (x86_64 only)
 item klargoring             Projekt klargoring  (custom live Proxmox installer, x86_64 or ARM64)
-item saekkevogn             Projekt Sækkevogn   (custom live Proxmox Backup Server installer, x86_64 or ARM64 -- UNTESTED)
+item saekkevogn             Projekt Saekkevogn  (custom live Proxmox Backup Server installer, x86_64 or ARM64 -- UNTESTED)
 item pakhus                 Projekt Pakhus      (custom live Proxmox Datacenter Manager installer, x86_64 or ARM64 -- UNTESTED)
 item --gap --
 item --gap --         -- Utilities --
