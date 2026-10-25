@@ -3,7 +3,7 @@
 # ${boot-url}/proxmox/${site-prefix}-pdm-answer.toml. Added 2026-10-25, modelled on
 # FRD-answer.toml (Klargoring's PVE file) -- same keyboard/country/timezone, root password
 # hash and root SSH key; only the fqdn placeholder and the comments differ. The "-pdm-" infix
-# follows the "-pbs-" one presumed for Saekkevogn; still a presumption pending confirmation.
+# follows Saekkevogn's "-pbs-" one; confirmed by Robert on 2026-10-25.
 [global]
 keyboard = "en-gb"
 country = "gb"
