@@ -200,6 +200,13 @@ export DEBCONF_NONINTERACTIVE_SEEN=true
 #              /sbin/reboot/shutdown/halt with wrapper scripts, but those binaries always
 #              exist regardless of whether it's installed -- command -v would tell us
 #              nothing).
+#  2026-10-25  Robert, live (EXAFWLCLD001, a hub, via the Ansible role -- same jq field
+#              exists here too): nodeinfo.json's wg_hub showed "" for hub/none roles,
+#              correct in that a hub has no parent hub, but not a meaningful value to
+#              see in Zabbix. Changed the non-spoke fallback from "" to "N/A", matching
+#              the fix applied the same day to the Ansible role's own equivalent
+#              (roles/firewall/tasks/14_finish.yml), which already used "N/A" for this
+#              exact value in its own terminal summary line -- just not in nodeinfo.json.
 #
 # -------------------------------------------------------------------------------------------------
 # Colour helpers
@@ -2409,7 +2416,7 @@ jq -n \
   --arg wg_role     "${WG_ROLE}" \
   --arg wg_tunnel_ip "$( [[ "$WG_ROLE" != "none" ]] && echo "${WG_TUNNEL_IP}/24" || echo "" )" \
   --arg wg_port      "$( [[ "$WG_ROLE" =~ hub ]] && echo "${WG_PORT}" || echo "" )" \
-  --arg wg_hub       "$( [[ "$WG_ROLE" == "spoke" ]] && echo "${WG_HUB_ENDPOINT}" || echo "" )" \
+  --arg wg_hub       "$( [[ "$WG_ROLE" == "spoke" ]] && echo "${WG_HUB_ENDPOINT}" || echo "N/A" )" \
   --arg wan_iface   "${WAN_IFACE}" \
   --arg wan_mac     "${WAN_MAC}" \
   --arg wan_mode    "${WAN_MODE}" \

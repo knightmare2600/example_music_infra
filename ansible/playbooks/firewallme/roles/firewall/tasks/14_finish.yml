@@ -41,6 +41,17 @@
 #               00_preflight_1_derive.yml (fw_site_row lookup, same pattern as proxmox's
 #               pve_site_row/linux's _tools_site_row). Also added fw_site_street/
 #               fw_site_postal_code there and here, part of Robert's site-address rollout.
+#   2026-10-25  Robert, live (EXAFWLCLD001, a hub): nodeinfo.json's wg_hub field showed
+#               "" for a hub role -- correct in the sense that a hub genuinely has no
+#               parent hub of its own, but not a meaningful value to see in Zabbix.
+#               nodeinfo_extra's own wg_hub line used `| default('')`, inconsistent with
+#               this SAME file's own WG hub summary line 84 lines below (`| default('N/A')`
+#               for the exact same fw_wg_hub_endpoint variable) -- an internal
+#               inconsistency, not a deliberate choice. Changed to `default('N/A')` to
+#               match. Swept the only other real writer of this field,
+#               bootstrap/web/provision/firewallme.sh's own jq call (hub/none roles
+#               already emit "" there too), same fix applied there for consistency
+#               between the two parallel implementations.
 # =============================================================================
 
 # ── Node info file ────────────────────────────────────────────────────────────
@@ -72,7 +83,7 @@
       ansible_ip: "{{ fw_ansible_ip }}"
       wg_role: "{{ fw_wg_role }}"
       wg_tunnel_ip: "{{ fw_wg_tunnel_ip | default('') }}"
-      wg_hub: "{{ fw_wg_hub_endpoint | default('') }}"
+      wg_hub: "{{ fw_wg_hub_endpoint | default('N/A') }}"
       wan_iface: "{{ fw_wan_iface }}"
       wan_mode: "{{ fw_wan_mode }}"
       wan_ip: "{{ fw_wan_static_ip + '/24' if fw_wan_mode == 'static' else 'dhcp' }}"
