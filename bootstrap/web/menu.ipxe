@@ -17,6 +17,27 @@
 #
 # Version history:
 #
+#   v2.17  :saekkevogn now supports ARM64 (Robert, 2026-10-25) -- CORRECTS v2.16's "x86_64
+#          only". Proxmox still publishes no arm64 PBS (PBS trixie repo Release:
+#          "Architectures: amd64"); gyptazy, asked directly: "Not that I'm aware of", pointing
+#          at the community-built github.com/qemus/proxmox-backup-arm64 instead (its own README:
+#          "not affiliated, sponsored, or endorsed by Proxmox Server Solutions GmbH"). qemus
+#          publishes .debs only, no installer, so Sækkevogn's installer now fetches that
+#          project's UNOFFICIAL proxmox-backup-server arm64 .deb at install time, pinned by
+#          version + SHA-256, and takes everything else from the official PVE arm64 repo (built
+#          for "amd64 arm64") plus the PBS repo's Architecture: all packages -- see saekkevogn's
+#          README "arm64" for the full detail. Nothing PBS-specific is served from this web
+#          server; the initrd itself is plain Debian on both arches.
+#
+#          :saekkevogn-arm64 changed from an "x86_64 only" message to a real boot entry with
+#          literal paths mirroring :klargoring-arm64's exactly (asymmetric filenames,
+#          vmlinuz-arm64/installer-initrd-arm64.img), same check_bootstrap_assets.py reasoning.
+#          benarbejde/asset_manifest.json gained the three matching arm64 github_release
+#          entries (see its own 2026-10-25 changelog line). UNTESTED: the published
+#          saekkevogn-20261022-trixie-1 release is amd64-only (built before arm64 returned to
+#          saekkevogn's CI matrix), so these three fail to fetch until a release with arm64
+#          assets is published.
+#
 #   v2.16  Added :saekkevogn -- Projekt Sækkevogn (github.com/knightmare2600/saekkevogn),
 #          klargoring's companion for Proxmox Backup Server: same initrd, same TOML answer-file
 #          contract (PBS's own automated installer uses the same kebab-case answer format as
@@ -408,7 +429,7 @@ item --gap --         -- Hypervisors --
 item proxmox-ve       Proxmox VE 9   (x86_64 only)
 item proxmox-dcm      Proxmox DCM 9  (x86_64 only)
 item klargoring             Projekt klargoring  (custom live Proxmox installer, x86_64 or ARM64)
-item saekkevogn             Projekt Sækkevogn   (custom live Proxmox Backup Server installer, x86_64 only -- UNTESTED)
+item saekkevogn             Projekt Sækkevogn   (custom live Proxmox Backup Server installer, x86_64 or ARM64 -- UNTESTED)
 item --gap --
 item --gap --         -- Utilities --
 item gparted          GParted Live
@@ -703,6 +724,9 @@ boot
 # Paths mirror klargoring's amd64 layout exactly (unsuffixed vmlinuz/
 # installer-initrd.img under proxmox/saekkevogn/amd64/), on the presumption
 # the same release-asset rename convention is used when it lands here.
+# CORRECTED v2.17: ARM64 is now supported (unofficial PBS server package,
+# fetched by the installer itself) -- :saekkevogn-arm64 mirrors
+# :klargoring-arm64's asymmetric -arm64 filenames. See v2.17.
 #
 # toml_url= uses ${site-prefix}-pbs-answer.toml, distinct from the PVE answer
 # file :klargoring fetches -- "-pbs-" infix presumed, pending confirmation.
@@ -716,10 +740,9 @@ initrd ${boot-url}/proxmox/saekkevogn/amd64/installer-initrd.img
 boot
 
 :saekkevogn-arm64
-echo Proxmox Backup Server is x86_64 only -- Proxmox publishes no arm64 PBS
-echo packages, so Projekt Saekkevogn has no arm64 build.
-prompt Press any key to return to menu...
-goto main
+kernel ${boot-url}/proxmox/saekkevogn/arm64/vmlinuz-arm64 toml_url=${boot-url}/proxmox/${site-prefix}-pbs-answer.toml confirm-wipe no-reboot
+initrd ${boot-url}/proxmox/saekkevogn/arm64/installer-initrd-arm64.img
+boot
 
 # ===========================================================================
 # GPARTED
