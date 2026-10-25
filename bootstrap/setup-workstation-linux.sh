@@ -51,6 +51,21 @@
 # of these).
 # ==============================================================================
 # Changelog:
+#   2026-10-25  Robert's ask: --refresh used to mean "always re-fetch, blindly, no matter
+#               what" for fetch_github_release/fetch_url_with_checksum_file (job 3, the
+#               bootstrap/web/ asset population) -- wasteful for anything large, and
+#               exactly the problem SHA256 checksums already exist to solve. Both
+#               functions now query the (cheap, JSON-only) metadata/checksum-file
+#               regardless of whether the destination already exists, and skip the real
+#               (possibly large) download if what's on disk already matches -- same
+#               principle install_workstation_tools() already uses, applied here too.
+#               --refresh still bypasses this and always re-fetches for real -- the one
+#               deliberate "trust nothing, redo it all" escape hatch, unchanged.
+#               fetch_archive NOT changed the same way -- no local copy of the raw
+#               archive persists after extraction, so there's nothing to hash-compare
+#               without re-downloading it anyway; flagged to Robert as a separate, harder
+#               design question (would need a persistent sidecar record of the last
+#               verified archive hash) rather than silently left alone or over-built.
 #   2026-10-22  Added 'PVEPS' to install_pwsh_modules()'s module list -- PowerShell module for
 #               managing Proxmox VE via its REST API (github.com/knightmare2600/PVEPS,
 #               published to the PowerShell Gallery), itself born out of this repo -- Robert's
@@ -462,18 +477,12 @@ fetch_github_release() {
   local dest="$1" repo="$2" tag="$3" asset_name="$4"
   local full_dest="${WEB_DIR}/${dest}"
 
-  if [[ "$FORCE_REFRESH" == "false" && -f "$full_dest" ]]; then
-    return 0
-  fi
-
   local api_url
   if [[ "$tag" == "latest" ]]; then
     api_url="https://api.github.com/repos/${repo}/releases/latest"
   else
     api_url="https://api.github.com/repos/${repo}/releases/tags/${tag}"
   fi
-
-  msg_info "Fetching ${dest} (${repo}@${tag})..."
 
   local meta
   if ! meta="$(curl -fsSL "$api_url")"; then
@@ -490,6 +499,25 @@ fetch_github_release() {
     return 1
   fi
   expected_hash="${digest#sha256:}"
+
+  # Middle ground, Robert's ask 2026-10-25: the release metadata above is cheap (JSON
+  # only, not the real asset), so query it regardless of whether $full_dest already
+  # exists, and use its digest to check what's on disk BEFORE downloading the real
+  # (possibly large) asset -- same principle install_workstation_tools() above already
+  # uses, applied here too instead of trusting bare presence. -Refresh/--refresh still
+  # bypasses this and always re-fetches for real -- the one deliberate "trust nothing,
+  # redo it all" escape hatch.
+  if [[ "$FORCE_REFRESH" == "false" && -f "$full_dest" && -n "$expected_hash" ]]; then
+    local current_hash
+    current_hash="$(sha256sum "$full_dest" | cut -d' ' -f1)"
+    if [[ "$current_hash" == "$expected_hash" ]]; then
+      msg_ok "  ${dest} already matches (sha256:${current_hash}) -- skipping download."
+      return 0
+    fi
+    msg_info "  ${dest} is present but doesn't match -- refetching."
+  fi
+
+  msg_info "Fetching ${dest} (${repo}@${tag})..."
 
   mkdir -p "$(dirname "$full_dest")"
   curl -fsSL -o "$full_dest" "$download_url"
@@ -508,12 +536,6 @@ fetch_url_with_checksum_file() {
   local dest="$1" url="$2" checksum_file_url="$3" checksum_file_entry="$4"
   local full_dest="${WEB_DIR}/${dest}"
 
-  if [[ "$FORCE_REFRESH" == "false" && -f "$full_dest" ]]; then
-    return 0
-  fi
-
-  msg_info "Fetching ${dest}..."
-
   local checksum_text expected_hash
   if ! checksum_text="$(curl -fsSL "$checksum_file_url")"; then
     msg_error "  Failed to fetch checksum file ${checksum_file_url}"
@@ -529,6 +551,21 @@ fetch_url_with_checksum_file() {
     msg_error "  Could not find a checksum for '${checksum_file_entry}' in ${checksum_file_url}"
     return 1
   fi
+
+  # Middle ground, Robert's ask 2026-10-25 -- see fetch_github_release's own comment
+  # above for the full reasoning; identical pattern here, the checksum file fetched
+  # above is the cheap part, the real $url download is the one worth skipping.
+  if [[ "$FORCE_REFRESH" == "false" && -f "$full_dest" ]]; then
+    local current_hash
+    current_hash="$(sha256sum "$full_dest" | cut -d' ' -f1)"
+    if [[ "$current_hash" == "$expected_hash" ]]; then
+      msg_ok "  ${dest} already matches (sha256:${current_hash}) -- skipping download."
+      return 0
+    fi
+    msg_info "  ${dest} is present but doesn't match -- refetching."
+  fi
+
+  msg_info "Fetching ${dest}..."
 
   mkdir -p "$(dirname "$full_dest")"
   curl -fsSL -o "$full_dest" "$url"
