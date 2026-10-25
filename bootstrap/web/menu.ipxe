@@ -41,6 +41,9 @@
 #          2026-10-25 changelog line). Asset names checked present in the real
 #          pakhus-20261025-trixie-1 release (run 40183728834, all five jobs green) via
 #          `gh release view --json assets`. UNTESTED: no install has been run on either arch.
+#          UPDATE 2026-10-25: bootstrap/web/proxmox/VRK-pdm-answer.toml and FRD-pdm-answer.toml
+#          added (validated against pakhus's own installer/config.py), so toml_url= now
+#          resolves at both sites. The "-pdm-" infix itself is still a presumption.
 #
 #   v2.17  :saekkevogn now supports ARM64 (Robert, 2026-10-25) -- CORRECTS v2.16's "x86_64
 #          only". Proxmox still publishes no arm64 PBS (PBS trixie repo Release:
@@ -81,6 +84,11 @@
 #          -- that filename is already the PVE answer file :klargoring fetches, and a PBS box
 #          needs its own (different fqdn/disks). The "-pbs-" infix is a PRESUMPTION pending
 #          Robert's confirmation; no VRK-/FRD-pbs-answer.toml exists yet either.
+#          UPDATE 2026-10-25: a real PXE boot of :saekkevogn found exactly this -- the
+#          installer got a 404 on the answer file and dropped to its root shell. Robert's
+#          call: keep the -pbs- naming. VRK-pbs-answer.toml/FRD-pbs-answer.toml added,
+#          generated from the PVE files (identical hash/key, fqdn pbs-install), and
+#          registered in check_ssh_keys.py's ANSWER_TOMLS.
 #
 #          UNTESTED. benarbejde/asset_manifest.json gained three github_release entries
 #          (vmlinuz-amd64 -> proxmox/saekkevogn/amd64/vmlinuz, installer-initrd-amd64.img ->

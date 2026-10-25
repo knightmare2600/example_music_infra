@@ -1,0 +1,55 @@
+# FRD-pbs-answer.toml -- Proxmox Backup Server answer file for Projekt Sækkevogn
+# (github.com/knightmare2600/saekkevogn), fetched by menu.ipxe's :saekkevogn entry as
+# ${boot-url}/proxmox/${site-prefix}-pbs-answer.toml. Added 2026-10-25, generated from
+# FRD-answer.toml (the PVE file :klargoring fetches) so the root password hash and SSH
+# key are byte-identical to it -- at_have_ryggen_fri/check_ssh_keys.py checks both files
+# against bootstrap/web/ansible_sshkey.pub, so a key rotation can't leave this one behind.
+# Differences from FRD-answer.toml: fqdn (pbs-install, not pve-install -- same generic
+# placeholder convention; the real hostname is set afterwards, as for PVE) and these
+# comments. Same answer-file format: PBS's own automated installer uses PVE's
+# (pve.proxmox.com/wiki/Automated_Installation, PBS 3.2+). Sækkevogn supports a subset:
+# zfs raid1 across exactly 2 disks, from-dhcp, first-boot from-url.
+#
+# disk-list ["sda", "sdb"] is copied from the PVE file -- a PRESUMPTION that the PBS
+# hardware's two disks enumerate the same way. Check before an unattended run.
+# first-boot.sh is the same script PVE nodes use: it only ensures sshd + the ansible user
+# and key (nothing PVE-specific), though its banner says "PROXMOX VE" and suggests
+# bootstrap-new-node.yml, which is a PVE playbook.
+
+[global]
+keyboard = "en-gb"
+country = "gb"
+fqdn = "pbs-install.jukebox.internal"
+mailto = "root@jukebox.internal"
+timezone = "Europe/London"
+root-password-hashed = "$6$AHl84jrZ7PWHZKfM$q4POMoxXoRb6M6Up2uKDnzJjr4EntVfPI4/KndRu.Z45lwuZoGrxkW2o5EAAC0O8Vyr9qGClpIL/TdYjRWURk/"
+# Added 2026-07-10: earliest possible foot-in-the-door -- root is SSH-reachable by key the
+# moment install finishes, before first-boot.sh has even run. This does NOT replace
+# first-boot.sh's ansible-user creation (Ansible's whole estate connects as `ansible`, not
+# root -- see ansible.cfg's remote_user); this is purely an earlier/recovery path. Same key
+# served at bootstrap/web/ansible_sshkey.pub -- keep both in sync if it's ever rotated.
+root-ssh-keys = [
+  "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDNI/YzB5yJeoBY3Vmm+dd159FF9Egd09HcdX+O9gQ0/ure+NT7OpuEMq6OU78L9Dpu6wubp5B4C4TNlOCCc5FRcwMGjEhH1d/Kfxf5Ig/Eb6Pbj7aqQaaY2iZqx7Qstsi6aOHsQyk+fNiusZBXgHUTsLwmofcWQ71C1MaUGK5SjLEm2t7kQ7j7eFhiKrImzJllItM1GUuqH6iX7IyXiMiIxu6pMJ9jbSPZIQKf+wRtDT4lDiKgiGv+LhX6y+KPpuJH+D64bNGxX9CTaEbUlsc/2XTZbRKcR5l0FBSOBesCseZ/p8iIi2PvUCNOddxDcxMzjY0wFxX+I6dAGWNCY2qUjhMqRvXXKnEwuO+O9tEh5mLLKW52zLRevc/RDt4hYRroDiSf7gFXVNIXS0t1pYQevs1cDc//FLo+3A/232DQ/6CJ/X6/zH2LkFIVEt1Jqxj0WImZoCDHYcFwvtyODG6lsJadtS4ViDuImaoe85AsOuRQA33HXmoJOcQNoaBRpFZGdhecs4MfxdVkaKTxJ1h9wyNESDXS8FC2bnzulZhIt8DmeYisM8I0o76tDwJP5n6SeY7R3ziPSP+K23pdo9qmPaF0SHKhWbFy2TRpHbdUA6qFwXXSqs+DMRXalUGjn9L6v/YgDbw54ZfmBD1NO3FgdktJlwKL0J9z+71vNm7xSw== ansible@exaanscld001.example.com"
+]
+
+[network]
+source = "from-dhcp"
+
+[disk-setup]
+filesystem = "zfs"
+zfs.raid = "raid1"
+disk-list = ["sda", "sdb"]
+
+# TOML has no conditionals, so this file can't do the gateway-based ${boot-url} detection
+# menu.ipxe/late_command.sh/first-boot.sh itself all use -- it's a static value. Fixed
+# 2026-07-11: rather than one answer.toml with a URL permanently pinned to Edinburgh
+# (requiring a manually-maintained divergent copy on any other provisioning server), each
+# site now has its own correctly-pinned file (this one: FRD/Fredericia Havn). menu.ipxe's
+# gateway detection sets ${site-prefix} in the same iseq branch that sets ${boot-url}, and
+# requests ${boot-url}/proxmox/${site-prefix}-pbs-answer.toml -- so whichever server answers the
+# request, it's always serving its own file with its own correct URL below. See
+# bootstrap/web/proxmox/VRK-pbs-answer.toml for Edinburgh's equivalent.
+[first-boot]
+source = "from-url"
+ordering = "fully-up"
+url = "http://172.16.124.1:8000/proxmox/first-boot.sh"
