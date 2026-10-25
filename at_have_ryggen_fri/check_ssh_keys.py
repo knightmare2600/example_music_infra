@@ -20,7 +20,8 @@ this harness (see README.md's Methodology section):
     root-ssh-keys arrays (4 files total -- found while updating the real
     key 2026-07-12 that the original version of this check only covered
     the two non-degraded files, missing the degraded pair entirely) carry
-    their own copies of the same key material, with an explicit "keep both
+    their own copies of the same key material, as do VRK-/FRD-pdm-answer.toml
+    (Projekt Pakhus's PDM pair, added 2026-10-25), with an explicit "keep both
     in sync if it's ever rotated" comment already in every file -- this
     checks that promise actually holds, the same way check_facts.py checks
     a registered fact still holds everywhere it's asserted.
@@ -58,11 +59,17 @@ ANSWER_TOMLS = [
     "bootstrap/web/proxmox/FRD-answer.toml",
     "bootstrap/web/proxmox/VRK-degraded.toml",
     "bootstrap/web/proxmox/FRD-degraded.toml",
+    # Projekt Sækkevogn (PBS), menu.ipxe :saekkevogn -- added 2026-10-25.
+    "bootstrap/web/proxmox/VRK-pbs-answer.toml",
+    "bootstrap/web/proxmox/FRD-pbs-answer.toml",
+    # Projekt Pakhus (PDM), menu.ipxe :pakhus -- added 2026-10-25.
+    "bootstrap/web/proxmox/VRK-pdm-answer.toml",
+    "bootstrap/web/proxmox/FRD-pdm-answer.toml",
 ]
 
 
 def check_pubkey_consistency():
-    """Tier 1: bootstrap/web/ansible_sshkey.pub vs the two answer.toml copies."""
+    """Tier 1: bootstrap/web/ansible_sshkey.pub vs every answer TOML in ANSWER_TOMLS."""
     failures = []
 
     if not PUB_KEY_FILE.exists():
