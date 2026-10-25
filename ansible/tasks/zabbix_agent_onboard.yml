@@ -591,11 +591,17 @@
         msg: >-
           {{ (zbx_host_check.json.result | length > 0)
              | ternary('Already registered in Zabbix -- PSK/PSKID synced from disk.',
-                        'Newly registered in Zabbix, group "Site - ' + host_site + '", template "Linux by Zabbix agent active".') }}
+                        'Newly registered in Zabbix, group "Site - ' + host_site + '", templates: ' +
+                        (['Linux by Zabbix agent', 'linuxtools_examplemusic']
+                         + ([zbx_role_template_name] if (zbx_role_template_name | default('')) != '' else [])) | join(', ') + '.') }}
   rescue:
     # Deliberately NOT no_log -- Robert's explicit ask is to print the PSK/PSKID here so
     # it can be typed into the Zabbix UI by hand. Every OTHER task above stays no_log:
     # true; this is the one place it's meant to be visible.
+    #
+    # zbx_role_template_name may never have been set if the block failed before reaching
+    # that task (e.g. the very first API call, host.get, timed out) -- defaulted to ''
+    # rather than assumed defined.
     - name: "[Zabbix] WARN -- could not register/sync {{ zbx_real_hostname }} with the Zabbix API"
       ansible.builtin.debug:
         msg: >-
@@ -605,7 +611,7 @@
           again:
             Host: {{ zbx_real_hostname }}
             Group: Site - {{ host_site }} (+ auto-registration)
-            Template: Linux by Zabbix agent active
+            Templates: Linux by Zabbix agent, linuxtools_examplemusic{{ (', ' + zbx_role_template_name) if (zbx_role_template_name | default('')) != '' else '' }}
             PSK identity: {{ zbx_real_hostname }}-psk
             PSK value: {{ zbx_psk_value }}
   tags: [zabbix, monitoring]
