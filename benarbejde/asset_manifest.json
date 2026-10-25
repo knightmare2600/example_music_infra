@@ -167,7 +167,10 @@
     "            unofficial PBS server package fetched at install time (see menu.ipxe v2.17).",
     "            Asset names from saekkevogn's restored arm64 build.yml publish step; the",
     "            current saekkevogn-20261022-trixie-1 release is amd64-only, so these three",
-    "            fail to fetch until a release with arm64 assets is published."
+    "            fail to fetch until a release with arm64 assets is published.",
+    "2026-10-25  UPDATE: saekkevogn-20261025-trixie-2 published with amd64 + arm64 assets --",
+    "            all six saekkevogn entries' asset names checked present in it via",
+    "            `gh release view --json assets`. Now fetchable."
   ],
 
   "assets": [
