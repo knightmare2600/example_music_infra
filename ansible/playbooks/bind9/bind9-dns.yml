@@ -292,6 +292,13 @@
 #               nothing was explicitly passed -- -e dns_secondary_ip=<ip> still
 #               overrides when needed (e.g. onboarding a new secondary before its
 #               devices.csv row exists yet).
+#   2026-10-25  BUG FIX, Robert's repo-wide sweep ask: nodeinfo_role was hardcoded as
+#               "dns" (correct letters, wrong case) instead of the canonical
+#               role_codes.csv short code "DNS" -- same bug class fixed the same day
+#               in firewallme/roles/firewall/tasks/14_finish.yml (see that file's own
+#               changelog for the full root-cause story), found via a repo-wide grep
+#               for the same hardcoded-full-word pattern across every nodeinfo_role:
+#               assignment.
 # =============================================================================
 
 # 2026-10-11, Robert's ask: this file never imported the ssh_preflight_with_fallback.yml
@@ -1215,7 +1222,7 @@
       include_tasks: ../../tasks/nodeinfo.yml
       vars:
         nodeinfo_hostname: "{{ this_hostname }}"
-        nodeinfo_role: "dns"
+        nodeinfo_role: "DNS"
         nodeinfo_site: "{{ _dns_own_site_code }}"
         nodeinfo_city: "{{ _dns_own_site_row.City | default('') }}"
         nodeinfo_country: "{{ _dns_own_site_row.Country | default('') }}"

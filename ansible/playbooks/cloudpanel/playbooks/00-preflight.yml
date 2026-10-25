@@ -27,6 +27,12 @@
 # Tags: preflight
 # =============================================================================
 # Changelog:
+#   2026-10-25  BUG FIX, Robert's repo-wide sweep ask: nodeinfo_role was hardcoded as
+#               "cloudpanel" instead of the canonical role_codes.csv short code "CLP"
+#               -- same bug class fixed the same day in firewallme/roles/firewall/
+#               tasks/14_finish.yml (see that file's own changelog for the full
+#               root-cause story), found via a repo-wide grep for the same
+#               hardcoded-full-word pattern across every nodeinfo_role: assignment.
 #   2026-10-14  Cosmetic, Robert's ask: the three Static IP questions (IP/gateway/
 #               activate-now) used ansible.builtin.pause, which hardcodes a "[task
 #               name]\n" header before the prompt text (confirmed directly against the
@@ -372,7 +378,7 @@
       tags: [preflight, always]
       include_tasks: ../../../tasks/nodeinfo.yml
       vars:
-        nodeinfo_role: "cloudpanel"
+        nodeinfo_role: "CLP"
         nodeinfo_site: "{{ host_site }}"
         nodeinfo_city: "{{ clp_site_row.City | default('') }}"
         nodeinfo_country: "{{ clp_site_row.Country | default('') }}"

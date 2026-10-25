@@ -34,6 +34,12 @@
 # and never will.
 # =============================================================================
 # Changelog:
+#   2026-10-25  BUG FIX, Robert's repo-wide sweep ask: nodeinfo_role was hardcoded as
+#               "truenas" instead of the canonical role_codes.csv short code "NAS" --
+#               same bug class fixed the same day in firewallme/roles/firewall/tasks/
+#               14_finish.yml (see that file's own changelog for the full root-cause
+#               story), found via a repo-wide grep for the same hardcoded-full-word
+#               pattern across every nodeinfo_role: assignment.
 #   2026-10-23  Robert's ask, live on EXANASFAL001: a reinstalled TrueNAS box at an
 #               existing standard NAS slot hit "REMOTE HOST IDENTIFICATION HAS CHANGED"
 #               on first real SSH connection -- the previous occupant's cached host key
@@ -219,7 +225,7 @@
       ansible.builtin.include_tasks: ../../../tasks/nodeinfo.yml
       vars:
         nodeinfo_hostname: "{{ nas_hostname }}"
-        nodeinfo_role: "truenas"
+        nodeinfo_role: "NAS"
         nodeinfo_site: "{{ host_site }}"
         nodeinfo_city: "{{ nas_city }}"
         nodeinfo_country: "{{ nas_country }}"
