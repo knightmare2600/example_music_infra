@@ -17,6 +17,19 @@
 #
 # Version history:
 #
+#   v2.19  :saekkevogn gains the degraded (single-disk) build, replicating PVE's own
+#          <SITE>-answer.toml / <SITE>-degraded.toml pair (Robert, 2026-10-25). A real PXE
+#          boot on a one-disk VM failed with "/dev/sdb does not exist" -- Sækkevogn only had the
+#          2-disk mirror. Both :saekkevogn kernel lines now also pass
+#          toml_url_degraded=${boot-url}/proxmox/${site-prefix}-pbs-degraded.toml; the
+#          installer (saekkevogn b1cc531) counts whole disks the same way select-pve-answer.sh
+#          does and fetches that file instead of toml_url= when fewer than 2 exist. New
+#          bootstrap/web/proxmox/VRK-pbs-degraded.toml and FRD-pbs-degraded.toml (zfs.raid =
+#          "raid0", disk-list = ["sda"], otherwise identical to the -pbs-answer.toml files),
+#          registered in check_ssh_keys.py. UNTESTED until a saekkevogn release containing
+#          b1cc531 is published -- the current saekkevogn-20261025-trixie-2 installer ignores
+#          toml_url_degraded= and still needs 2 disks.
+#
 #   v2.18  :proxmox-dcm placeholder ("Proxmox DCM boot not yet configured", x86_64 only)
 #          replaced by :pakhus -- Projekt Pakhus (github.com/knightmare2600/pakhus), the PDM
 #          member of the klargoring/saekkevogn family (Robert, 2026-10-25). Same initrd, same
@@ -768,12 +781,12 @@ boot
 iseq ${arch} arm64 && goto saekkevogn-arm64 || goto saekkevogn-amd64
 
 :saekkevogn-amd64
-kernel ${boot-url}/proxmox/saekkevogn/amd64/vmlinuz toml_url=${boot-url}/proxmox/${site-prefix}-pbs-answer.toml confirm-wipe no-reboot
+kernel ${boot-url}/proxmox/saekkevogn/amd64/vmlinuz toml_url=${boot-url}/proxmox/${site-prefix}-pbs-answer.toml toml_url_degraded=${boot-url}/proxmox/${site-prefix}-pbs-degraded.toml confirm-wipe no-reboot
 initrd ${boot-url}/proxmox/saekkevogn/amd64/installer-initrd.img
 boot
 
 :saekkevogn-arm64
-kernel ${boot-url}/proxmox/saekkevogn/arm64/vmlinuz-arm64 toml_url=${boot-url}/proxmox/${site-prefix}-pbs-answer.toml confirm-wipe no-reboot
+kernel ${boot-url}/proxmox/saekkevogn/arm64/vmlinuz-arm64 toml_url=${boot-url}/proxmox/${site-prefix}-pbs-answer.toml toml_url_degraded=${boot-url}/proxmox/${site-prefix}-pbs-degraded.toml confirm-wipe no-reboot
 initrd ${boot-url}/proxmox/saekkevogn/arm64/installer-initrd-arm64.img
 boot
 
