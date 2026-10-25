@@ -16,9 +16,11 @@
 # full module list, 2026-07-22 -- 24 modules, none create a pool), so this uses a
 # direct REST call instead (POST /pool -- schema confirmed against docs/api2.txt's
 # own pool_create component before writing this, not guessed). Robert's call,
-# 2026-10-23: nas_pool_name is now a fixed, estate-wide convention ("PBSBackups"),
-# not a per-site host_vars choice any more -- defaults to that below, override via
-# host_vars/-e only if some future site genuinely needs something different.
+# 2026-10-23: nas_pool_name was a fixed, estate-wide literal ("PBSBackups") at this
+# point -- SUPERSEDED 2026-10-25, see that changelog entry below: it's per-host
+# again (EXA<ROLE><SITE><NNN>-pool), just computed automatically from nas_hostname
+# rather than a manual host_vars/-e choice. Override via host_vars/-e only if some
+# future site genuinely needs something different from its own computed default.
 #
 # Topology is chosen automatically by how many currently-unused disks the box has
 # (Robert's explicit call, not guessed): exactly 1 -> STRIPE (no redundancy, the
@@ -53,6 +55,17 @@
 # (wipes whatever's currently on the disks it's given).
 # =============================================================================
 # Changelog:
+#   2026-10-25  Robert's ask: per-host pool/dataset naming instead of one fixed literal
+#               shared by every site -- nas_pool_name now defaults to
+#               "{{ nas_hostname }}-pool" (e.g. EXANASFAL001-pool) and the new
+#               nas_dataset_name defaults to "{{ nas_hostname }}-PBSBackups" (e.g.
+#               EXANASFAL001-PBSBackups), both computed from nas_hostname (set in
+#               00-preflight.yml, same run this file already requires to have run
+#               first). GOING FORWARD ONLY -- EXANASFAL001's already-live
+#               "PBSBackups"/"pbs-datastore" pool/dataset is NOT renamed by this
+#               change; a re-run against it will fail loudly at the "no unused disks
+#               found" check (every disk already belongs to the existing pool) rather
+#               than silently creating a confusing second one under the new name.
 #   2026-10-24  Added the real pbs-datastore dataset + NFS share/service setup -- Robert's
 #               call, NFS over iSCSI (asked and discussed, not guessed -- automation
 #               complexity was the deciding factor, see the dedicated comment on the new
@@ -123,9 +136,23 @@
     # pre_tasks set_fact, not vars: -- a vars: self-reference
     # (nas_pool_name: "{{ nas_pool_name | default(...) }}") recurses infinitely;
     # this estate's own standing fix for that exact footgun.
-    - name: "Default nas_pool_name to the standing estate-wide convention (PBSBackups)"
+    #
+    # 2026-10-25, Robert's ask: per-host naming instead of one fixed literal shared
+    # by every site's NAS -- EXA<ROLE><SITE><NNN>-pool / -PBSBackups, using
+    # nas_hostname (set in 00-preflight.yml, the same play/run this file requires
+    # to have already executed). GOING FORWARD ONLY, Robert's explicit call: an
+    # already-built NAS (EXANASFAL001, live pool literally named "PBSBackups") is
+    # NOT retargeted at a new name by this change -- re-running this file against
+    # it will look for a pool called "EXANASFAL001-pool", not find it, and fail
+    # loudly at the "no unused disks found" check below (every disk is already in
+    # the existing PBSBackups pool) rather than silently creating a confusing
+    # second one. That's a deliberate, acceptable failure mode, not a bug -- a
+    # genuine rename of an already-live, NFS-exported pool/dataset is a separate,
+    # real operation Robert can ask for explicitly if ever wanted.
+    - name: "Default nas_pool_name to a per-host convention (EXA<ROLE><SITE><NNN>-pool)"
       set_fact:
-        nas_pool_name: "{{ nas_pool_name | default('PBSBackups') }}"
+        nas_pool_name: "{{ nas_pool_name | default(nas_hostname + '-pool') }}"
+        nas_dataset_name: "{{ nas_dataset_name | default(nas_hostname + '-PBSBackups') }}"
 
   tasks:
 
@@ -350,9 +377,9 @@
     # Deliberately does NOT touch/remove any pre-existing "general" placeholder
     # dataset on a box that already has one from before this change -- that's a
     # manual cleanup call for Robert, not something to delete unasked.
-    - name: "1 | Ensure the pbs-datastore dataset exists"
+    - name: "1 | Ensure the {{ nas_dataset_name }} dataset exists"
       arensb.truenas.filesystem:
-        name: "{{ nas_pool_name }}/pbs-datastore"
+        name: "{{ nas_pool_name }}/{{ nas_dataset_name }}"
         type: FILESYSTEM
         comments: "PBS backup datastore + PVE restore target, exported via NFS"
         create_ancestors: true
@@ -447,9 +474,9 @@
     # PBS runs as root and needs full read/write/chown on its own datastore; NFS's
     # default root-squash would otherwise silently break that. Idempotent: checks
     # for an existing share at this path first.
-    - name: "4 | Check whether an NFS share for pbs-datastore already exists"
+    - name: "4 | Check whether an NFS share for {{ nas_dataset_name }} already exists"
       ansible.builtin.uri:
-        url: "https://{{ truenas_target_ip | default(ansible_host) }}/api/v2.0/sharing/nfs?path=/mnt/{{ nas_pool_name }}/pbs-datastore"
+        url: "https://{{ truenas_target_ip | default(ansible_host) }}/api/v2.0/sharing/nfs?path=/mnt/{{ nas_pool_name }}/{{ nas_dataset_name }}"
         method: GET
         user: "{{ truenas_rest_bootstrap_user }}"
         password: "{{ truenas_rest_bootstrap_password }}"
@@ -466,7 +493,7 @@
       ansible.builtin.set_fact:
         nas_nfs_share_already_exists: "{{ _nas_nfs_share_lookup.json | length > 0 }}"
 
-    - name: "4 | Create the pbs-datastore NFS share"
+    - name: "4 | Create the {{ nas_dataset_name }} NFS share"
       ansible.builtin.uri:
         url: "https://{{ truenas_target_ip | default(ansible_host) }}/api/v2.0/sharing/nfs"
         method: POST
@@ -476,7 +503,7 @@
         validate_certs: "{{ truenas_rest_validate_certs | default(false) }}"
         body_format: json
         body:
-          path: "/mnt/{{ nas_pool_name }}/pbs-datastore"
+          path: "/mnt/{{ nas_pool_name }}/{{ nas_dataset_name }}"
           comment: "PBS backup datastore + PVE restore target"
           networks:
             - "{{ nas_site_row.Subnet }}"
@@ -500,12 +527,12 @@
               {{ '  ' }}Pool     : {{ nas_pool_name }} ({{ 'already existed, nothing to do' if nas_pool_already_exists
               else (nas_pool_vdev_type ~ ' across ' ~ (nas_unused_disks | length) ~ ' disk(s): ' ~ (nas_unused_disks | join(', ')) if not ansible_check_mode
               else 'not created, check mode') }})
-          - "  Dataset  : {{ nas_pool_name }}/pbs-datastore"
+          - "  Dataset  : {{ nas_pool_name }}/{{ nas_dataset_name }}"
           - >-
-              {{ '  ' }}NFS share: /mnt/{{ nas_pool_name }}/pbs-datastore -> {{ nas_site_row.Subnet | default('?') }}
+              {{ '  ' }}NFS share: /mnt/{{ nas_pool_name }}/{{ nas_dataset_name }} -> {{ nas_site_row.Subnet | default('?') }}
               ({{ 'already existed' if nas_nfs_share_already_exists | default(false) else 'created this run' }})
           - "  ════════════════════════════════════════════════════════════════"
           - "  Mount from a PVE/PBS node at this site with:"
           - >-
-              {{ '  ' }}mount -t nfs {{ truenas_target_ip | default(ansible_host) }}:/mnt/{{ nas_pool_name }}/pbs-datastore /mnt/pve/pbs-{{ host_site | lower }}
+              {{ '  ' }}mount -t nfs {{ truenas_target_ip | default(ansible_host) }}:/mnt/{{ nas_pool_name }}/{{ nas_dataset_name }} /mnt/pve/pbs-{{ host_site | lower }}
           - "  ════════════════════════════════════════════════════════════════"
