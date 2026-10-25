@@ -102,6 +102,21 @@ isn't, rather than failing partway through with a confusing permissions
 error.
 ==============================================================================
 Changelog:
+  2026-10-25  Robert's ask: -Refresh used to mean "always re-fetch, blindly, no matter
+              what" for Invoke-GithubReleaseFetch/Invoke-UrlWithChecksumFileFetch (job 3,
+              the bootstrap/web/ asset population) -- wasteful for anything large, and
+              exactly the problem SHA256 checksums already exist to solve. Both functions
+              now query the (cheap, JSON-only) metadata/checksum-file regardless of
+              whether the destination already exists, and skip the real (possibly large)
+              download if what's on disk already matches -- same principle
+              Install-WorkstationTools' own pinned-version check already uses, applied
+              here too. -Refresh still bypasses this and always re-fetches for real -- the
+              one deliberate "trust nothing, redo it all" escape hatch, unchanged.
+              Invoke-ArchiveFetch NOT changed the same way -- no local copy of the raw
+              archive persists after extraction, so there's nothing to hash-compare
+              without re-downloading it anyway; flagged to Robert as a separate, harder
+              design question (would need a persistent sidecar record of the last
+              verified archive hash) rather than silently left alone or over-built.
   2026-10-04  CORRECTED Set-PuttyDefaults from a 4-value New-ItemProperty loop to a full
               `reg import` of ansible/playbooks/windows_bootstrap/playbooks/files/
               putty_default_settings.reg -- found live, EXADCSGOT001: PuTTY's Default
@@ -583,10 +598,6 @@ function Invoke-GithubReleaseFetch {
     param([string]$Dest, [string]$Repo, [string]$Tag, [string]$AssetName)
 
     $fullDest = Join-Path $WebDir $Dest
-    if (-not $ForceRefresh -and (Test-Path $fullDest)) {
-        Write-Info "$Dest already present -- skipping (use -Refresh to force)."
-        return
-    }
 
     $apiUrl = if ($Tag -eq 'latest') {
         "https://api.github.com/repos/$Repo/releases/latest"
@@ -594,7 +605,7 @@ function Invoke-GithubReleaseFetch {
         "https://api.github.com/repos/$Repo/releases/tags/$Tag"
     }
 
-    Write-Info "Fetching $Dest ($Repo@$Tag)..."
+    Write-Info "Checking $Dest ($Repo@$Tag)..."
 
     $meta = Invoke-RestMethod -Uri $apiUrl -Headers @{ 'User-Agent' = 'example-music-setup-workstation' }
     $asset = $meta.assets | Where-Object { $_.name -eq $AssetName }
@@ -603,6 +614,24 @@ function Invoke-GithubReleaseFetch {
         throw "Asset not found: $AssetName"
     }
     $expectedHash = ($asset.digest -replace '^sha256:', '')
+
+    # Middle ground, Robert's ask 2026-10-25: the release metadata above is cheap (JSON
+    # only, not the real asset), so query it regardless of whether $Dest already exists,
+    # and use its digest to check what's on disk BEFORE downloading the real (possibly
+    # large) asset -- same principle Install-WorkstationTools' own pinned-version check
+    # already uses, applied here too instead of trusting bare presence. -Refresh still
+    # bypasses this and always re-fetches for real -- the one deliberate "trust nothing,
+    # redo it all" escape hatch.
+    if (-not $ForceRefresh -and (Test-Path $fullDest) -and $expectedHash) {
+        $currentHash = Get-Sha256 -Path $fullDest
+        if ($currentHash -eq $expectedHash) {
+            Write-Ok "  $Dest already matches (sha256:$currentHash) -- skipping download."
+            return
+        }
+        Write-Info "  $Dest is present but doesn't match -- refetching."
+    }
+
+    Write-Info "Fetching $Dest ($Repo@$Tag)..."
 
     $destDir = Split-Path -Parent $fullDest
     New-Item -ItemType Directory -Path $destDir -Force | Out-Null
@@ -622,12 +651,8 @@ function Invoke-UrlWithChecksumFileFetch {
     param([string]$Dest, [string]$Url, [string]$ChecksumFileUrl, [string]$ChecksumFileEntry)
 
     $fullDest = Join-Path $WebDir $Dest
-    if (-not $ForceRefresh -and (Test-Path $fullDest)) {
-        Write-Info "$Dest already present -- skipping (use -Refresh to force)."
-        return
-    }
 
-    Write-Info "Fetching $Dest..."
+    Write-Info "Checking $Dest..."
 
     $checksumText = Invoke-RestMethod -Uri $ChecksumFileUrl
 
@@ -646,6 +671,20 @@ function Invoke-UrlWithChecksumFileFetch {
         throw "Checksum not found on matching line: $ChecksumFileEntry"
     }
     $expectedHash = $hashMatch.Value.ToLower()
+
+    # Middle ground, Robert's ask 2026-10-25 -- see Invoke-GithubReleaseFetch's own
+    # comment above for the full reasoning; identical pattern here, the checksum file
+    # fetched above is the cheap part, the real $Url download is the one worth skipping.
+    if (-not $ForceRefresh -and (Test-Path $fullDest)) {
+        $currentHash = Get-Sha256 -Path $fullDest
+        if ($currentHash -eq $expectedHash) {
+            Write-Ok "  $Dest already matches (sha256:$currentHash) -- skipping download."
+            return
+        }
+        Write-Info "  $Dest is present but doesn't match -- refetching."
+    }
+
+    Write-Info "Fetching $Dest..."
 
     $destDir = Split-Path -Parent $fullDest
     New-Item -ItemType Directory -Path $destDir -Force | Out-Null
