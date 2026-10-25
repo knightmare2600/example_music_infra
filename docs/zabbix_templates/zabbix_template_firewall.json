@@ -2216,7 +2216,7 @@
             "uuid": "09bfeb433e234f9499d461b2d893d863",
             "name": "nodeinfo: lan_ip",
             "type": "DEPENDENT",
-            "key": "examplemusic.nodeinfo.lan_ip",
+            "key": "nodeinfo.lan_ip[{$NODEINFO.KEY_PREFIX}]",
             "delay": "0",
             "history": "7d",
             "trends": "0",
@@ -2249,7 +2249,7 @@
             "uuid": "efb4ef6335c74887ba846c909a282804",
             "name": "nodeinfo: lan_iface",
             "type": "DEPENDENT",
-            "key": "examplemusic.nodeinfo.lan_iface",
+            "key": "nodeinfo.lan_iface[{$NODEINFO.KEY_PREFIX}]",
             "delay": "0",
             "history": "7d",
             "trends": "0",
@@ -2282,7 +2282,7 @@
             "uuid": "3df45c05ac6b4c168250edac99bbbb9d",
             "name": "nodeinfo: ansible_ip",
             "type": "DEPENDENT",
-            "key": "examplemusic.nodeinfo.ansible_ip",
+            "key": "nodeinfo.ansible_ip[{$NODEINFO.KEY_PREFIX}]",
             "delay": "0",
             "history": "7d",
             "trends": "0",
@@ -2315,7 +2315,7 @@
             "uuid": "4aa32c8b188a4c599e64eb68a3c8149c",
             "name": "nodeinfo: wg_role",
             "type": "DEPENDENT",
-            "key": "examplemusic.nodeinfo.wg_role",
+            "key": "nodeinfo.wg_role[{$NODEINFO.KEY_PREFIX}]",
             "delay": "0",
             "history": "7d",
             "trends": "0",
@@ -2348,7 +2348,7 @@
             "uuid": "c331ad1405e242b48dce686c3b939e4c",
             "name": "nodeinfo: wg_tunnel_ip",
             "type": "DEPENDENT",
-            "key": "examplemusic.nodeinfo.wg_tunnel_ip",
+            "key": "nodeinfo.wg_tunnel_ip[{$NODEINFO.KEY_PREFIX}]",
             "delay": "0",
             "history": "7d",
             "trends": "0",
@@ -2381,7 +2381,7 @@
             "uuid": "4abd424cc3ff4ee39e241079af00f745",
             "name": "nodeinfo: wg_hub",
             "type": "DEPENDENT",
-            "key": "examplemusic.nodeinfo.wg_hub",
+            "key": "nodeinfo.wg_hub[{$NODEINFO.KEY_PREFIX}]",
             "delay": "0",
             "history": "7d",
             "trends": "0",
@@ -2414,7 +2414,7 @@
             "uuid": "ec2fcf7231694ab89421fff9c6aa5cc4",
             "name": "nodeinfo: wan_iface",
             "type": "DEPENDENT",
-            "key": "examplemusic.nodeinfo.wan_iface",
+            "key": "nodeinfo.wan_iface[{$NODEINFO.KEY_PREFIX}]",
             "delay": "0",
             "history": "7d",
             "trends": "0",
@@ -2447,7 +2447,7 @@
             "uuid": "920f028b17c2453f84d990d338b1a8b6",
             "name": "nodeinfo: wan_mode",
             "type": "DEPENDENT",
-            "key": "examplemusic.nodeinfo.wan_mode",
+            "key": "nodeinfo.wan_mode[{$NODEINFO.KEY_PREFIX}]",
             "delay": "0",
             "history": "7d",
             "trends": "0",
@@ -2480,7 +2480,7 @@
             "uuid": "5f830ea16f794e45bc3cad6d1effd09d",
             "name": "nodeinfo: wan_ip",
             "type": "DEPENDENT",
-            "key": "examplemusic.nodeinfo.wan_ip",
+            "key": "nodeinfo.wan_ip[{$NODEINFO.KEY_PREFIX}]",
             "delay": "0",
             "history": "7d",
             "trends": "0",
@@ -2514,6 +2514,13 @@
           {
             "tag": "target",
             "value": "firewall"
+          }
+        ],
+        "macros": [
+          {
+            "macro": "{$NODEINFO.KEY_PREFIX}",
+            "value": "examplemusic",
+            "description": "Item-key namespace prefix for every examplemusic.nodeinfo.* dependent item in this template series. Was hardcoded as a literal string in ~74 item keys across 7 templates -- Robert's explicit ask (2026-10-16 design brief: \"macros wherever sensible\"), 2026-10-25: a single macro here instead, so this repo's own harness can find/verify/change the one real source of truth per template instead of grepping scattered literals."
           }
         ]
       }
