@@ -17,6 +17,18 @@
 #
 # Version history:
 #
+#   v2.22  Hypervisors section spruced up, Robert's ask: all 4 item lines (proxmox-ve/
+#          klargoring/saekkevogn/pakhus) now share one consistent format and column
+#          alignment (opening parenthesis at the same column on every line, computed, not
+#          eyeballed), and each description now says "amd64/arm64 auto-detected" instead
+#          of "x86_64 or ARM64" -- Robert's specific point: there's only ONE item per
+#          project, not separate amd64/arm64 entries, because each one's own iPXE logic
+#          (iseq ${arch} arm64 && goto X-arm64 || goto X-amd64) already decides based on
+#          the booting machine's real CPU architecture; the old wording read like a choice
+#          the operator had to make. Also fixed klargoring's own under-specified "custom
+#          live Proxmox installer" (doesn't say which Proxmox product) to match
+#          saekkevogn/pakhus's already-specific "Proxmox VE/Backup Server/Datacenter
+#          Manager installer" pattern -- a genuine inconsistency, not just cosmetic.
 #   v2.21  item proxmox-ve's label corrected from "(x86_64 only)" to "(x86_64 or ARM64 --
 #          official ISO, mount via iLO/BMC)" -- Robert's ask, confirmed wrong by checking
 #          Proxmox's own real ISO mirror (enterprise.proxmox.com/iso/): proxmox-ve_9.2-1-
@@ -502,10 +514,10 @@ item openbsd-auto-s   OpenBSD 7.9  Auto install  (ttyS0 serial)
 item openbsd-inter-s  OpenBSD 7.9  Interactive   (ttyS0 serial)
 item --gap --
 item --gap --         -- Hypervisors --
-item proxmox-ve       Proxmox VE 9   (x86_64 or ARM64 -- official ISO, mount via iLO/BMC)
-item klargoring             Projekt klargoring  (custom live Proxmox installer, x86_64 or ARM64)
-item saekkevogn             Projekt Saekkevogn  (custom live Proxmox Backup Server installer, x86_64 or ARM64 -- UNTESTED)
-item pakhus                 Projekt Pakhus      (custom live Proxmox Datacenter Manager installer, x86_64 or ARM64 -- UNTESTED)
+item proxmox-ve    Proxmox VE 9        (official ISO, amd64/arm64 auto-detected -- mount via iLO/BMC)
+item klargoring    Projekt klargoring  (custom live Proxmox VE installer, amd64/arm64 auto-detected)
+item saekkevogn    Projekt Saekkevogn  (custom live Proxmox Backup Server installer, amd64/arm64 auto-detected -- UNTESTED)
+item pakhus        Projekt Pakhus      (custom live Proxmox Datacenter Manager installer, amd64/arm64 auto-detected -- UNTESTED)
 item --gap --
 item --gap --         -- Utilities --
 item gparted          GParted Live
