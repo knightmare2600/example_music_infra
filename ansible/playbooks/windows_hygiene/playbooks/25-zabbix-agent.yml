@@ -1,0 +1,64 @@
+---
+# =============================================================================
+# playbooks/25-zabbix-agent.yml
+# Example Music Limited — Zabbix agent sync (Windows, routine re-run)
+# =============================================================================
+# Thin entry point around tasks/zabbix_agent_onboard_windows.yml -- see that
+# file's own header for the full design. This is the routine-re-run sibling of
+# windows_bootstrap/playbooks/83-zabbix-agent.yml (the new-host build chain) --
+# same shared file, included separately here so a plain hygiene pass can keep
+# an already-onboarded host's Zabbix registration/PSK/config in sync WITHOUT
+# needing windows_bootstrap's own, considerably longer chain. Robert's explicit
+# ask: "add it as part of hygiene too, so we can run hygiene without pestering
+# bootstrap."
+#
+# Own tag (zabbix), deliberately separate from every other hygiene stage's own
+# tag -- same discipline 35-winupdate-policy.yml already established for
+# exactly this reason (site.yml's own header documents --tags winupdate_policy
+# as guaranteed to never drag in 40-winupdate.yml's own slow run as a side
+# effect). --tags zabbix here is the equivalent guarantee: it runs only this
+# stage, nothing else in the hygiene chain.
+#
+# Position 25 (between 20-hibernation-pagefile and 30-choco) -- a cheap,
+# idempotent check belongs early, same reasoning 05-example-music-files.yml's
+# own header gives for sitting at 05 rather than appended at the end.
+#
+# gather_facts: false -- matches windows_bootstrap/playbooks/83-zabbix-agent.yml's
+# own choice; see tasks/zabbix_agent_onboard_windows.yml's header for why this
+# doesn't matter (the one cosmetic fact this file could have used, the host's
+# own IP, falls back to ansible_host directly instead).
+#
+# In real-world practice this stage's own "first install" branch inside the
+# shared task file never fires here -- windows_bootstrap always runs first on
+# any real host, so by the time hygiene ever reaches this stage the agent is
+# already installed. Included anyway, not specially cut down, for the same
+# "one shared file, both callers get the full self-healing behaviour" reason
+# the Linux estate's own linux/tools.yml + zabbix_agent.yml pairing already
+# works this way.
+#
+# 2026-10-25, Robert's explicit call: supersedes the earlier documented
+# "Windows Zabbix agent rollout is Salt's job" plan -- Salt isn't being
+# restored yet, Ansible covers this for now. See 83-zabbix-agent.yml's own
+# header for the full context.
+#
+# Usage:
+#   ansible-playbook -i configs/inventory playbooks/windows_hygiene/playbooks/25-zabbix-agent.yml
+#
+# Tags: zabbix
+# =============================================================================
+# Changelog:
+#   2026-10-25  Initial file. Robert's ask: Windows Zabbix agent sync, own tag,
+#               so routine hygiene runs don't need windows_bootstrap's own
+#               considerably longer chain just to keep Zabbix in sync.
+# =============================================================================
+
+- name: Windows — Zabbix agent sync
+  hosts: "{{ target_hosts | default(target | default('all')) }}"
+  gather_facts: false
+
+  tasks:
+    - name: Include Zabbix agent onboarding tasks (Windows)
+      ansible.builtin.include_tasks: ../../../tasks/zabbix_agent_onboard_windows.yml
+      vars:
+        nodeinfo_repo_root: "{{ playbook_dir }}/../../../.."
+      tags: [zabbix, monitoring]
