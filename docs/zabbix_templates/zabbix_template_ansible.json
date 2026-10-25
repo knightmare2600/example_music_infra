@@ -12,15 +12,10 @@
         "uuid": "55b5c47b7e324732a6c3460892392492",
         "template": "ansible_examplemusic",
         "name": "Ansible Control Node (Example Music)",
-        "description": "2026-10-25 BUG FIX, Robert, live on EXAFWLCLD001 (same bug found and fixed on this template too): ansible_dir/inventory/ssh_key were returning no data. Root cause, confirmed directly from the removed master item's own description text: it was a vfs.file.regexp expecting those 3 keys consecutively in one exact literal order, reliant on \"ansibleme.sh's Section 15 jq call always writing these 3 keys last, in this order\". Ansible's ansible.builtin.copy + to_nice_json (every Ansible-side nodeinfo write, incl. linux/tools.yml's own 2026-10-25 nodeinfo_extra fix for EXAANSCLD001, see that file's own changelog) always re-serializes keys ALPHABETICALLY -- so the moment Ansible ever rewrites the file (every single run), the literal bash-order assumption breaks regardless of which script wrote it first. Fixed the same way as the firewall template's identical bug: each of the 3 items now points its master_item at linuxtools_examplemusic's own vfs.file.contents[...] item (same pattern already live on bind9/tacticalrmm), with the required top-level \"templates\" parent-link entry added. NOT YET VERIFIED against a real re-import.\n\nCompanion template for bootstrap/web/provision/ansibleme.sh -- the control-node-specific counterpart to zabbix_template_linuxtools.json's generic Linux coverage. Built 2026-10-17 by copying that template's generator and editing it (Robert's own call: '90% of the work... only needs minor edits'), same flat, native, one-item-per-thing design, same verified vfs.file.exists/regmatch/regexp/contents syntax.\n\nWHY A SEPARATE TEMPLATE, NOT MORE linuxtools ITEMS\n  ansibleme.sh is a one-shot bash bootstrap script, not a routinely-re-run Ansible playbook -- it has its own package list, its own file layout (repo clone + symlink, ansible.cfg, SSH keypair, KeePass automation files), and its own config-line conventions, genuinely distinct from what any generic Linux playbook manages. The little nuances below -- which items legitimately show as 'missing' on one OS branch but not the other, which trigger direction is flipped because the BAD state is presence not absence, which checks are deliberately partial -- are exactly why this needs to be its own template rather than folded into linuxtools.\n\nKNOWN NUANCES (not bugs, read before alerting on these)\n  - python3-zombie-telnetlib and the ansible-core '+trixie1' version check both legitimately show as absent/0 on bookworm hosts -- only meaningful on trixie. No Debian-version-conditional trigger dependency built for either.\n  - NetworkManager.conf's check is inverted versus every other item here: it fires on managed=false being PRESENT (=1), not absent -- most hosts never had the line at all, which is a fine default, not a fault.\n  - main.ini's [ansiblehosts] check only confirms SOME ansible_host= entry exists, not specifically this host's own -- no verified way to substitute this host's own IP into an active item's regexp parameter.\n  - KeePass automation files are OPTIONAL (most control nodes skip setup) and chmod 600 -- vfs.file.exists only needs stat/search permission, not read, but this has NOT been live-verified against the zabbix-agent user's real access to /home/ansible/.\n  - ansible user's own shell=zsh is deliberately NOT duplicated here -- linuxtools' template already covers it, and linux/tools.yml runs against this same control node like any other Linux host. Only root's shell and kvm-group membership (genuinely not covered elsewhere) are added here.\n  - nodeinfo.json's ansibleme.sh-written schema diverges from the generic tasks/nodeinfo.yml schema linuxtools already extracts from (backlogged fix, not done here -- see project_ansibleme_nodeinfo_schema_drift_2026_10_17 memory) -- only the 3 fields unique to ansibleme.sh's own write (ansible_dir/inventory/ssh_key) are extracted here, to avoid duplicating what linuxtools' own master item already covers.\n\nIMPORT: configuration.import, rules: createMissing+updateExisting+deleteMissing on items/triggers, createMissing+updateExisting on template_groups/templates.",
+        "description": "2026-10-25 CORRECTION to the note immediately below, same day: the cross-template DEPENDENT-item fix described there was REJECTED live by configuration.import on the firewall template's own identical fix attempt (same session): \"Cannot link template 'linuxtools_examplemusic' to template 'firewall_examplemusic', because it would be linked to host 'EXAFWLCLD001' twice.\" Confirmed against real Zabbix community reports of the identical error class (forum: \"cannot link template because its parent template would be linked twice\"; ZBX-9842: \"template cannot be linked to another template more than once even through other templates\") -- a hard Zabbix constraint on the host's own template graph, fired precisely because every host here gets linuxtools_examplemusic linked directly regardless of role. Applies identically to this template (ansible-node), fixed the same way -- see next paragraph.\n\n2026-10-25 ACTUAL FIX (supersedes the parent-link approach above): added this template's own vfs.file.contents[/etc/example-music/nodeinfo.json,UTF-8] master item (see its own description for why the UTF-8 param exists) and repointed all 3 ansible-node dependent items at it instead of linuxtools' item. Same file, read independently by each template that needs its own extras -- no cross-template reference, no parent-link, no collision (confirmed: distinct key string from linuxtools' own bare-key item). NOT YET VERIFIED against a real re-import.\n\n2026-10-25 BUG FIX, Robert, live on EXAFWLCLD001 (same bug found and fixed on this template too): ansible_dir/inventory/ssh_key were returning no data. Root cause, confirmed directly from the removed master item's own description text: it was a vfs.file.regexp expecting those 3 keys consecutively in one exact literal order, reliant on \"ansibleme.sh's Section 15 jq call always writing these 3 keys last, in this order\". Ansible's ansible.builtin.copy + to_nice_json (every Ansible-side nodeinfo write, incl. linux/tools.yml's own 2026-10-25 nodeinfo_extra fix for EXAANSCLD001, see that file's own changelog) always re-serializes keys ALPHABETICALLY -- so the moment Ansible ever rewrites the file (every single run), the literal bash-order assumption breaks regardless of which script wrote it first. Fixed the same way as the firewall template's identical bug: each of the 3 items now points its master_item at linuxtools_examplemusic's own vfs.file.contents[...] item (same pattern already live on bind9/tacticalrmm), with the required top-level \"templates\" parent-link entry added. NOT YET VERIFIED against a real re-import.\n\nCompanion template for bootstrap/web/provision/ansibleme.sh -- the control-node-specific counterpart to zabbix_template_linuxtools.json's generic Linux coverage. Built 2026-10-17 by copying that template's generator and editing it (Robert's own call: '90% of the work... only needs minor edits'), same flat, native, one-item-per-thing design, same verified vfs.file.exists/regmatch/regexp/contents syntax.\n\nWHY A SEPARATE TEMPLATE, NOT MORE linuxtools ITEMS\n  ansibleme.sh is a one-shot bash bootstrap script, not a routinely-re-run Ansible playbook -- it has its own package list, its own file layout (repo clone + symlink, ansible.cfg, SSH keypair, KeePass automation files), and its own config-line conventions, genuinely distinct from what any generic Linux playbook manages. The little nuances below -- which items legitimately show as 'missing' on one OS branch but not the other, which trigger direction is flipped because the BAD state is presence not absence, which checks are deliberately partial -- are exactly why this needs to be its own template rather than folded into linuxtools.\n\nKNOWN NUANCES (not bugs, read before alerting on these)\n  - python3-zombie-telnetlib and the ansible-core '+trixie1' version check both legitimately show as absent/0 on bookworm hosts -- only meaningful on trixie. No Debian-version-conditional trigger dependency built for either.\n  - NetworkManager.conf's check is inverted versus every other item here: it fires on managed=false being PRESENT (=1), not absent -- most hosts never had the line at all, which is a fine default, not a fault.\n  - main.ini's [ansiblehosts] check only confirms SOME ansible_host= entry exists, not specifically this host's own -- no verified way to substitute this host's own IP into an active item's regexp parameter.\n  - KeePass automation files are OPTIONAL (most control nodes skip setup) and chmod 600 -- vfs.file.exists only needs stat/search permission, not read, but this has NOT been live-verified against the zabbix-agent user's real access to /home/ansible/.\n  - ansible user's own shell=zsh is deliberately NOT duplicated here -- linuxtools' template already covers it, and linux/tools.yml runs against this same control node like any other Linux host. Only root's shell and kvm-group membership (genuinely not covered elsewhere) are added here.\n  - nodeinfo.json's ansibleme.sh-written schema diverges from the generic tasks/nodeinfo.yml schema linuxtools already extracts from (backlogged fix, not done here -- see project_ansibleme_nodeinfo_schema_drift_2026_10_17 memory) -- only the 3 fields unique to ansibleme.sh's own write (ansible_dir/inventory/ssh_key) are extracted here, to avoid duplicating what linuxtools' own master item already covers.\n\nIMPORT: configuration.import, rules: createMissing+updateExisting+deleteMissing on items/triggers, createMissing+updateExisting on template_groups/templates.",
         "groups": [
           {
             "name": "Templates/Example Music"
-          }
-        ],
-        "templates": [
-          {
-            "name": "linuxtools_examplemusic"
           }
         ],
         "items": [
@@ -2542,6 +2537,31 @@
             ]
           },
           {
+            "uuid": "07734c5d5dc7461685c2849daae8d939",
+            "name": "nodeinfo.json contents, ansible-node extras (master)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.contents[/etc/example-music/nodeinfo.json,UTF-8]",
+            "delay": "1h",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Raw nodeinfo.json content -- master item for this template's own 3 ansible-node-specific examplemusic.nodeinfo.* dependent items below (ansible_dir/inventory/ssh_key). Deliberately a SEPARATE item from linuxtools_examplemusic's own vfs.file.contents[/etc/example-music/nodeinfo.json] master (same file, read twice -- negligible cost, a local file read), NOT a cross-template DEPENDENT reference to it. 2026-10-25 real finding: Zabbix refuses to link a template declaring another template as a parent (the \"templates\" field, needed to resolve a cross-template master_itemid) to any host that ALSO links that parent template directly -- \"cannot link template ... because it would be linked to host ... twice\" -- and every host here gets linuxtools_examplemusic directly regardless of role. The UTF-8 encoding param exists purely to give this item a distinct key from linuxtools' own bare-key item (both read the identical file independently) -- real file content either way, no functional difference, avoids the duplicate-key collision the template-1-5 backlog item already warns about (feedback_zabbix_duplicate_item_keys_across_templates.md). No staleness trigger of its own -- linuxtools' own master item's nodata() trigger already covers this same file going stale, one alert, not duplicated here.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "ansible-node"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              },
+              {
+                "tag": "item-type",
+                "value": "master"
+              }
+            ]
+          },
+          {
             "uuid": "3433501ae63344218f97a9bf30590bad",
             "name": "nodeinfo: ansible_dir",
             "type": "DEPENDENT",
@@ -2562,7 +2582,7 @@
               }
             ],
             "master_item": {
-              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json,UTF-8]"
             },
             "preprocessing": [
               {
@@ -2595,7 +2615,7 @@
               }
             ],
             "master_item": {
-              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json,UTF-8]"
             },
             "preprocessing": [
               {
@@ -2628,7 +2648,7 @@
               }
             ],
             "master_item": {
-              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json,UTF-8]"
             },
             "preprocessing": [
               {
