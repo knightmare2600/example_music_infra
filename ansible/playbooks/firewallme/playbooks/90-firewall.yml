@@ -16,6 +16,22 @@
 #       packages, network, nftables, dnsmasq, ssh, cockpit, finish
 #
 # Changelog:
+#   2026-10-25  BUG FIX, Robert, live (EXAFWLCLD001): "Error while evaluating
+#               conditional: '_fwl_hostkey_probe' is undefined" on the include_tasks
+#               below. CORRECTS the 2026-10-23 entry's own claim of "no behaviour
+#               change" -- there was one, just not caught until now. Before the
+#               extraction, this play had its OWN inline probe task registering
+#               _fwl_hostkey_probe, then a separate task used that var in its own
+#               when:. The extraction moved the probe (now registering _phk_probe)
+#               INSIDE the shared file, which already gates its own warn/purge tasks
+#               correctly -- but left this caller's include_tasks task itself gated on
+#               the OLD, now-nonexistent _fwl_hostkey_probe, a variable that could only
+#               ever be set by the probe the include_tasks task was waiting to run.
+#               Removed the when: entirely -- the shared file always runs its own
+#               probe unconditionally, then internally decides whether to warn/purge,
+#               so the caller needs no gate of its own at all. Checked the other real
+#               caller (truenas/playbooks/00-preflight.yml) for the same leftover --
+#               it never had one, its own include_tasks call was already unconditional.
 #   2026-10-23  Robert's ask, after truenas/playbooks/00-preflight.yml hit the same
 #               changed-host-key problem live on EXANASFAL001: extracted the inline
 #               known_hosts probe/warning/purge logic into ../../../tasks/
@@ -151,7 +167,6 @@
           FIREWALLS ONLY -- a changed host key on any other node type (DCS, Salt, RMM, etc.) is
           never auto-purged and will still fail loudly, since those are expected to already have a
           stable identity.
-      when: "'REMOTE HOST IDENTIFICATION HAS CHANGED' in _fwl_hostkey_probe.stderr"
 
 - import_playbook: ../../ssh_preflight_with_fallback.yml
 
