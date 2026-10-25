@@ -62,6 +62,8 @@ ANSWER_TOMLS = [
     # Projekt Sækkevogn (PBS), menu.ipxe :saekkevogn -- added 2026-10-25.
     "bootstrap/web/proxmox/VRK-pbs-answer.toml",
     "bootstrap/web/proxmox/FRD-pbs-answer.toml",
+    "bootstrap/web/proxmox/VRK-pbs-degraded.toml",
+    "bootstrap/web/proxmox/FRD-pbs-degraded.toml",
     # Projekt Pakhus (PDM), menu.ipxe :pakhus -- added 2026-10-25.
     "bootstrap/web/proxmox/VRK-pdm-answer.toml",
     "bootstrap/web/proxmox/FRD-pdm-answer.toml",
