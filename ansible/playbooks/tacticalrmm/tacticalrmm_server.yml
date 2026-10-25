@@ -769,7 +769,11 @@
       include_tasks: ../../tasks/nodeinfo.yml
       vars:
         nodeinfo_hostname: "{{ rmm_hostname }}"
-        nodeinfo_role: "tacticalrmm"
+        # 2026-10-25 BUG FIX, Robert's repo-wide sweep ask: was hardcoded as the full
+        # descriptive word instead of the canonical role_codes.csv short code -- same
+        # bug class fixed the same day in firewallme/roles/firewall/tasks/14_finish.yml
+        # (see that file's own changelog for the full root-cause story).
+        nodeinfo_role: "RMM"
         nodeinfo_site: "{{ rmm_site_code }}"
         nodeinfo_city: "{{ rmm_site_city }}"
         nodeinfo_country: "{{ rmm_site_country }}"
@@ -2820,7 +2824,11 @@
       include_tasks: ../../tasks/nodeinfo.yml
       vars:
         nodeinfo_hostname: "{{ rmm_hostname }}"
-        nodeinfo_role: "tacticalrmm"
+        # 2026-10-25 BUG FIX, Robert's repo-wide sweep ask: was hardcoded as the full
+        # descriptive word instead of the canonical role_codes.csv short code -- same
+        # bug class fixed the same day in firewallme/roles/firewall/tasks/14_finish.yml
+        # (see that file's own changelog for the full root-cause story).
+        nodeinfo_role: "RMM"
         nodeinfo_site: "{{ rmm_site_code }}"
         nodeinfo_city: "{{ rmm_site_city }}"
         nodeinfo_country: "{{ rmm_site_country }}"
