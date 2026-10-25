@@ -4,6 +4,26 @@
 # Example Music Limited — Final summary and optional reboot
 # =============================================================================
 # Changelog:
+#   2026-10-25  BUG FIX, Robert, live (EXAFWLCLD001): nodeinfo.json showed "role":
+#               "firewall" after this file ran, not the canonical 3-letter site-role
+#               code "FWL" every other caller/role uses (confirmed via role_codes.csv).
+#               Was hardcoded as the literal full word since this line was first
+#               written (2026-07-07, confirmed via git log -p, never changed since) --
+#               NOT part of the 2026-10-17 "role field was lowercase" estate-wide fix
+#               (that swept `host_role | lower` patterns specifically; a hardcoded
+#               literal full word never matched that grep). The "FWL" seen earlier in
+#               this same host's own nodeinfo.json came from a DIFFERENT caller
+#               (linux/tools.yml, which correctly derives `host_role | upper`) -- this
+#               file's own value was always wrong, just not visible until Robert
+#               re-ran 90-firewall.yml specifically and overwrote it. Confirmed nothing
+#               downstream reads nodeinfo.json's own role field for actual logic
+#               (cosmetic/display only, e.g. the Zabbix "nodeinfo: role" item) before
+#               fixing. SWEPT the whole repo for the same hardcoded-full-word pattern:
+#               found the IDENTICAL bug in 9 other playbook families (tacticalrmm,
+#               truenas x2, cloudpanel, bind9, rudder, proxmox, salt, meshcentral) --
+#               flagged to Robert as a separate repo-wide finding rather than silently
+#               fixing all 9 in the same pass, since each touches a different live
+#               service's own Zabbix display.
 #   2026-06-20  Initial file
 #   2026-06-20  Colourised — replicates firewallme.sh finish block exactly
 #               including the ASCII art header
@@ -66,7 +86,7 @@
   tags: always
   include_tasks: ../../../../../tasks/nodeinfo.yml
   vars:
-    nodeinfo_role: "firewall"
+    nodeinfo_role: "FWL"
     nodeinfo_site: "{{ fw_site_code }}"
     nodeinfo_city: "{{ fw_site_city | default('') }}"
     nodeinfo_country: "{{ fw_site_country | default('') }}"
