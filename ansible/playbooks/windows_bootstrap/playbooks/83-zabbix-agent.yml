@@ -1,0 +1,66 @@
+---
+# =============================================================================
+# playbooks/83-zabbix-agent.yml
+# Example Music Limited — Zabbix agent install + registration (Windows)
+# =============================================================================
+# Thin entry point around tasks/zabbix_agent_onboard_windows.yml -- see that
+# file's own header for the full design (classic agent, PSK, active checks,
+# API host.create, MSI-property-driven first install). This is the Windows
+# counterpart to windows_bootstrap's own role in the Linux estate: linux/
+# tools.yml includes the shared Linux onboarding file for every Linux host on
+# every run; this stage does the equivalent for every Windows host that goes
+# through this chain. windows_hygiene/playbooks/25-zabbix-agent.yml includes
+# the SAME shared file separately, for routine re-runs without needing the
+# rest of this (considerably longer) bootstrap chain -- see that file's own
+# header for why it's not folded in here instead.
+#
+# hosts: windows_nodes -- same scope 82-salt-minion.yml already uses (WKS/LAP/
+# SUR/SVR/DCS via generate_inventory.py's own group chain; MAC/MBP explicitly
+# excluded, future Salt work per that file's own header). Position 83 (right
+# after 82-salt-minion.yml) is tidy ordering near the end of the chain, same
+# reasoning that file's own header gives for its own position after
+# 80-domainjoin.yml -- domain join/rename are already settled by this point,
+# so MINION_ID/HOSTNAME are always the real, final EXA<ROLE><SITE><NNN> name.
+#
+# Deliberately NOT imported into site.yml's own chain -- confirmed directly
+# (grep, not assumed) that 82-salt-minion.yml, the closest real analog here,
+# isn't either. Both are windows_nodes-scoped "install/register an agent-type
+# thing" stages, run standalone via --tags or direct invocation, same as that
+# file's own "Usage:" section documents. windows_hygiene/playbooks/
+# 25-zabbix-agent.yml IS chained into that family's own site.yml instead --
+# that family has no standalone-only precedent, every stage there is fully
+# chained with its own selective tag.
+#
+# gather_facts: false -- matches 82-salt-minion.yml's own choice (WinRM fact-
+# gathering is slow and neither this stage nor the shared file it includes
+# needs it; see that shared file's own header for the one place this matters,
+# the cosmetic host.create interface IP, which falls back to ansible_host
+# directly instead).
+#
+# 2026-10-25, Robert's explicit call: supersedes the earlier documented
+# "Windows Zabbix agent rollout is Salt's job" plan (zabbix_agent_onboard.yml's
+# own original header, docs/zabbix_templates/README.md, benarbejde/
+# role_codes.csv's ZAB row all said so) -- Salt isn't being restored yet,
+# Ansible covers this for now.
+#
+# Usage:
+#   ansible-playbook -i configs/inventory playbooks/windows_bootstrap/playbooks/83-zabbix-agent.yml
+#
+# Tags: zabbix, monitoring
+# =============================================================================
+# Changelog:
+#   2026-10-25  Initial file. Robert's ask: Windows Zabbix agent onboarding,
+#               mirroring the Linux file, wired in here (new-host build chain)
+#               and separately into windows_hygiene (routine re-run).
+# =============================================================================
+
+- name: Windows — Zabbix agent install + registration
+  hosts: "windows_nodes"
+  gather_facts: false
+
+  tasks:
+    - name: Include Zabbix agent onboarding tasks (Windows)
+      ansible.builtin.include_tasks: ../../../tasks/zabbix_agent_onboard_windows.yml
+      vars:
+        nodeinfo_repo_root: "{{ playbook_dir }}/../../../.."
+      tags: [zabbix, monitoring]
