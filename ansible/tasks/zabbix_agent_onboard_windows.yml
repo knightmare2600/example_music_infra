@@ -6,7 +6,7 @@
 # The Windows counterpart to tasks/zabbix_agent_onboard.yml -- same overall shape
 # (PSK generate-once/file-into-KeePass, API host.create/host.update, on-disk-PSK-
 # always-wins sync for an already-registered host) but Windows-native mechanics
-# throughout: msiexec instead of apt, ansible.windows.win_lineinfile instead of
+# throughout: msiexec instead of apt, community.windows.win_lineinfile instead of
 # lineinfile, a registry-based "already installed, which version" check instead
 # of a package-manager one (same pattern windows_bootstrap/playbooks/
 # 82-salt-minion.yml already proved for the Salt minion MSI, not invented fresh).
@@ -81,6 +81,14 @@
 # ansible_default_ipv4 (never gathered here, so never worth probing for).
 # =============================================================================
 # Changelog:
+#   2026-10-25  BUG FIX, Robert, live (EXADCSCLD001, first-ever run of this file
+#               against a real Windows box): "couldn't resolve module/action
+#               'ansible.windows.win_lineinfile'" -- win_lineinfile has never lived
+#               in ansible.windows, only community.windows (confirmed via
+#               `ansible-doc -l`), matching windows_hygiene/requirements.yml's own
+#               correct collection declaration for the same module -- this file's own
+#               task simply used the wrong FQCN prefix. Fixed the one real call site
+#               plus the header comment that repeated the same wrong name.
 #   2026-10-25  Initial file. Robert's ask: Windows Zabbix agent onboarding,
 #               mirroring tasks/zabbix_agent_onboard.yml, wired into both
 #               windows_bootstrap and windows_hygiene (own tag on the hygiene
@@ -216,7 +224,7 @@
 #    the config file the MSI itself already wrote on first install. ──
 
 - name: "[Zabbix] Sync config on an already-installed agent (lineinfile -- add/replace only)"
-  ansible.windows.win_lineinfile:
+  community.windows.win_lineinfile:
     path: "{{ zbx_win_install_folder }}\\zabbix_agentd.conf"
     regexp: "{{ item.regexp }}"
     line: "{{ item.line }}"
