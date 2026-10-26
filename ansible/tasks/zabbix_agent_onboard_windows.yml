@@ -59,13 +59,16 @@
 # (SourceForge doesn't publish an equivalent checksum file either), not
 # something invented a workaround for here.
 #
-# No Windows companion Zabbix template exists yet (confirmed with Robert
-# directly, 2026-10-25: "no windows template quite yet, we're still ironing out
-# issues like this") -- zbx_win_role_template_map below is deliberately EMPTY
-# for now, same mechanism as the Linux file's own map, ready to extend the
-# moment a real Windows-role companion template exists. Every Windows host
-# gets only the stock "Windows by Zabbix agent" template (passive, matching the
-# Linux file's own active->passive stock-template swap) until then.
+# No Windows ROLE-specific companion Zabbix template exists yet (confirmed with
+# Robert directly, 2026-10-25: "no windows template quite yet, we're still
+# ironing out issues like this") -- zbx_win_role_template_map below is
+# deliberately EMPTY for now, same mechanism as the Linux file's own map, ready
+# to extend the moment a real Windows-role companion template exists. Every
+# Windows host DOES get the generic windows_tools_examplemusic base companion
+# template (added 2026-10-26, mirroring linuxtools_examplemusic's own
+# always-linked role here) alongside the stock "Windows by Zabbix agent"
+# template (passive, matching the Linux file's own active->passive
+# stock-template swap).
 #
 # Required vars (set by the caller before including this file):
 #   nodeinfo_repo_root   same var, same value the caller already computes for
@@ -81,6 +84,20 @@
 # ansible_default_ipv4 (never gathered here, so never worth probing for).
 # =============================================================================
 # Changelog:
+#   2026-10-26  Wired in windows_tools_examplemusic (the new generic Windows companion
+#               template, docs/zabbix_templates/zabbix_template_windows_tools.json,
+#               commit fff747c) as an ALWAYS-linked base template, mirroring
+#               linuxtools_examplemusic's own always-linked role on the Linux side --
+#               added the missing template.get lookup task and added it to
+#               host.create's own templates: list alongside the stock template.
+#               Real gap found while reviewing this file after building the new
+#               template: EXADCSCLD001's own earlier successful registration (same
+#               day) only got the stock "Windows by Zabbix agent" template, since
+#               nothing anywhere linked a generic Windows template the way Linux
+#               always does. Already-registered hosts (like EXADCSCLD001 itself) are
+#               NOT retrofitted by this fix -- host.update only ever syncs PSK/PSKID,
+#               never templates, same already-accepted limitation the Linux side has
+#               (a known backlog item, not something this fix changes).
 #   2026-10-25  BUG FIX, Robert, live (EXADCSCLD001, first-ever run of this file
 #               against a real Windows box): "couldn't resolve module/action
 #               'ansible.windows.win_lineinfile'" -- win_lineinfile has never lived
@@ -366,6 +383,26 @@
     become: false
     when: zbx_host_check.json.result | length == 0
 
+  - name: "[Zabbix] Get our own base companion template ID (windows_tools_examplemusic)"
+    ansible.builtin.uri:
+      url: "http://{{ site_services.zabbix.ip }}/api_jsonrpc.php"
+      method: POST
+      headers:
+        Authorization: "Bearer {{ vault_zabbix_api_token }}"
+      body_format: json
+      body:
+        jsonrpc: "2.0"
+        method: template.get
+        params:
+          filter:
+            host: ["windows_tools_examplemusic"]
+        id: 1
+      status_code: 200
+    register: zbx_template_windowstools
+    delegate_to: localhost
+    become: false
+    when: zbx_host_check.json.result | length == 0
+
   - name: "[Zabbix] Get this host's role-specific companion template ID, if one exists"
     ansible.builtin.uri:
       url: "http://{{ site_services.zabbix.ip }}/api_jsonrpc.php"
@@ -409,7 +446,10 @@
             }}
           templates: >-
             {{
-              [{'templateid': zbx_template_stock.json.result[0].templateid}]
+              [
+                {'templateid': zbx_template_stock.json.result[0].templateid},
+                {'templateid': zbx_template_windowstools.json.result[0].templateid}
+              ]
               + ([{'templateid': zbx_template_role_specific.json.result[0].templateid}]
                  if (zbx_role_template_name != '' and zbx_template_role_specific.json.result | length > 0)
                  else [])
@@ -466,7 +506,7 @@
         {{ (zbx_host_check.json.result | length > 0)
            | ternary('Already registered in Zabbix -- PSK/PSKID synced from disk.',
                       'Newly registered in Zabbix, group "Site - ' + host_site + '", templates: ' +
-                      (['Windows by Zabbix agent']
+                      (['Windows by Zabbix agent', 'windows_tools_examplemusic']
                        + ([zbx_role_template_name] if (zbx_role_template_name | default('')) != '' else [])) | join(', ') + '.') }}
   rescue:
     # Deliberately NOT no_log -- Robert's explicit ask (Linux file, applied the same way
@@ -486,7 +526,7 @@
           again:
             Host: {{ zbx_win_hostname }}
             Group: Site - {{ host_site }} (+ auto-registration)
-            Templates: Windows by Zabbix agent{{ (', ' + zbx_role_template_name) if (zbx_role_template_name | default('')) != '' else '' }}
+            Templates: Windows by Zabbix agent, windows_tools_examplemusic{{ (', ' + zbx_role_template_name) if (zbx_role_template_name | default('')) != '' else '' }}
             PSK identity: {{ zbx_win_hostname }}-psk
             PSK value: {{ zbx_psk_value }}
   tags: [zabbix, monitoring]
