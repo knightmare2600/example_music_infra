@@ -59,14 +59,15 @@
 # (SourceForge doesn't publish an equivalent checksum file either), not
 # something invented a workaround for here.
 #
-# No Windows ROLE-specific companion Zabbix template exists yet (confirmed with
-# Robert directly, 2026-10-25: "no windows template quite yet, we're still
-# ironing out issues like this") -- zbx_win_role_template_map below is
-# deliberately EMPTY for now, same mechanism as the Linux file's own map, ready
-# to extend the moment a real Windows-role companion template exists. Every
-# Windows host DOES get the generic windows_tools_examplemusic base companion
-# template (added 2026-10-26, mirroring linuxtools_examplemusic's own
-# always-linked role here) alongside the stock "Windows by Zabbix agent"
+# First Windows ROLE-specific companion Zabbix template landed 2026-10-26
+# (windows_dc_examplemusic, DCS) -- zbx_win_role_template_map below started
+# deliberately EMPTY (confirmed with Robert directly, 2026-10-25: "no windows
+# template quite yet, we're still ironing out issues like this") and now has
+# its first real entry, same mechanism as the Linux file's own map. Every
+# OTHER Windows role still falls through to '' until a template exists for it.
+# Every Windows host DOES get the generic windows_tools_examplemusic base
+# companion template (added 2026-10-26, mirroring linuxtools_examplemusic's
+# own always-linked role here) alongside the stock "Windows by Zabbix agent"
 # template (passive, matching the Linux file's own active->passive
 # stock-template swap).
 #
@@ -84,6 +85,11 @@
 # ansible_default_ipv4 (never gathered here, so never worth probing for).
 # =============================================================================
 # Changelog:
+#   2026-10-26  Added the first real zbx_win_role_template_map entry: DCS ->
+#               windows_dc_examplemusic (docs/zabbix_templates/zabbix_template_windows_dc.json),
+#               the new DC-specific companion template (FSMO/replication/SYSVOL/AD
+#               site health). Updated the stale header comment that still said the
+#               map was "deliberately EMPTY for now."
 #   2026-10-26  Wired in windows_tools_examplemusic (the new generic Windows companion
 #               template, docs/zabbix_templates/zabbix_template_windows_tools.json,
 #               commit fff747c) as an ALWAYS-linked base template, mirroring
@@ -278,10 +284,12 @@
     set_fact:
       zbx_role_template_name: "{{ zbx_win_role_template_map[host_role | upper] | default('') }}"
     vars:
-      # Deliberately empty -- no Windows companion Zabbix template exists yet
-      # (confirmed with Robert directly, 2026-10-25). Extend this the moment one
-      # does, same shape as the Linux file's own FWL/NAS/CLP/DNS/ANS/PVE/RMM map.
-      zbx_win_role_template_map: {}
+      # 2026-10-26: first real entry, windows_dc_examplemusic (DCS), added once that
+      # template actually existed -- same shape as the Linux file's own
+      # FWL/NAS/CLP/DNS/ANS/PVE/RMM map. Every other Windows role still falls through
+      # to '' (no role-specific template) until one's built for it.
+      zbx_win_role_template_map:
+        DCS: windows_dc_examplemusic
 
   - name: "[Zabbix] Check whether this host is already registered"
     ansible.builtin.uri:
