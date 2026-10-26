@@ -3,13 +3,13 @@
     "version": "7.0",
     "template_groups": [
       {
-        "uuid": "542a8220ae7645f18e8c78969c70efb2",
+        "uuid": "d7c5764c0ef44d4b8912ca9f03f44385",
         "name": "Templates/Example Music"
       }
     ],
     "templates": [
       {
-        "uuid": "26cc34ea2071423aa3dbcbbfc629563e",
+        "uuid": "e399e5c2b52a466d81e1ec54b5041cca",
         "template": "windows_dc_examplemusic",
         "name": "Windows DC (Example Music)",
         "description": "Companion template for the windows_dc playbook family (DC-specific health: FSMO, replication, SYSVOL, AD site registration) -- Robert's own ask since 2026-10-17, built 2026-10-26 once windows_tools_examplemusic (the generic Windows companion, which every DC also gets) existed. Shopping list built from reading every file in ansible/playbooks/windows_dc/ in full; Robert approved essentially the whole list with one explicit constraint: 'run it once per hour, don't hammer DCs doing checks' -- every live check in this template uses delay: 1h (daily for the lower-priority AD topology counts).\n\nDESIGN NOTES\n- Every PowerShell command here is copied from this repo's own real, already-proven Ansible tasks (exact property names, exact regex/failure-matching logic) -- not invented fresh. Several commands are consolidated into one system.run[] call returning JSON, with multiple DEPENDENT items extracting fields via JSONPATH, specifically to minimise the total number of live PowerShell invocations against a real DC per Robert's own instruction.\n- dcdiag's hardened failure-matching regex (and the repadmin header-exclusion pattern) is the SAME fix just applied to 30-dc-replicate.yml (commit 24314f5, 2026-10-26) -- this template's own live check reuses the identical logic, not a third independent implementation of the same rule.\n- Own local nodeinfo.json master item (vfs.file.contents[...,UTF-8], distinct key), NOT a cross-template reference to windows_tools_examplemusic's own master item -- confirmed 2026-10-25 that a cross-template 'templates' parent-link breaks the moment both templates are linked to the same host, which every DC here always is.\n- FSMO role holders and AD topology counts are macro-gated to {$WINDOWSDC.FSMO_RELEVANT} (hub sites FAL/ODE/BRK + CLD only), mirroring 30-dc-replicate.yml's own exact gating condition -- checking forest-wide FSMO/topology state from every single DC in the forest would be redundant.\n- The AD-site-registration mismatch trigger compares the LIVE Get-ADDomainController Site value against nodeinfo.json's own already-known site field -- no separate macro needed, the real expected value already exists.\n- dcdiag_fail_count/dc_is_forest_root/dc_domain_name (from nodeinfo.json) are SNAPSHOTS from whenever 40-dc-summary.yml last ran (DC build/promotion time only, not routine) -- kept distinct in naming/description from this template's own live hourly dcdiag check, which is the real ongoing health signal.\n\nNOT YET LIVE-IMPORTED OR LIVE-TESTED.",
@@ -20,7 +20,7 @@
         ],
         "items": [
           {
-            "uuid": "b0f20c99af7743c0a41dc6b60f660080",
+            "uuid": "ea51ef0cd70a4a16a89d58ad6b77f9c9",
             "name": "nodeinfo.json contents, DC extras (master)",
             "type": "ZABBIX_ACTIVE",
             "key": "vfs.file.contents[C:\\ProgramData\\ExampleMusic\\Config\\nodeinfo.json,UTF-8]",
@@ -45,7 +45,7 @@
             ]
           },
           {
-            "uuid": "8967a1e5341f44538bfd90a5d76345b1",
+            "uuid": "d86f6bd0609d4ac4b5a0576567daff0f",
             "name": "nodeinfo: dc_is_forest_root",
             "type": "DEPENDENT",
             "key": "nodeinfo_dc_is_forest_root[{$WINDOWSDC.KEY_PREFIX}]",
@@ -83,7 +83,7 @@
             ]
           },
           {
-            "uuid": "d925340ac43a47c7a7cca6e9031d91b7",
+            "uuid": "a158be3aed3440499e3d2202edd146ce",
             "name": "nodeinfo: dc_domain_name",
             "type": "DEPENDENT",
             "key": "nodeinfo_dc_domain_name[{$WINDOWSDC.KEY_PREFIX}]",
@@ -116,7 +116,7 @@
             ]
           },
           {
-            "uuid": "bb9d8518f87d4cd6bc878211b8e63ea2",
+            "uuid": "b2291d4127d440f4b4db804d197e1400",
             "name": "nodeinfo: dcdiag_fail_count (last build/summary run)",
             "type": "DEPENDENT",
             "key": "nodeinfo_dcdiag_fail_count_(last_build/summary_run)[{$WINDOWSDC.KEY_PREFIX}]",
@@ -149,10 +149,10 @@
             ]
           },
           {
-            "uuid": "23cdad8cba2544dab72573545248805a",
+            "uuid": "aaef03f48b6643a08786e408435bd311",
             "name": "dcdiag failure count (replications/dns/fsmo/netlogons)",
             "type": "ZABBIX_ACTIVE",
-            "key": "system.run[powershell -command \"$o = dcdiag /test:replications /test:dns /test:fsmo /test:netlogons 2>&1; $a = ($o -match 'failed test').Count; $b = (($o -notmatch '^\\s*warning:') -match 'error').Count; Write-Output ($a + $b)\",wait]",
+            "key": "system.run[\"powershell -command \\\"$o = dcdiag /test:replications /test:dns /test:fsmo /test:netlogons 2>&1; $a = ($o -match 'failed test').Count; $b = (($o -notmatch '^\\s*warning:') -match 'error').Count; Write-Output ($a + $b)\\\"\",wait]",
             "delay": "1h",
             "history": "7d",
             "trends": "90d",
@@ -170,8 +170,8 @@
             ],
             "triggers": [
               {
-                "uuid": "1fbafb995061403285bc9faaf8491e94",
-                "expression": "last(/Windows DC (Example Music)/system.run[powershell -command \"$o = dcdiag /test:replications /test:dns /test:fsmo /test:netlogons 2>&1; $a = ($o -match 'failed test').Count; $b = (($o -notmatch '^\\s*warning:') -match 'error').Count; Write-Output ($a + $b)\",wait])<>0",
+                "uuid": "409877250b504de884440d0545da571f",
+                "expression": "last(/Windows DC (Example Music)/system.run[\"powershell -command \\\"$o = dcdiag /test:replications /test:dns /test:fsmo /test:netlogons 2>&1; $a = ($o -match 'failed test').Count; $b = (($o -notmatch '^\\s*warning:') -match 'error').Count; Write-Output ($a + $b)\\\"\",wait])<>0",
                 "name": "Hey! {HOST.NAME} — dcdiag failure count (replications/dns/fsmo/netlogons)",
                 "priority": "WARNING",
                 "description": "Live hourly check, same hardened failure-matching logic as 40-dc-summary.yml/30-dc-replicate.yml's own Ansible tasks (2026-10-10/2026-10-26 fixes) -- matches dcdiag's own real 'failed test <Name>' phrase, plus a dedicated error check excluding Warning:-prefixed lines, avoiding the common benign 'Warning: Failed to add the test record...' false positive.",
@@ -189,10 +189,10 @@
             ]
           },
           {
-            "uuid": "cd1177a3e5e24a7ab0f33c5c72cc21c5",
+            "uuid": "9cadd91b5a5d4b0ab2854f229dfbe451",
             "name": "repadmin /showrepl error count",
             "type": "ZABBIX_ACTIVE",
-            "key": "system.run[powershell -command \"$o = repadmin /showrepl 2>&1; ($o | Select-String -Pattern 'error|fail|8457|8453|1722' -CaseSensitive:$false).Count\",wait]",
+            "key": "system.run[\"powershell -command \\\"$o = repadmin /showrepl 2>&1; ($o | Select-String -Pattern 'error|fail|8457|8453|1722' -CaseSensitive:$false).Count\\\"\",wait]",
             "delay": "1h",
             "history": "7d",
             "trends": "90d",
@@ -210,8 +210,8 @@
             ],
             "triggers": [
               {
-                "uuid": "1fcbc44595cf42d8999cc32cf80c8484",
-                "expression": "last(/Windows DC (Example Music)/system.run[powershell -command \"$o = repadmin /showrepl 2>&1; ($o | Select-String -Pattern 'error|fail|8457|8453|1722' -CaseSensitive:$false).Count\",wait])<>0",
+                "uuid": "6fb63f685f5e415d9b224265700fdee2",
+                "expression": "last(/Windows DC (Example Music)/system.run[\"powershell -command \\\"$o = repadmin /showrepl 2>&1; ($o | Select-String -Pattern 'error|fail|8457|8453|1722' -CaseSensitive:$false).Count\\\"\",wait])<>0",
                 "name": "Hey! {HOST.NAME} — repadmin /showrepl error count",
                 "priority": "WARNING",
                 "description": "Live hourly check, same error-matching pattern 30-dc-replicate.yml's own '[Stage 0] Check for repadmin errors' task already uses.",
@@ -229,10 +229,10 @@
             ]
           },
           {
-            "uuid": "4090ff20d0074fe4bef24d795d8f9372",
+            "uuid": "37c4124909c74db4b95e0346042cb687",
             "name": "repadmin /replsummary error count",
             "type": "ZABBIX_ACTIVE",
-            "key": "system.run[powershell -command \"$o = repadmin /replsummary 2>&1; (($o -notmatch 'largest delta') -match 'fail|error').Count\",wait]",
+            "key": "system.run[\"powershell -command \\\"$o = repadmin /replsummary 2>&1; (($o -notmatch 'largest delta') -match 'fail|error').Count\\\"\",wait]",
             "delay": "1h",
             "history": "7d",
             "trends": "90d",
@@ -250,8 +250,8 @@
             ],
             "triggers": [
               {
-                "uuid": "7b2ad52005d94ad38c6965b19b584537",
-                "expression": "last(/Windows DC (Example Music)/system.run[powershell -command \"$o = repadmin /replsummary 2>&1; (($o -notmatch 'largest delta') -match 'fail|error').Count\",wait])<>0",
+                "uuid": "f5a25db1ea48411eb7fe9ebdac65d5b2",
+                "expression": "last(/Windows DC (Example Music)/system.run[\"powershell -command \\\"$o = repadmin /replsummary 2>&1; (($o -notmatch 'largest delta') -match 'fail|error').Count\\\"\",wait])<>0",
                 "name": "Hey! {HOST.NAME} — repadmin /replsummary error count",
                 "priority": "WARNING",
                 "description": "Live hourly check, same header-exclusion logic 30-dc-replicate.yml's own Stage 3 replication-summary task already uses -- repadmin's own column headers ('Fails/Total %', 'largest delta... error') would otherwise self-match.",
@@ -269,10 +269,10 @@
             ]
           },
           {
-            "uuid": "16443310c086425c966192ed8a6fe5cf",
+            "uuid": "43a6152ad3494751af51c121563a34b0",
             "name": "DNS SRV record (_ldap._tcp) targets this DC",
             "type": "ZABBIX_ACTIVE",
-            "key": "system.run[powershell -command \"$srv = Resolve-DnsName -Name '_ldap._tcp.jukebox.internal' -Type SRV -ErrorAction SilentlyContinue; $t = @($srv.NameTarget) -like ($env:COMPUTERNAME + '*'); ($t.Count -gt 0).ToString()\",wait]",
+            "key": "system.run[\"powershell -command \\\"$srv = Resolve-DnsName -Name '_ldap._tcp.jukebox.internal' -Type SRV -ErrorAction SilentlyContinue; $t = @($srv.NameTarget) -like ($env:COMPUTERNAME + '*'); ($t.Count -gt 0).ToString()\\\"\",wait]",
             "delay": "1h",
             "history": "7d",
             "trends": "0",
@@ -290,8 +290,8 @@
             ],
             "triggers": [
               {
-                "uuid": "8f892ee8383f4715aa1c43e07906a4aa",
-                "expression": "last(/Windows DC (Example Music)/system.run[powershell -command \"$srv = Resolve-DnsName -Name '_ldap._tcp.jukebox.internal' -Type SRV -ErrorAction SilentlyContinue; $t = @($srv.NameTarget) -like ($env:COMPUTERNAME + '*'); ($t.Count -gt 0).ToString()\",wait])<>\"True\"",
+                "uuid": "2b2378ca45624d0eadb8fb651b493659",
+                "expression": "last(/Windows DC (Example Music)/system.run[\"powershell -command \\\"$srv = Resolve-DnsName -Name '_ldap._tcp.jukebox.internal' -Type SRV -ErrorAction SilentlyContinue; $t = @($srv.NameTarget) -like ($env:COMPUTERNAME + '*'); ($t.Count -gt 0).ToString()\\\"\",wait])<>\"True\"",
                 "name": "Hey! {HOST.NAME} — no DNS SRV record pointing at this DC",
                 "priority": "WARNING",
                 "description": "This DC's own SRV record should resolve and target itself.",
@@ -309,10 +309,10 @@
             ]
           },
           {
-            "uuid": "f04d5b05ba8b4f068f88cc4eb206e300",
+            "uuid": "98a502252b0b455c89f5e582fdef1a5d",
             "name": "SYSVOL and NETLOGON shares present",
             "type": "ZABBIX_ACTIVE",
-            "key": "system.run[powershell -command \"$s = Get-SmbShare | Select-Object -ExpandProperty Name; (($s -contains 'SYSVOL') -and ($s -contains 'NETLOGON')).ToString()\",wait]",
+            "key": "system.run[\"powershell -command \\\"$s = Get-SmbShare | Select-Object -ExpandProperty Name; (($s -contains 'SYSVOL') -and ($s -contains 'NETLOGON')).ToString()\\\"\",wait]",
             "delay": "1h",
             "history": "7d",
             "trends": "0",
@@ -330,8 +330,8 @@
             ],
             "triggers": [
               {
-                "uuid": "3bb052d741484ed39869c24cefaa56e4",
-                "expression": "last(/Windows DC (Example Music)/system.run[powershell -command \"$s = Get-SmbShare | Select-Object -ExpandProperty Name; (($s -contains 'SYSVOL') -and ($s -contains 'NETLOGON')).ToString()\",wait])<>\"True\"",
+                "uuid": "0ed5cb371b7a412286ddfed2b405017a",
+                "expression": "last(/Windows DC (Example Music)/system.run[\"powershell -command \\\"$s = Get-SmbShare | Select-Object -ExpandProperty Name; (($s -contains 'SYSVOL') -and ($s -contains 'NETLOGON')).ToString()\\\"\",wait])<>\"True\"",
                 "name": "Hey! {HOST.NAME} — SYSVOL or NETLOGON share missing",
                 "priority": "HIGH",
                 "description": "Both shares should always be present on a healthy, promoted DC.",
@@ -349,7 +349,7 @@
             ]
           },
           {
-            "uuid": "74e83aaa2c59411193dcfe6e1d5bf2d0",
+            "uuid": "fb308b5f0f8249c4b1dafeebe9fd4d87",
             "name": "SYSVOL Policies directory child count",
             "type": "ZABBIX_ACTIVE",
             "key": "vfs.dir.count[\"C:\\Windows\\SYSVOL\\sysvol\\{$WINDOWSDC.DOMAIN_NAME}\\Policies\"]",
@@ -370,7 +370,7 @@
             ],
             "triggers": [
               {
-                "uuid": "c70091fc9d67404b8fa179b38f18954d",
+                "uuid": "7cd0f6e714454b668c080a8f012568eb",
                 "expression": "last(/Windows DC (Example Music)/vfs.dir.count[\"C:\\Windows\\SYSVOL\\sysvol\\{$WINDOWSDC.DOMAIN_NAME}\\Policies\"])=0",
                 "name": "Hey! {HOST.NAME} — SYSVOL Policies directory is empty",
                 "priority": "HIGH",
@@ -389,10 +389,10 @@
             ]
           },
           {
-            "uuid": "7e668f75d7f24b779617d3a065389ad4",
+            "uuid": "11e4f899adfa45fa820927b4d3989f08",
             "name": "DC AD site registration",
             "type": "ZABBIX_ACTIVE",
-            "key": "system.run[powershell -command \"(Get-ADDomainController -Identity $env:COMPUTERNAME).Site\",wait]",
+            "key": "system.run[\"powershell -command \\\"(Get-ADDomainController -Identity $env:COMPUTERNAME).Site\\\"\",wait]",
             "delay": "1h",
             "history": "7d",
             "trends": "0",
@@ -410,8 +410,8 @@
             ],
             "triggers": [
               {
-                "uuid": "59e7f2ef3d4b4ef3a8b3ba1199ef177b",
-                "expression": "last(/Windows DC (Example Music)/system.run[powershell -command \"(Get-ADDomainController -Identity $env:COMPUTERNAME).Site\",wait])<>last(/Windows DC (Example Music)/nodeinfo_site_(comparison_target)[{$WINDOWSDC.KEY_PREFIX}])",
+                "uuid": "0cb3e17697bb4c4882787ca4cab3525b",
+                "expression": "last(/Windows DC (Example Music)/system.run[\"powershell -command \\\"(Get-ADDomainController -Identity $env:COMPUTERNAME).Site\\\"\",wait])<>last(/Windows DC (Example Music)/nodeinfo_site_(comparison_target)[{$WINDOWSDC.KEY_PREFIX}])",
                 "name": "Hey! {HOST.NAME} — AD site registration doesn't match its real site",
                 "priority": "WARNING",
                 "description": "Live AD Sites-and-Services registration should match this host's own hostname-derived site (nodeinfo.json's site field).",
@@ -429,10 +429,10 @@
             ]
           },
           {
-            "uuid": "a6a4622504894d88a26a57a8eaaffeaf",
+            "uuid": "0db92de4773f48b29874d09b205ede75",
             "name": "DC is Global Catalog",
             "type": "ZABBIX_ACTIVE",
-            "key": "system.run[powershell -command \"(Get-ADDomainController -Identity $env:COMPUTERNAME).IsGlobalCatalog.ToString()\",wait]",
+            "key": "system.run[\"powershell -command \\\"(Get-ADDomainController -Identity $env:COMPUTERNAME).IsGlobalCatalog.ToString()\\\"\",wait]",
             "delay": "1h",
             "history": "7d",
             "trends": "0",
@@ -450,10 +450,10 @@
             ]
           },
           {
-            "uuid": "9a4ed41692e242fc889c9accc4959298",
+            "uuid": "c20d3e20beed4df39d005bd43646c912",
             "name": "DC is read-only (RODC)",
             "type": "ZABBIX_ACTIVE",
-            "key": "system.run[powershell -command \"(Get-ADDomainController -Identity $env:COMPUTERNAME).IsReadOnly.ToString()\",wait]",
+            "key": "system.run[\"powershell -command \\\"(Get-ADDomainController -Identity $env:COMPUTERNAME).IsReadOnly.ToString()\\\"\",wait]",
             "delay": "1h",
             "history": "7d",
             "trends": "0",
@@ -471,10 +471,10 @@
             ]
           },
           {
-            "uuid": "cb1d0a267afe487bbc883c737049c582",
+            "uuid": "eccda7c926b844ff9dcdcefc00998313",
             "name": "DC IPv4 address",
             "type": "ZABBIX_ACTIVE",
-            "key": "system.run[powershell -command \"(Get-ADDomainController -Identity $env:COMPUTERNAME).IPv4Address\",wait]",
+            "key": "system.run[\"powershell -command \\\"(Get-ADDomainController -Identity $env:COMPUTERNAME).IPv4Address\\\"\",wait]",
             "delay": "1h",
             "history": "7d",
             "trends": "0",
@@ -492,10 +492,10 @@
             ]
           },
           {
-            "uuid": "7a859c98f4f44cc48318d68f5b7aed6d",
+            "uuid": "41278e697f2741738f9d91fa9851ccdc",
             "name": "DC OS version",
             "type": "ZABBIX_ACTIVE",
-            "key": "system.run[powershell -command \"(Get-ADDomainController -Identity $env:COMPUTERNAME).OperatingSystem\",wait]",
+            "key": "system.run[\"powershell -command \\\"(Get-ADDomainController -Identity $env:COMPUTERNAME).OperatingSystem\\\"\",wait]",
             "delay": "1h",
             "history": "7d",
             "trends": "0",
@@ -513,10 +513,10 @@
             ]
           },
           {
-            "uuid": "bff546ea157748558836f87189059dea",
+            "uuid": "9e3ef096d0f44758a873ac43c5d886db",
             "name": "DC domain (live)",
             "type": "ZABBIX_ACTIVE",
-            "key": "system.run[powershell -command \"(Get-ADDomainController -Identity $env:COMPUTERNAME).Domain\",wait]",
+            "key": "system.run[\"powershell -command \\\"(Get-ADDomainController -Identity $env:COMPUTERNAME).Domain\\\"\",wait]",
             "delay": "1h",
             "history": "7d",
             "trends": "0",
@@ -534,7 +534,7 @@
             ]
           },
           {
-            "uuid": "71f0d6f712d64007b4e0850d0e498e95",
+            "uuid": "86d469099a014e6ba1259412b53663e2",
             "name": "nodeinfo: site (comparison target)",
             "type": "DEPENDENT",
             "key": "nodeinfo_site_(comparison_target)[{$WINDOWSDC.KEY_PREFIX}]",
@@ -567,10 +567,10 @@
             ]
           },
           {
-            "uuid": "39b0f35228d1475ea59da88233f34588",
+            "uuid": "4e88bf5873f6453aa8585f08b6712328",
             "name": "Feature installed: AD-Domain-Services",
             "type": "ZABBIX_ACTIVE",
-            "key": "system.run[powershell -command \"(Get-WindowsFeature -Name AD-Domain-Services).Installed.ToString()\",wait]",
+            "key": "system.run[\"powershell -command \\\"(Get-WindowsFeature -Name AD-Domain-Services).Installed.ToString()\\\"\",wait]",
             "delay": "1h",
             "history": "7d",
             "trends": "0",
@@ -588,8 +588,8 @@
             ],
             "triggers": [
               {
-                "uuid": "6c8e844fe02d4948b1282e4455d32745",
-                "expression": "last(/Windows DC (Example Music)/system.run[powershell -command \"(Get-WindowsFeature -Name AD-Domain-Services).Installed.ToString()\",wait])<>\"True\"",
+                "uuid": "e1178316a0c1423ea9d831e506ae824c",
+                "expression": "last(/Windows DC (Example Music)/system.run[\"powershell -command \\\"(Get-WindowsFeature -Name AD-Domain-Services).Installed.ToString()\\\"\",wait])<>\"True\"",
                 "name": "Hey! {HOST.NAME} is missing the AD-Domain-Services feature",
                 "priority": "WARNING",
                 "description": "Hey! {HOST.NAME} is missing the AD-Domain-Services feature",
@@ -607,10 +607,10 @@
             ]
           },
           {
-            "uuid": "32f50d1d8b794f12bdebdcb943ae14ba",
+            "uuid": "be1770a609e64542b6a1dda1a67b66a7",
             "name": "Feature installed: DNS",
             "type": "ZABBIX_ACTIVE",
-            "key": "system.run[powershell -command \"(Get-WindowsFeature -Name DNS).Installed.ToString()\",wait]",
+            "key": "system.run[\"powershell -command \\\"(Get-WindowsFeature -Name DNS).Installed.ToString()\\\"\",wait]",
             "delay": "1h",
             "history": "7d",
             "trends": "0",
@@ -628,8 +628,8 @@
             ],
             "triggers": [
               {
-                "uuid": "7fb5027c6cce41ec93a2b91fd1d3d283",
-                "expression": "last(/Windows DC (Example Music)/system.run[powershell -command \"(Get-WindowsFeature -Name DNS).Installed.ToString()\",wait])<>\"True\"",
+                "uuid": "af8e596a94f74b0d8a0f7c9c1aebe8b0",
+                "expression": "last(/Windows DC (Example Music)/system.run[\"powershell -command \\\"(Get-WindowsFeature -Name DNS).Installed.ToString()\\\"\",wait])<>\"True\"",
                 "name": "Hey! {HOST.NAME} is missing the DNS feature",
                 "priority": "WARNING",
                 "description": "Hey! {HOST.NAME} is missing the DNS feature",
@@ -647,10 +647,10 @@
             ]
           },
           {
-            "uuid": "a47786dea5884739b11e4735777ffcc5",
+            "uuid": "516899a27335404aaece9478c840b8da",
             "name": "Feature installed: GPMC",
             "type": "ZABBIX_ACTIVE",
-            "key": "system.run[powershell -command \"(Get-WindowsFeature -Name GPMC).Installed.ToString()\",wait]",
+            "key": "system.run[\"powershell -command \\\"(Get-WindowsFeature -Name GPMC).Installed.ToString()\\\"\",wait]",
             "delay": "1h",
             "history": "7d",
             "trends": "0",
@@ -668,8 +668,8 @@
             ],
             "triggers": [
               {
-                "uuid": "7922dcdd771946c4bb97a037366dd30e",
-                "expression": "last(/Windows DC (Example Music)/system.run[powershell -command \"(Get-WindowsFeature -Name GPMC).Installed.ToString()\",wait])<>\"True\"",
+                "uuid": "d72ff5097f434a84ae97a2ebb37cbeed",
+                "expression": "last(/Windows DC (Example Music)/system.run[\"powershell -command \\\"(Get-WindowsFeature -Name GPMC).Installed.ToString()\\\"\",wait])<>\"True\"",
                 "name": "Hey! {HOST.NAME} is missing the GPMC feature",
                 "priority": "WARNING",
                 "description": "Hey! {HOST.NAME} is missing the GPMC feature",
@@ -687,10 +687,10 @@
             ]
           },
           {
-            "uuid": "e270776cbd0446b88349c88c0c8def46",
+            "uuid": "012e5ca30215484e9f574ccca7b014b6",
             "name": "Feature installed: RSAT-AD-Tools",
             "type": "ZABBIX_ACTIVE",
-            "key": "system.run[powershell -command \"(Get-WindowsFeature -Name RSAT-AD-Tools).Installed.ToString()\",wait]",
+            "key": "system.run[\"powershell -command \\\"(Get-WindowsFeature -Name RSAT-AD-Tools).Installed.ToString()\\\"\",wait]",
             "delay": "1h",
             "history": "7d",
             "trends": "0",
@@ -708,8 +708,8 @@
             ],
             "triggers": [
               {
-                "uuid": "f53b1d5caa764150997bea3136516bd7",
-                "expression": "last(/Windows DC (Example Music)/system.run[powershell -command \"(Get-WindowsFeature -Name RSAT-AD-Tools).Installed.ToString()\",wait])<>\"True\"",
+                "uuid": "4ed5504f29904974a299cf40810a7794",
+                "expression": "last(/Windows DC (Example Music)/system.run[\"powershell -command \\\"(Get-WindowsFeature -Name RSAT-AD-Tools).Installed.ToString()\\\"\",wait])<>\"True\"",
                 "name": "Hey! {HOST.NAME} is missing the RSAT-AD-Tools feature",
                 "priority": "WARNING",
                 "description": "Hey! {HOST.NAME} is missing the RSAT-AD-Tools feature",
@@ -727,10 +727,10 @@
             ]
           },
           {
-            "uuid": "020cf2d78a494123b96ad8d804fcb87c",
+            "uuid": "1d142ebf742744c3a1486680072d34a2",
             "name": "Feature installed: RSAT-AD-PowerShell",
             "type": "ZABBIX_ACTIVE",
-            "key": "system.run[powershell -command \"(Get-WindowsFeature -Name RSAT-AD-PowerShell).Installed.ToString()\",wait]",
+            "key": "system.run[\"powershell -command \\\"(Get-WindowsFeature -Name RSAT-AD-PowerShell).Installed.ToString()\\\"\",wait]",
             "delay": "1h",
             "history": "7d",
             "trends": "0",
@@ -748,8 +748,8 @@
             ],
             "triggers": [
               {
-                "uuid": "1ab1f771e1e248b6af380137a0b347d6",
-                "expression": "last(/Windows DC (Example Music)/system.run[powershell -command \"(Get-WindowsFeature -Name RSAT-AD-PowerShell).Installed.ToString()\",wait])<>\"True\"",
+                "uuid": "2028251c179e4b4e80edb0cc6fef00d8",
+                "expression": "last(/Windows DC (Example Music)/system.run[\"powershell -command \\\"(Get-WindowsFeature -Name RSAT-AD-PowerShell).Installed.ToString()\\\"\",wait])<>\"True\"",
                 "name": "Hey! {HOST.NAME} is missing the RSAT-AD-PowerShell feature",
                 "priority": "WARNING",
                 "description": "Hey! {HOST.NAME} is missing the RSAT-AD-PowerShell feature",
@@ -767,10 +767,10 @@
             ]
           },
           {
-            "uuid": "bc9c3f6025fb48f1a58d61c31562d1b7",
+            "uuid": "568b539f3599459dbb68cf05ecc185e3",
             "name": "Feature installed: RSAT-DNS-Server",
             "type": "ZABBIX_ACTIVE",
-            "key": "system.run[powershell -command \"(Get-WindowsFeature -Name RSAT-DNS-Server).Installed.ToString()\",wait]",
+            "key": "system.run[\"powershell -command \\\"(Get-WindowsFeature -Name RSAT-DNS-Server).Installed.ToString()\\\"\",wait]",
             "delay": "1h",
             "history": "7d",
             "trends": "0",
@@ -788,8 +788,8 @@
             ],
             "triggers": [
               {
-                "uuid": "5d93b5b3fab642608c83c8a1b324301b",
-                "expression": "last(/Windows DC (Example Music)/system.run[powershell -command \"(Get-WindowsFeature -Name RSAT-DNS-Server).Installed.ToString()\",wait])<>\"True\"",
+                "uuid": "110193cdb6fa4c2ebbd10a646576ab38",
+                "expression": "last(/Windows DC (Example Music)/system.run[\"powershell -command \\\"(Get-WindowsFeature -Name RSAT-DNS-Server).Installed.ToString()\\\"\",wait])<>\"True\"",
                 "name": "Hey! {HOST.NAME} is missing the RSAT-DNS-Server feature",
                 "priority": "WARNING",
                 "description": "Hey! {HOST.NAME} is missing the RSAT-DNS-Server feature",
@@ -807,10 +807,10 @@
             ]
           },
           {
-            "uuid": "caedf5675ae645ea8d333568b8e67d5f",
+            "uuid": "d0810b68ce04455d8e7fb98d91a1e39f",
             "name": "FSMO: SchemaMaster",
             "type": "ZABBIX_ACTIVE",
-            "key": "system.run[powershell -command \"((Get-ADForest).SchemaMaster).Split('.')[0]\",wait]",
+            "key": "system.run[\"powershell -command \\\"((Get-ADForest).SchemaMaster).Split('.')[0]\\\"\",wait]",
             "delay": "1h",
             "history": "7d",
             "trends": "0",
@@ -828,8 +828,8 @@
             ],
             "triggers": [
               {
-                "uuid": "9fd7de7e540a45e59ea5e0097a7b17f7",
-                "expression": "{$WINDOWSDC.FSMO_RELEVANT}=\"yes\" and last(/Windows DC (Example Music)/system.run[powershell -command \"((Get-ADForest).SchemaMaster).Split('.')[0]\",wait])<>{HOST.NAME}",
+                "uuid": "a8c29f8ab8674f72b9d4179abf72424d",
+                "expression": "{$WINDOWSDC.FSMO_RELEVANT}=\"yes\" and last(/Windows DC (Example Music)/system.run[\"powershell -command \\\"((Get-ADForest).SchemaMaster).Split('.')[0]\\\"\",wait])<>{HOST.NAME}",
                 "name": "Hey! {HOST.NAME} — SchemaMaster FSMO role moved away from this DC",
                 "priority": "INFO",
                 "description": "Informational only -- FSMO roles are never moved automatically by this estate's own tooling (30-dc-replicate.yml's own explicit design), so a real move is deliberate, not necessarily wrong. Visibility that it happened, not an alarm.",
@@ -847,10 +847,10 @@
             ]
           },
           {
-            "uuid": "3c81cedd69674fcaba54f09292ab9423",
+            "uuid": "0aba9731ca284459b67bd786abb6170c",
             "name": "FSMO: DomainNamingMaster",
             "type": "ZABBIX_ACTIVE",
-            "key": "system.run[powershell -command \"((Get-ADForest).DomainNamingMaster).Split('.')[0]\",wait]",
+            "key": "system.run[\"powershell -command \\\"((Get-ADForest).DomainNamingMaster).Split('.')[0]\\\"\",wait]",
             "delay": "1h",
             "history": "7d",
             "trends": "0",
@@ -868,8 +868,8 @@
             ],
             "triggers": [
               {
-                "uuid": "1de0e321795f44b688703c85ce9a6818",
-                "expression": "{$WINDOWSDC.FSMO_RELEVANT}=\"yes\" and last(/Windows DC (Example Music)/system.run[powershell -command \"((Get-ADForest).DomainNamingMaster).Split('.')[0]\",wait])<>{HOST.NAME}",
+                "uuid": "36f7f34082db453a90af99a32de34d11",
+                "expression": "{$WINDOWSDC.FSMO_RELEVANT}=\"yes\" and last(/Windows DC (Example Music)/system.run[\"powershell -command \\\"((Get-ADForest).DomainNamingMaster).Split('.')[0]\\\"\",wait])<>{HOST.NAME}",
                 "name": "Hey! {HOST.NAME} — DomainNamingMaster FSMO role moved away from this DC",
                 "priority": "INFO",
                 "description": "Informational only -- FSMO roles are never moved automatically by this estate's own tooling (30-dc-replicate.yml's own explicit design), so a real move is deliberate, not necessarily wrong. Visibility that it happened, not an alarm.",
@@ -887,10 +887,10 @@
             ]
           },
           {
-            "uuid": "952bfc3ef53d4682bf5c09ee2fc536d6",
+            "uuid": "a036dc7a609e444c9b3fe1f6c117c76b",
             "name": "FSMO: PDCEmulator",
             "type": "ZABBIX_ACTIVE",
-            "key": "system.run[powershell -command \"((Get-ADDomain).PDCEmulator).Split('.')[0]\",wait]",
+            "key": "system.run[\"powershell -command \\\"((Get-ADDomain).PDCEmulator).Split('.')[0]\\\"\",wait]",
             "delay": "1h",
             "history": "7d",
             "trends": "0",
@@ -908,8 +908,8 @@
             ],
             "triggers": [
               {
-                "uuid": "93dedf0fa2d0448ba448b0b6f35e6340",
-                "expression": "{$WINDOWSDC.FSMO_RELEVANT}=\"yes\" and last(/Windows DC (Example Music)/system.run[powershell -command \"((Get-ADDomain).PDCEmulator).Split('.')[0]\",wait])<>{HOST.NAME}",
+                "uuid": "a2a13a949514447b9cd0eb9e34c31047",
+                "expression": "{$WINDOWSDC.FSMO_RELEVANT}=\"yes\" and last(/Windows DC (Example Music)/system.run[\"powershell -command \\\"((Get-ADDomain).PDCEmulator).Split('.')[0]\\\"\",wait])<>{HOST.NAME}",
                 "name": "Hey! {HOST.NAME} — PDCEmulator FSMO role moved away from this DC",
                 "priority": "INFO",
                 "description": "Informational only -- FSMO roles are never moved automatically by this estate's own tooling (30-dc-replicate.yml's own explicit design), so a real move is deliberate, not necessarily wrong. Visibility that it happened, not an alarm.",
@@ -927,10 +927,10 @@
             ]
           },
           {
-            "uuid": "c2db8b7b08b84f0c90c87f7893e39960",
+            "uuid": "00c28a2c1413456bb87285ca95be518c",
             "name": "FSMO: RIDMaster",
             "type": "ZABBIX_ACTIVE",
-            "key": "system.run[powershell -command \"((Get-ADDomain).RIDMaster).Split('.')[0]\",wait]",
+            "key": "system.run[\"powershell -command \\\"((Get-ADDomain).RIDMaster).Split('.')[0]\\\"\",wait]",
             "delay": "1h",
             "history": "7d",
             "trends": "0",
@@ -948,8 +948,8 @@
             ],
             "triggers": [
               {
-                "uuid": "932db11d67c747fd89c7f5ac63e1ec32",
-                "expression": "{$WINDOWSDC.FSMO_RELEVANT}=\"yes\" and last(/Windows DC (Example Music)/system.run[powershell -command \"((Get-ADDomain).RIDMaster).Split('.')[0]\",wait])<>{HOST.NAME}",
+                "uuid": "80dbe9b14d454efebc48fd5ded0201f9",
+                "expression": "{$WINDOWSDC.FSMO_RELEVANT}=\"yes\" and last(/Windows DC (Example Music)/system.run[\"powershell -command \\\"((Get-ADDomain).RIDMaster).Split('.')[0]\\\"\",wait])<>{HOST.NAME}",
                 "name": "Hey! {HOST.NAME} — RIDMaster FSMO role moved away from this DC",
                 "priority": "INFO",
                 "description": "Informational only -- FSMO roles are never moved automatically by this estate's own tooling (30-dc-replicate.yml's own explicit design), so a real move is deliberate, not necessarily wrong. Visibility that it happened, not an alarm.",
@@ -967,10 +967,10 @@
             ]
           },
           {
-            "uuid": "c716009f2d864122bae883e4faad2e08",
+            "uuid": "5f3c670192244d80ba2eac7d7e85ca38",
             "name": "FSMO: InfrastructureMaster",
             "type": "ZABBIX_ACTIVE",
-            "key": "system.run[powershell -command \"((Get-ADDomain).InfrastructureMaster).Split('.')[0]\",wait]",
+            "key": "system.run[\"powershell -command \\\"((Get-ADDomain).InfrastructureMaster).Split('.')[0]\\\"\",wait]",
             "delay": "1h",
             "history": "7d",
             "trends": "0",
@@ -988,8 +988,8 @@
             ],
             "triggers": [
               {
-                "uuid": "034973d1e581422a827629651714a052",
-                "expression": "{$WINDOWSDC.FSMO_RELEVANT}=\"yes\" and last(/Windows DC (Example Music)/system.run[powershell -command \"((Get-ADDomain).InfrastructureMaster).Split('.')[0]\",wait])<>{HOST.NAME}",
+                "uuid": "1107d69a7661498391b2986a562e2d52",
+                "expression": "{$WINDOWSDC.FSMO_RELEVANT}=\"yes\" and last(/Windows DC (Example Music)/system.run[\"powershell -command \\\"((Get-ADDomain).InfrastructureMaster).Split('.')[0]\\\"\",wait])<>{HOST.NAME}",
                 "name": "Hey! {HOST.NAME} — InfrastructureMaster FSMO role moved away from this DC",
                 "priority": "INFO",
                 "description": "Informational only -- FSMO roles are never moved automatically by this estate's own tooling (30-dc-replicate.yml's own explicit design), so a real move is deliberate, not necessarily wrong. Visibility that it happened, not an alarm.",
@@ -1007,10 +1007,10 @@
             ]
           },
           {
-            "uuid": "cb683d13e0e74d18b6c6db26f70e386e",
+            "uuid": "5a6e9a388c4048648f9a76b15fc70d20",
             "name": "AD topology: Sites",
             "type": "ZABBIX_ACTIVE",
-            "key": "system.run[powershell -command \"(Get-ADReplicationSite -Filter * | Measure-Object).Count\",wait]",
+            "key": "system.run[\"powershell -command \\\"(Get-ADReplicationSite -Filter * | Measure-Object).Count\\\"\",wait]",
             "delay": "1d",
             "history": "7d",
             "trends": "90d",
@@ -1028,10 +1028,10 @@
             ]
           },
           {
-            "uuid": "ff0adebca5e148c49e33109ebeb8c254",
+            "uuid": "519663f803ab48ceb34b1198d6380048",
             "name": "AD topology: Subnets",
             "type": "ZABBIX_ACTIVE",
-            "key": "system.run[powershell -command \"(Get-ADReplicationSubnet -Filter * | Measure-Object).Count\",wait]",
+            "key": "system.run[\"powershell -command \\\"(Get-ADReplicationSubnet -Filter * | Measure-Object).Count\\\"\",wait]",
             "delay": "1d",
             "history": "7d",
             "trends": "90d",
@@ -1049,10 +1049,10 @@
             ]
           },
           {
-            "uuid": "fcae104c28db445daef75d4e2a665a06",
+            "uuid": "d33abfc4db5b437ca69bfe1756dd809a",
             "name": "AD topology: SiteLinks",
             "type": "ZABBIX_ACTIVE",
-            "key": "system.run[powershell -command \"(Get-ADReplicationSiteLink -Filter * | Measure-Object).Count\",wait]",
+            "key": "system.run[\"powershell -command \\\"(Get-ADReplicationSiteLink -Filter * | Measure-Object).Count\\\"\",wait]",
             "delay": "1d",
             "history": "7d",
             "trends": "90d",
