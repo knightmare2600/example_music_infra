@@ -288,3 +288,12 @@ legwork/
 
 .cache/*
 !.cache/.gitkeep
+
+###############################################################################
+# Robert's own real reference Zabbix exports, dropped in locally to port items/
+# triggers from into the real companion templates in this directory -- MUST NOT
+# be committed (Robert's explicit instruction, 2026-10-26). Pattern, not just
+# these two exact names, since more may be dropped in the same way later.
+###############################################################################
+
+docs/zabbix_templates/ex[0-9]*.json
