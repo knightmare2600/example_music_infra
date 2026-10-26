@@ -21,6 +21,18 @@
 # Tags: dc_replicate
 # =============================================================================
 # Changelog:
+#   2026-10-26  BUG FIX, found while building the AD-health Zabbix companion template's
+#               own shopping list: Stage 0's "Count dcdiag failures" used a crude
+#               (?i)failed|error regex -- the exact same false-positive bug
+#               40-dc-summary.yml's own equivalent task already found and fixed
+#               2026-10-10 (a benign "Warning: Failed to add the test record..."
+#               Dynamic Update sub-test warning matched as a real failure), just never
+#               applied here since this is a different dcdiag invocation (pre-sync, not
+#               post-promotion summary). Real impact: dc_presync_fail_count gates the
+#               operator's "proceed with replication sync?" pause below -- a false
+#               positive here could interrupt an otherwise-clean run. Applied the exact
+#               same fix: match dcdiag's own real "failed test <Name>" phrase, plus a
+#               dedicated error check that excludes Warning:-prefixed lines.
 #   2026-09-25  Robert, live (EXADCSGOT001): Stage 4 used to only WARN when a DC landed
 #               under Default-First-Site-Name instead of its real site -- there was no
 #               actual fix anywhere in this repo, just a message telling the operator to
@@ -197,13 +209,28 @@
       ignore_errors: true
       tags: dc_replicate
 
+    # 2026-10-26, found while building the AD-health Zabbix companion template's own
+    # shopping list: the old (?i)failed|error regex here is the exact same bug
+    # 40-dc-summary.yml's own "Count dcdiag failures" task already found and fixed
+    # (2026-10-10, real live incident on EXADCSCLD001) -- it matches ANY line
+    # containing those substrings, including the common, benign "Warning: Failed to
+    # add the test record dcdiag-test-record in zone <domain>" Dynamic Update
+    # sub-test warning, not a real failure. This one was never fixed the same day
+    # since it's a DIFFERENT dcdiag invocation (Stage 0's pre-sync check here, vs
+    # 40-dc-summary.yml's own post-promotion summary) -- same bug class, just missed
+    # in the original sweep. Real impact here specifically: dc_presync_fail_count
+    # gates whether the operator gets an interactive "proceed with replication
+    # sync?" pause below -- a false positive here doesn't just misreport, it can
+    # interrupt an otherwise-clean run for no reason. Applying the exact same fix:
+    # match dcdiag's own real failure-line phrase ("failed test <Name>") plus a
+    # dedicated "error" check that excludes "Warning:"-prefixed lines.
     - name: "[Stage 0] Count dcdiag failures"
       ansible.builtin.set_fact:
         dc_presync_fail_count: >-
           {{
-            dc_presync_dcdiag.stdout_lines
-            | select('search', '(?i)failed|error')
-            | list | length
+            ((dc_presync_dcdiag.stdout_lines | select('search', '(?i)failed test') | list)
+            + (dc_presync_dcdiag.stdout_lines | reject('search', '(?i)^\s*warning:') | select('search', '(?i)error') | list))
+            | length
           }}
       tags: dc_replicate
 
