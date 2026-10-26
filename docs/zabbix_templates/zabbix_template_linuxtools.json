@@ -12,7 +12,7 @@
         "uuid": "6149b3c593754fabbd7d46fa17b9df7f",
         "template": "linuxtools_examplemusic",
         "name": "Linux Tools (Example Music)",
-        "description": "Companion template for ansible/playbooks/linux/tools.yml. Rebuilt from scratch 2026-10-17 to Robert's own literal spec after two earlier, wrongly-aggregated attempts -- this version is flat, native, one-item-per-thing: every check is an independent agent-side vfs.file.exists/regmatch/regexp item against the real on-disk state tools.yml produces, not a re-derivation of Ansible's own facts.\n\nSECTIONS\n  Packages: one item+trigger per common_packages entry (group_vars/all/main.yml), plain vfs.file.exists against /usr/share/doc/<pkg>/copyright. fastfetch/neofetch are a special pair: two items, one shared trigger that only fires if BOTH are missing (exactly one is expected, distro-conditional).\n  Filesystem: update-motd symlink (type=sym, not the default 'file' type), the /etc/example-music directory and its 10 CSV/JSON files (each file trigger DEPENDS ON the directory's trigger -- one alert, not eleven, if the whole directory is gone), nodeinfo.json's own existence, and server-prompts.zsh/.sh.\n  nodeinfo.json contents: a vfs.file.contents master item ({$NODEINFO.MAXAGE} nodata staleness trigger, depends on the exists trigger) with DEPENDENT items for every field in tasks/nodeinfo.yml's schema, extracted via JSONPATH preprocessing. Plain string fields (hostname/fqdn/role/site/city/country/country_code/entity/office_name/street_address/postal_code/bootstrapped_at/bootstrapped_by/last_ansible_run/last_ansible_play) are visibility-only, no trigger. ansible_managed adds a BOOL_TO_DECIMAL preprocessing step (JSON true/false -> 1/0) with a trigger if false. environment gets a drift trigger (last()<>last(#2)) -- flags a CHANGE since the previous run rather than any single 'wrong' value, since there's no one correct environment to check against.\n  Identity: the ansible user's /etc/passwd line (vfs.file.regexp, TEXT) checked via find(...,\"like\",\"zsh\") for the expected shell.\n  Dotfiles: .gitconfig/.tmux.conf/.vimrc/.vim for /home/ansible only (not every /home/* account).\n  Config: unattended-upgrades' 7 lines across 50unattended-upgrades/20auto-upgrades, vfs.file.regmatch (boolean). unattended-upgrades is mandatory (already in common_packages, so it always gets its own 'Package installed' item/trigger above like any other package) -- each of the 7 config-line triggers depends on that one trigger, same pattern as the /etc/example-music files depending on their directory.\n\nIMPORT: configuration.import, rules: createMissing+updateExisting+deleteMissing on items/triggers, createMissing+updateExisting on template_groups/templates.",
+        "description": "2026-10-26 ADDED, Robert's ask: 4 package-presence items + matching triggers (iftop, traceroute, tasksel, qemu-guest-agent), ported from a real reference Zabbix template (docs/zabbix_templates/ex1_linux.json, gitignored -- never committed) that Robert dropped in locally for exactly this purpose. Same shape as every existing package item in this template. Added all 4 to common_packages (group_vars/all/main.yml) too -- without that, these triggers would fire permanently on every host, since nothing would ever install the package. qemu-guest-agent deliberately installed estate-wide (not conditionally, unlike proxmox_examplemusic's own open-vm-tools check for the rare VMware-nested-under-Proxmox edge case) -- Robert's explicit call: since nearly every real Linux host here is itself a Proxmox/KVM guest, a universal install means the package is genuinely present everywhere, no host-level macro override needed even on the few real bare-metal PVE nodes. Several other ex1_linux.json items were reviewed and declined (fail2ban, fail2ban's own IP-address-bearing ignoreip regex, zabbix_proxy.conf checks -- none deployed in this estate; lsb_release/facter -- Puppet tooling / single-known-distro fleet; two real usernames tied to a different real environment) or deferred (timedatectl timezone visibility, rsyslog, the zabbix-release repo-file check, SNMP checks pending that backlog item, and log[]-type active monitoring as a bigger, deliberate addition, not a one-liner) -- not ported this round, Robert's own choice from the comparison list.\n\nCompanion template for ansible/playbooks/linux/tools.yml. Rebuilt from scratch 2026-10-17 to Robert's own literal spec after two earlier, wrongly-aggregated attempts -- this version is flat, native, one-item-per-thing: every check is an independent agent-side vfs.file.exists/regmatch/regexp item against the real on-disk state tools.yml produces, not a re-derivation of Ansible's own facts.\n\nSECTIONS\n  Packages: one item+trigger per common_packages entry (group_vars/all/main.yml), plain vfs.file.exists against /usr/share/doc/<pkg>/copyright. fastfetch/neofetch are a special pair: two items, one shared trigger that only fires if BOTH are missing (exactly one is expected, distro-conditional).\n  Filesystem: update-motd symlink (type=sym, not the default 'file' type), the /etc/example-music directory and its 10 CSV/JSON files (each file trigger DEPENDS ON the directory's trigger -- one alert, not eleven, if the whole directory is gone), nodeinfo.json's own existence, and server-prompts.zsh/.sh.\n  nodeinfo.json contents: a vfs.file.contents master item ({$NODEINFO.MAXAGE} nodata staleness trigger, depends on the exists trigger) with DEPENDENT items for every field in tasks/nodeinfo.yml's schema, extracted via JSONPATH preprocessing. Plain string fields (hostname/fqdn/role/site/city/country/country_code/entity/office_name/street_address/postal_code/bootstrapped_at/bootstrapped_by/last_ansible_run/last_ansible_play) are visibility-only, no trigger. ansible_managed adds a BOOL_TO_DECIMAL preprocessing step (JSON true/false -> 1/0) with a trigger if false. environment gets a drift trigger (last()<>last(#2)) -- flags a CHANGE since the previous run rather than any single 'wrong' value, since there's no one correct environment to check against.\n  Identity: the ansible user's /etc/passwd line (vfs.file.regexp, TEXT) checked via find(...,\"like\",\"zsh\") for the expected shell.\n  Dotfiles: .gitconfig/.tmux.conf/.vimrc/.vim for /home/ansible only (not every /home/* account).\n  Config: unattended-upgrades' 7 lines across 50unattended-upgrades/20auto-upgrades, vfs.file.regmatch (boolean). unattended-upgrades is mandatory (already in common_packages, so it always gets its own 'Package installed' item/trigger above like any other package) -- each of the 7 config-line triggers depends on that one trigger, same pattern as the /etc/example-music files depending on their directory.\n\nIMPORT: configuration.import, rules: createMissing+updateExisting+deleteMissing on items/triggers, createMissing+updateExisting on template_groups/templates.",
         "groups": [
           {
             "name": "Templates/Example Music"
@@ -3223,6 +3223,198 @@
                   {
                     "name": "Hey! {HOST.NAME} is missing unattended-upgrades package",
                     "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/usr/share/doc/unattended-upgrades/copyright])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "e27c5adfd4144869bbfa1642dd41d286",
+            "name": "Package installed: iftop",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/iftop/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/iftop/copyright exists, 0 otherwise. Native agent check -- independent of linux/tools.yml's own ansible_facts.packages, Ansible only supplies the package list (common_packages, group_vars/all/main.yml) this template was built from. Ported from a real reference Zabbix template (docs/zabbix_templates/ex1_linux.json, gitignored, never committed), 2026-10-26.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "iftop"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "54e23ea326db4a37907fe1866f6d5d23",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/usr/share/doc/iftop/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing iftop package",
+                "priority": "WARNING",
+                "description": "iftop is in common_packages but not installed (or its copyright doc is gone). Re-run linux/tools.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "iftop"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "626dbd7b4545422c83394b6cbb0d891c",
+            "name": "Package installed: traceroute",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/traceroute/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/traceroute/copyright exists, 0 otherwise. Native agent check -- independent of linux/tools.yml's own ansible_facts.packages, Ansible only supplies the package list (common_packages, group_vars/all/main.yml) this template was built from. Ported from a real reference Zabbix template (docs/zabbix_templates/ex1_linux.json, gitignored, never committed), 2026-10-26.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "traceroute"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "3ed6210112a84d0c918982ac5186ff93",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/usr/share/doc/traceroute/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing traceroute package",
+                "priority": "WARNING",
+                "description": "traceroute is in common_packages but not installed (or its copyright doc is gone). Re-run linux/tools.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "traceroute"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "e131f654db68451bbf0a16a4bbe30dd7",
+            "name": "Package installed: tasksel",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/tasksel/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/tasksel/copyright exists, 0 otherwise. Native agent check -- independent of linux/tools.yml's own ansible_facts.packages, Ansible only supplies the package list (common_packages, group_vars/all/main.yml) this template was built from. Ported from a real reference Zabbix template (docs/zabbix_templates/ex1_linux.json, gitignored, never committed), 2026-10-26.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "tasksel"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "23ab54521d0a44ab9c16ec35c0ff122a",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/usr/share/doc/tasksel/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing tasksel package",
+                "priority": "WARNING",
+                "description": "tasksel is in common_packages but not installed (or its copyright doc is gone). Re-run linux/tools.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "tasksel"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "f63671559fdb4018a64f403d7a701906",
+            "name": "Package installed: qemu-guest-agent",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[/usr/share/doc/qemu-guest-agent/copyright]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if /usr/share/doc/qemu-guest-agent/copyright exists, 0 otherwise. Native agent check -- independent of linux/tools.yml's own ansible_facts.packages, Ansible only supplies the package list (common_packages, group_vars/all/main.yml) this template was built from. Ported from a real reference Zabbix template (docs/zabbix_templates/ex1_linux.json, gitignored, never committed), 2026-10-26.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "linux-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "qemu-guest-agent"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "d2a8dddab4444fe3a83f7c17ef482a04",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/usr/share/doc/qemu-guest-agent/copyright])=0",
+                "name": "Hey! {HOST.NAME} is missing qemu-guest-agent package",
+                "priority": "WARNING",
+                "description": "qemu-guest-agent is in common_packages but not installed (or its copyright doc is gone). Re-run linux/tools.yml.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "linux-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "qemu-guest-agent"
                   }
                 ]
               }
