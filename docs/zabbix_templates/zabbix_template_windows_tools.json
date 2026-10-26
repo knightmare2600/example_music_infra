@@ -1,0 +1,3061 @@
+{
+  "zabbix_export": {
+    "version": "7.0",
+    "template_groups": [
+      {
+        "uuid": "723002f3899a44e381ff69fa643f3bb8",
+        "name": "Templates/Example Music"
+      }
+    ],
+    "templates": [
+      {
+        "uuid": "d951e44c05ba4b1d814574b2f83f982f",
+        "template": "windows_tools_examplemusic",
+        "name": "Windows Tools (Example Music)",
+        "description": "Companion template for the windows_bootstrap/windows_hygiene playbook families -- the Windows equivalent of linuxtools_examplemusic. Built 2026-10-26, same flat/native, one-item-per-thing design as every other template in this series, from a real shopping list (every windows_bootstrap/playbooks/*.yml + shared tasks/*.yml file read in full) plus items ported from a real reference Zabbix template (docs/zabbix_templates/ex1_windows.json, gitignored, never committed).\n\nDESIGN NOTES\n- registry.data[]/registry.get[]/service.info[] are real, native Zabbix Windows agent item keys, confirmed directly against the current 7.0 manual before use -- not assumed. Covers almost every registry/service check in this template natively, no shell-out needed.\n- Chocolatey package-presence uses the <packageid>.nuspec convention (every installed package ships this NuGet metadata file in its own lib\\<pkg>\\ folder, regardless of what's inside tools\\) -- Robert's own call, UNVERIFIED against a real live box yet, same working-hypothesis treatment as every other first-pass assumption in this series until proven (the Zabbix stock-template-name assumption is the precedent).\n- No native Zabbix Windows item exists for firewall rules or Windows optional features/capabilities (confirmed against the real 7.0 docs, not guessed) -- those use system.run[] PowerShell invocations, same category as this series' own Linux system.run[] checks.\n- GUI-only Chocolatey packages (choco_packages_gui) and the OpenRSAT.exe substitute are gated via a TRIGGER DEPENDENCY on InstallationType (Client/Server/Server Core), the same real registry signal 40-choco-packages.yml's own has_gui detection already trusts -- Robert's own suggestion, not a second redundant macro.\n- VMware Tools is NOT Chocolatey-installed (tasks/guest_tools.yml's own 2026-09-21 finding -- the hypervisor's own mechanism installs it) -- checked via its real binary path instead, macro-gated the same way as qemu-guest-agent.\n\nDELIBERATELY NOT CHECKED THIS ROUND (scoped out, not forgotten)\n- HKCU-based screensaver values (SCRNSAVE.EXE, ScreenSaveActive, etc) -- registry.data reads the Zabbix agent SERVICE's own HKCU (SYSTEM's hive), not the real interactive user's, so these aren't reliably checkable this way.\n- registry_deadvertise's own per-item list (group_vars/windows_desktop|laptop/, contents not read this round) -- only the one well-known named value (DisableWindowsConsumerFeatures) is checked.\n- sacsvr startup-type exact numeric encoding -- only state is checked (visibility only, no trigger, see that item's own description for why).\n- RustDesk persistent ID (RustDesk2.toml) -- real equivalent to TeamViewer's ClientID exists, but only reliably at a single path when running as a service; choco_packages_common.yml's own rustdesk.install is a plain install with no service configuration, so the file's location isn't guaranteed yet. Flagged to Robert, not built.\n- Salt Minion version extraction -- service presence/running state is checked (service.info), not its installed version (would need registry.get[]'s JSON shape, unconfirmed, or a system.run reg query -- deferred rather than guessed).\n- Locale (en-GB) -- split across multiple HKCU-rooted settings, same service-context mismatch risk as the screensaver values above.\n\nex1_windows.json cross-reference: TeamViewer ID checks (x2) -- NOT applicable, RustDesk is this estate's actual remote-access tool, see the RustDesk note above. clearpageonreboot.cmd checksum/exists -- NOT applicable, a bespoke script from a different real environment; the real registry value it was checking (ClearPageFileAtShutdown) IS checked above. Dual-path Zabbix agent config checks -- not ported, this estate has one single known install path ({$WINDOWSTOOLS.ZABBIX_CONF_PATH}).",
+        "groups": [
+          {
+            "name": "Templates/Example Music"
+          }
+        ],
+        "items": [
+          {
+            "uuid": "c82805eecffb4b77b1ce9f72cafab709",
+            "name": "File exists: nodeinfo.json",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[C:\\ProgramData\\ExampleMusic\\Config\\nodeinfo.json]",
+            "delay": "1h",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "UNSIGNED",
+            "description": "1 if C:\\ProgramData\\ExampleMusic\\Config\\nodeinfo.json exists, 0 otherwise.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "3507fe18047d491faa8bb802033448a4",
+                "expression": "last(/Windows Tools (Example Music)/vfs.file.exists[C:\\ProgramData\\ExampleMusic\\Config\\nodeinfo.json])=0",
+                "name": "Hey! {HOST.NAME} is missing nodeinfo.json",
+                "priority": "WARNING",
+                "description": "nodeinfo.json should be written by every Windows bootstrap/hygiene run.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "windows-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "nodeinfo"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "f4515844c1a4432c9b273f413a61fb01",
+            "name": "nodeinfo.json contents (master)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.contents[C:\\ProgramData\\ExampleMusic\\Config\\nodeinfo.json]",
+            "delay": "1h",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Raw nodeinfo.json content -- master item for every examplemusic.nodeinfo.* dependent item below. Staleness (nodata) trigger depends on the exists trigger above.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              },
+              {
+                "tag": "item-type",
+                "value": "master"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "91ea0663960f4cf2a81970729f990882",
+                "expression": "nodata(/Windows Tools (Example Music)/vfs.file.contents[C:\\ProgramData\\ExampleMusic\\Config\\nodeinfo.json],{$NODEINFO.MAXAGE})=1",
+                "name": "Hey! {HOST.NAME} hasn't had a Windows bootstrap/hygiene run in {$NODEINFO.MAXAGE}",
+                "priority": "WARNING",
+                "description": "nodeinfo.json hasn't been rewritten within {$NODEINFO.MAXAGE}.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "windows-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "nodeinfo"
+                  },
+                  {
+                    "tag": "item-type",
+                    "value": "master"
+                  }
+                ],
+                "dependencies": [
+                  {
+                    "name": "Hey! {HOST.NAME} is missing nodeinfo.json",
+                    "expression": "last(/Windows Tools (Example Music)/vfs.file.exists[C:\\ProgramData\\ExampleMusic\\Config\\nodeinfo.json])=0"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "61e6b40df22d460f8fbf7f8557c64492",
+            "name": "nodeinfo: hostname",
+            "type": "DEPENDENT",
+            "key": "nodeinfo.hostname[{$NODEINFO.KEY_PREFIX}]",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's hostname field.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[C:\\ProgramData\\ExampleMusic\\Config\\nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.hostname"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "0931630b20924217b489b4c9b63d3c30",
+            "name": "nodeinfo: fqdn",
+            "type": "DEPENDENT",
+            "key": "nodeinfo.fqdn[{$NODEINFO.KEY_PREFIX}]",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's fqdn field.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[C:\\ProgramData\\ExampleMusic\\Config\\nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.fqdn"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "e427d002d80842e7bb9161f291995488",
+            "name": "nodeinfo: role",
+            "type": "DEPENDENT",
+            "key": "nodeinfo.role[{$NODEINFO.KEY_PREFIX}]",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's role field.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[C:\\ProgramData\\ExampleMusic\\Config\\nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.role"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "78e1b8f242ec4abc9fc87529d2c1886a",
+            "name": "nodeinfo: site",
+            "type": "DEPENDENT",
+            "key": "nodeinfo.site[{$NODEINFO.KEY_PREFIX}]",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's site field.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[C:\\ProgramData\\ExampleMusic\\Config\\nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.site"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "db3d3343e51c435fb22e920222fa2c79",
+            "name": "nodeinfo: city",
+            "type": "DEPENDENT",
+            "key": "nodeinfo.city[{$NODEINFO.KEY_PREFIX}]",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's city field.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[C:\\ProgramData\\ExampleMusic\\Config\\nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.city"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "a11f22e696854519ab8a5f2cd098c8bb",
+            "name": "nodeinfo: country",
+            "type": "DEPENDENT",
+            "key": "nodeinfo.country[{$NODEINFO.KEY_PREFIX}]",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's country field.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[C:\\ProgramData\\ExampleMusic\\Config\\nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.country"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "78af4a4cb8af4e9e98f4d77db2a3a6b9",
+            "name": "nodeinfo: country_code",
+            "type": "DEPENDENT",
+            "key": "nodeinfo.country_code[{$NODEINFO.KEY_PREFIX}]",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's country_code field.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[C:\\ProgramData\\ExampleMusic\\Config\\nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.country_code"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "2e7bf6e259f8458e9cceaa2b6b37c1d8",
+            "name": "nodeinfo: entity",
+            "type": "DEPENDENT",
+            "key": "nodeinfo.entity[{$NODEINFO.KEY_PREFIX}]",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's entity field.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[C:\\ProgramData\\ExampleMusic\\Config\\nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.entity"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "7ce06a739b124181b31ca5c47f453199",
+            "name": "nodeinfo: office_name",
+            "type": "DEPENDENT",
+            "key": "nodeinfo.office_name[{$NODEINFO.KEY_PREFIX}]",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's office_name field.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[C:\\ProgramData\\ExampleMusic\\Config\\nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.office_name"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "4754d3d7b5894506acd49f7a6c55d313",
+            "name": "nodeinfo: street_address",
+            "type": "DEPENDENT",
+            "key": "nodeinfo.street_address[{$NODEINFO.KEY_PREFIX}]",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's street_address field.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[C:\\ProgramData\\ExampleMusic\\Config\\nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.street_address"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "bf1ab2de977140869ea04c30ae702002",
+            "name": "nodeinfo: postal_code",
+            "type": "DEPENDENT",
+            "key": "nodeinfo.postal_code[{$NODEINFO.KEY_PREFIX}]",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's postal_code field.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[C:\\ProgramData\\ExampleMusic\\Config\\nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.postal_code"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "dd67dc9b078f4e22991d695eb573c7bb",
+            "name": "nodeinfo: ansible_managed",
+            "type": "DEPENDENT",
+            "key": "nodeinfo.ansible_managed[{$NODEINFO.KEY_PREFIX}]",
+            "delay": "0",
+            "history": "7d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "Plain extraction of nodeinfo.json's ansible_managed field.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[C:\\ProgramData\\ExampleMusic\\Config\\nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.ansible_managed"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              },
+              {
+                "type": "BOOL_TO_DECIMAL",
+                "parameters": [],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "f5ba1301ab74415fbbb9393966f318f4",
+            "name": "nodeinfo: bootstrapped_at",
+            "type": "DEPENDENT",
+            "key": "nodeinfo.bootstrapped_at[{$NODEINFO.KEY_PREFIX}]",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's bootstrapped_at field.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[C:\\ProgramData\\ExampleMusic\\Config\\nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.bootstrapped_at"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "3ec96e6d7d4448ed8ab6de2a8cae0f63",
+            "name": "nodeinfo: bootstrapped_by",
+            "type": "DEPENDENT",
+            "key": "nodeinfo.bootstrapped_by[{$NODEINFO.KEY_PREFIX}]",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's bootstrapped_by field.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[C:\\ProgramData\\ExampleMusic\\Config\\nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.bootstrapped_by"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "36a7e6f3753d4ad3b5f57a74b27e50b6",
+            "name": "nodeinfo: last_ansible_run",
+            "type": "DEPENDENT",
+            "key": "nodeinfo.last_ansible_run[{$NODEINFO.KEY_PREFIX}]",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's last_ansible_run field.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[C:\\ProgramData\\ExampleMusic\\Config\\nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.last_ansible_run"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "4d44c4dbd9b644bc9007d2a296e38b34",
+            "name": "nodeinfo: last_ansible_play",
+            "type": "DEPENDENT",
+            "key": "nodeinfo.last_ansible_play[{$NODEINFO.KEY_PREFIX}]",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's last_ansible_play field.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[C:\\ProgramData\\ExampleMusic\\Config\\nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.last_ansible_play"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ]
+          },
+          {
+            "uuid": "36e9b5603cab4cb2993505aba9a44d6b",
+            "name": "nodeinfo: environment",
+            "type": "DEPENDENT",
+            "key": "nodeinfo.environment[{$NODEINFO.KEY_PREFIX}]",
+            "delay": "0",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Plain extraction of nodeinfo.json's environment field.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              }
+            ],
+            "master_item": {
+              "key": "vfs.file.contents[C:\\ProgramData\\ExampleMusic\\Config\\nodeinfo.json]"
+            },
+            "preprocessing": [
+              {
+                "type": "JSONPATH",
+                "parameters": [
+                  "$.environment"
+                ],
+                "error_handler": "DISCARD_VALUE"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "f6e99cfc744a4f6f9344e51f1a6bb0d6",
+                "expression": "last(/Windows Tools (Example Music)/nodeinfo.environment[{$NODEINFO.KEY_PREFIX}])<>last(/Windows Tools (Example Music)/nodeinfo.environment[{$NODEINFO.KEY_PREFIX}],#2)",
+                "name": "Hey! {HOST.NAME} nodeinfo.json environment value changed",
+                "priority": "INFO",
+                "description": "Drift trigger -- no single correct value to compare against, just flags a change.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "windows-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "nodeinfo"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "36365cd561954637b2af4e2befd58936",
+            "name": "OpenSSH DefaultShell is PowerShell",
+            "type": "ZABBIX_ACTIVE",
+            "key": "registry.data[\"HKEY_LOCAL_MACHINE\\SOFTWARE\\OpenSSH\",\"DefaultShell\"]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "TEXT",
+            "description": "Native registry.data[] read of HKEY_LOCAL_MACHINE\\SOFTWARE\\OpenSSH\\DefaultShell. Expected value: \"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\". Set by tasks/openssh config -- 75-openssh.yml.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "registry"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "e34a94c6f60240f2bf300dbea72b0566",
+                "expression": "last(/Windows Tools (Example Music)/registry.data[\"HKEY_LOCAL_MACHINE\\SOFTWARE\\OpenSSH\",\"DefaultShell\"])<>\"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\"",
+                "name": "Hey! {HOST.NAME} — OpenSSH DefaultShell is PowerShell is not set correctly",
+                "priority": "WARNING",
+                "description": "Expected \"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\", see this item's own description for the real registry path.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "windows-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "registry"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "0c36e1e8d41a4d21a989c8ab66d27ee8",
+            "name": "RDP is enabled (fDenyTSConnections)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "registry.data[\"HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server\",\"fDenyTSConnections\"]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "Native registry.data[] read of HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server\\fDenyTSConnections. Expected value: 0. 0=enabled, 1=disabled. Set by tasks/rdp.yml.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "registry"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "f9d191b389394db192be24d428e7deb9",
+                "expression": "last(/Windows Tools (Example Music)/registry.data[\"HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server\",\"fDenyTSConnections\"])<>0",
+                "name": "Hey! {HOST.NAME} — RDP is enabled (fDenyTSConnections) is not set correctly",
+                "priority": "WARNING",
+                "description": "Expected 0, see this item's own description for the real registry path.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "windows-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "registry"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "f1305c5f11d645c680fd646bb051fd1a",
+            "name": "RDP requires NLA (UserAuthentication)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "registry.data[\"HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\RDP-Tcp\",\"UserAuthentication\"]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "Native registry.data[] read of HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\RDP-Tcp\\UserAuthentication. Expected value: 1. Set by tasks/rdp.yml.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "registry"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "03554379a7424b38b0c47d0bc197fbbe",
+                "expression": "last(/Windows Tools (Example Music)/registry.data[\"HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\RDP-Tcp\",\"UserAuthentication\"])<>1",
+                "name": "Hey! {HOST.NAME} — RDP requires NLA (UserAuthentication) is not set correctly",
+                "priority": "WARNING",
+                "description": "Expected 1, see this item's own description for the real registry path.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "windows-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "registry"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "524e9674a7494e59b3f552b35c8aa975",
+            "name": "Screen-lock inactivity timeout",
+            "type": "ZABBIX_ACTIVE",
+            "key": "registry.data[\"HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System\",\"InactivityTimeoutSecs\"]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "Native registry.data[] read of HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System\\InactivityTimeoutSecs. Expected value: {$WINDOWSTOOLS.LOCK_TIMEOUT_SECS}. Compared against {$WINDOWSTOOLS.LOCK_TIMEOUT_SECS} (default matches exa_lock_timeout_secs, group_vars/all/vars.yml). Set by tasks/screenlock.yml. NOTE: the companion HKCU screensaver values (SCRNSAVE.EXE etc) are NOT checked here -- registry.data reads the Zabbix agent SERVICE's own HKCU (SYSTEM's hive), not the real interactive user's, so those values aren't reliably checkable this way. Deliberately scoped out, not forgotten.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "registry"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "e1bce17994ae4a15b7bc8213893ff865",
+                "expression": "last(/Windows Tools (Example Music)/registry.data[\"HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System\",\"InactivityTimeoutSecs\"])<>{$WINDOWSTOOLS.LOCK_TIMEOUT_SECS}",
+                "name": "Hey! {HOST.NAME} — Screen-lock inactivity timeout is not set correctly",
+                "priority": "WARNING",
+                "description": "Expected {$WINDOWSTOOLS.LOCK_TIMEOUT_SECS}, see this item's own description for the real registry path.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "windows-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "registry"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "23b125b95dfc450f9387d25a1334bc03",
+            "name": "Shutdown allowed from login screen without logon",
+            "type": "ZABBIX_ACTIVE",
+            "key": "registry.data[\"HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System\",\"ShutdownWithoutLogon\"]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "Native registry.data[] read of HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System\\ShutdownWithoutLogon. Expected value: 1. Set by ansible/tasks/allow_shutdown_without_logon.yml (Server OS).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "registry"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "769580473e6e4643860eb91bd90534d9",
+                "expression": "last(/Windows Tools (Example Music)/registry.data[\"HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System\",\"ShutdownWithoutLogon\"])<>1",
+                "name": "Hey! {HOST.NAME} — Shutdown allowed from login screen without logon is not set correctly",
+                "priority": "WARNING",
+                "description": "Expected 1, see this item's own description for the real registry path.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "windows-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "registry"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "8281f2dae1664e46832732879331b48e",
+            "name": "Windows Update: NoAutoUpdate=0",
+            "type": "ZABBIX_ACTIVE",
+            "key": "registry.data[\"HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU\",\"NoAutoUpdate\"]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "Native registry.data[] read of HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU\\NoAutoUpdate. Expected value: 0. Set by ansible/tasks/winupdate_manual_policy.yml.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "registry"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "732437c67760416c8007bcac06b08761",
+                "expression": "last(/Windows Tools (Example Music)/registry.data[\"HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU\",\"NoAutoUpdate\"])<>0",
+                "name": "Hey! {HOST.NAME} — Windows Update: NoAutoUpdate=0 is not set correctly",
+                "priority": "WARNING",
+                "description": "Expected 0, see this item's own description for the real registry path.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "windows-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "registry"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "b425be94b354494a90fa1c18fa551cda",
+            "name": "Windows Update: AUOptions=2 (notify download+install)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "registry.data[\"HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU\",\"AUOptions\"]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "Native registry.data[] read of HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU\\AUOptions. Expected value: 2. Set by ansible/tasks/winupdate_manual_policy.yml.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "registry"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "bdf84e3f38da41eea6a71943b843bdad",
+                "expression": "last(/Windows Tools (Example Music)/registry.data[\"HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU\",\"AUOptions\"])<>2",
+                "name": "Hey! {HOST.NAME} — Windows Update: AUOptions=2 (notify download+install) is not set correctly",
+                "priority": "WARNING",
+                "description": "Expected 2, see this item's own description for the real registry path.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "windows-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "registry"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "e5b86d665c88440a9ed8cf603ade460c",
+            "name": "Windows Update: NoAutoRebootWithLoggedOnUsers=1",
+            "type": "ZABBIX_ACTIVE",
+            "key": "registry.data[\"HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU\",\"NoAutoRebootWithLoggedOnUsers\"]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "Native registry.data[] read of HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU\\NoAutoRebootWithLoggedOnUsers. Expected value: 1. Set by ansible/tasks/winupdate_manual_policy.yml.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "registry"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "e2285502a4754b6b9bb41aac1bb3062d",
+                "expression": "last(/Windows Tools (Example Music)/registry.data[\"HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU\",\"NoAutoRebootWithLoggedOnUsers\"])<>1",
+                "name": "Hey! {HOST.NAME} — Windows Update: NoAutoRebootWithLoggedOnUsers=1 is not set correctly",
+                "priority": "WARNING",
+                "description": "Expected 1, see this item's own description for the real registry path.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "windows-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "registry"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "9a5a15184a5d4354be02f14d8cca4866",
+            "name": "ClearPageFileAtShutdown",
+            "type": "ZABBIX_ACTIVE",
+            "key": "registry.data[\"HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Memory Management\",\"ClearPageFileAtShutdown\"]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "Native registry.data[] read of HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Memory Management\\ClearPageFileAtShutdown. Expected value: 1. Set by ansible/playbooks/windows_bootstrap/tasks/power_pagefile.yml. Ported from ex1_windows.json's own (disabled/dead) clearpageonreboot item -- this is the real registry value it was trying to check.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "registry"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "890b88273b42459fb60abb2e56ccaef9",
+                "expression": "last(/Windows Tools (Example Music)/registry.data[\"HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Memory Management\",\"ClearPageFileAtShutdown\"])<>1",
+                "name": "Hey! {HOST.NAME} — ClearPageFileAtShutdown is not set correctly",
+                "priority": "WARNING",
+                "description": "Expected 1, see this item's own description for the real registry path.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "windows-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "registry"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "b46d6a5157904fd88f632616cafcb719",
+            "name": "Dark mode: AppsUseLightTheme=0",
+            "type": "ZABBIX_ACTIVE",
+            "key": "registry.data[\"HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize\",\"AppsUseLightTheme\"]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "Native registry.data[] read of HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize\\AppsUseLightTheme. Expected value: 0. Set by tasks/dark_mode.yml.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "registry"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "445a865250994b739acb192c8784a617",
+                "expression": "last(/Windows Tools (Example Music)/registry.data[\"HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize\",\"AppsUseLightTheme\"])<>0",
+                "name": "Hey! {HOST.NAME} — Dark mode: AppsUseLightTheme=0 is not set correctly",
+                "priority": "WARNING",
+                "description": "Expected 0, see this item's own description for the real registry path.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "windows-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "registry"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "18dd33fde0064f42b2ee778cf5cf3a2a",
+            "name": "Dark mode: SystemUsesLightTheme=0",
+            "type": "ZABBIX_ACTIVE",
+            "key": "registry.data[\"HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize\",\"SystemUsesLightTheme\"]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "Native registry.data[] read of HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize\\SystemUsesLightTheme. Expected value: 0. Set by tasks/dark_mode.yml.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "registry"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "7e43b8ae3f7a47ffb5b4f1efa1c0f652",
+                "expression": "last(/Windows Tools (Example Music)/registry.data[\"HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize\",\"SystemUsesLightTheme\"])<>0",
+                "name": "Hey! {HOST.NAME} — Dark mode: SystemUsesLightTheme=0 is not set correctly",
+                "priority": "WARNING",
+                "description": "Expected 0, see this item's own description for the real registry path.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "windows-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "registry"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "535530b46c6448dd8bbf9fdeb350cc09",
+            "name": "Windows Consumer Features disabled",
+            "type": "ZABBIX_ACTIVE",
+            "key": "registry.data[\"HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows\\CloudContent\",\"DisableWindowsConsumerFeatures\"]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "Native registry.data[] read of HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows\\CloudContent\\DisableWindowsConsumerFeatures. Expected value: 1. Set by playbooks/25-deadvertise.yml, desktop/laptop only (exa_deadvertise_enabled). Macro-gated: {$WINDOWSTOOLS.DEADVERTISE_EXPECTED} default \"no\" (servers, the majority case in a server-heavy estate), override to \"yes\" per real desktop/laptop host.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "registry"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "cf2f0dcd44c1433eaf8ce7637446cac4",
+                "expression": "{$WINDOWSTOOLS.DEADVERTISE_EXPECTED}=\"yes\" and last(/Windows Tools (Example Music)/registry.data[\"HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows\\CloudContent\",\"DisableWindowsConsumerFeatures\"])<>1",
+                "name": "Hey! {HOST.NAME} — Windows Consumer Features disabled is not set correctly",
+                "priority": "WARNING",
+                "description": "Expected 1, see this item's own description for the real registry path.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "windows-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "registry"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "5befbeb7a6634cd7a32f272f54a1de90",
+            "name": "Windows build number",
+            "type": "ZABBIX_ACTIVE",
+            "key": "registry.data[\"HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\",\"CurrentBuildNumber\"]",
+            "delay": "1h",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Native registry.data[] read of HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\CurrentBuildNumber. Visibility only, no trigger. Ported from ex1_windows.json's own Windows Build Number item (that one used the deprecated wmic path -- this is the real registry value instead).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "registry"
+              }
+            ]
+          },
+          {
+            "uuid": "828c9a1585094b48ae1501f2a3eff723",
+            "name": "Hibernation enabled/disabled matches expectation",
+            "type": "ZABBIX_ACTIVE",
+            "key": "registry.data[\"HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Power\",\"HibernateEnabled\"]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "Native registry.data[] read of HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Power\\HibernateEnabled. Expected value: {$WINDOWSTOOLS.HIBERNATION_EXPECTED}. Set by powercfg /hibernate on|off (playbooks/70-hibernation.yml, chassis-dependent via exa_hibernation_enabled). Standard real registry value for this -- independently corroborated by docs/management/WindowsHygiene.xml's own (never-confirmed) WMI-based check for the exact same value name. {$WINDOWSTOOLS.HIBERNATION_EXPECTED} holds the numeric DWORD directly (0 or 1), not yes/no -- simpler than a second macro for the same concept, since this is the only item that needs it.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "registry"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "e849c8b00d624e13a76c5a46a3db85e7",
+                "expression": "last(/Windows Tools (Example Music)/registry.data[\"HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Power\",\"HibernateEnabled\"])<>{$WINDOWSTOOLS.HIBERNATION_EXPECTED}",
+                "name": "Hey! {HOST.NAME} — Hibernation enabled/disabled matches expectation is not set correctly",
+                "priority": "WARNING",
+                "description": "Expected {$WINDOWSTOOLS.HIBERNATION_EXPECTED}, see this item's own description for the real registry path.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "windows-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "registry"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "1a59db927e9c40bcb356d1231ca1cf80",
+            "name": "Windows installation type (Client/Server/Server Core)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "registry.data[\"HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\",\"InstallationType\"]",
+            "delay": "1h",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Native registry.data[] read of HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\InstallationType. Visibility only, no trigger. Same real signal windows_bootstrap/playbooks/40-choco-packages.yml's own has_gui detection already trusts (\"Client\"/\"Server\"/\"Server Core\"). Visibility only here, but used by this template's own RSAT/GUI-package trigger dependencies below -- the gating signal Robert asked for, not a separate macro.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "registry"
+              }
+            ]
+          },
+          {
+            "uuid": "c48d667547564a9caec06793267a17e1",
+            "name": "Timezone (TimeZoneKeyName)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "registry.data[\"HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\TimeZoneInformation\",\"TimeZoneKeyName\"]",
+            "delay": "1h",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Native registry.data[] read of HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\TimeZoneInformation\\TimeZoneKeyName. Visibility only, no trigger. Standard Windows registry location tzutil.exe itself uses. Expected \"GMT Standard Time\" (tasks/locale_timezone.yml). Visibility only for now -- not independently re-tested live this round, flagged as a working assumption, same discipline as every other first-pass item in this series.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "registry"
+              }
+            ]
+          },
+          {
+            "uuid": "e1fd7f0964a14c50991a3e3107a1e08c",
+            "name": "sshd service running",
+            "type": "ZABBIX_ACTIVE",
+            "key": "service.info[sshd]",
+            "delay": "5m",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "UNSIGNED",
+            "description": "Native service.info[sshd] (state). 0=running, 1=paused, 6=stopped, 255=service does not exist. Expected: running (0).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "services"
+              },
+              {
+                "tag": "service",
+                "value": "sshd"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "55bdf5a21b5c4eabbfe7024ec875e19b",
+                "expression": "last(/Windows Tools (Example Music)/service.info[sshd])<>0",
+                "name": "Hey! {HOST.NAME} — sshd service is not running",
+                "priority": "WARNING",
+                "description": "Expected state 0 (running).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "windows-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "services"
+                  },
+                  {
+                    "tag": "service",
+                    "value": "sshd"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "c6604806e1ce4990a1dbd52ebda24bd6",
+            "name": "TermService (RDP) running",
+            "type": "ZABBIX_ACTIVE",
+            "key": "service.info[TermService]",
+            "delay": "5m",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "UNSIGNED",
+            "description": "Native service.info[TermService] (state). 0=running, 1=paused, 6=stopped, 255=service does not exist. Expected: running (0).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "services"
+              },
+              {
+                "tag": "service",
+                "value": "TermService"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "8c4fd98332214ec2ae377ad85efaa6af",
+                "expression": "last(/Windows Tools (Example Music)/service.info[TermService])<>0",
+                "name": "Hey! {HOST.NAME} — TermService service is not running",
+                "priority": "WARNING",
+                "description": "Expected state 0 (running).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "windows-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "services"
+                  },
+                  {
+                    "tag": "service",
+                    "value": "TermService"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "6ce0fd75a036493bb448c27953142cda",
+            "name": "salt-minion service running",
+            "type": "ZABBIX_ACTIVE",
+            "key": "service.info[salt-minion]",
+            "delay": "5m",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "UNSIGNED",
+            "description": "Native service.info[salt-minion] (state). 0=running, 1=paused, 6=stopped, 255=service does not exist. Expected: running (0).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "services"
+              },
+              {
+                "tag": "service",
+                "value": "salt-minion"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "1d03ff8840d44b7aaec900380c3e4e7b",
+                "expression": "last(/Windows Tools (Example Music)/service.info[salt-minion])<>0",
+                "name": "Hey! {HOST.NAME} — salt-minion service is not running",
+                "priority": "WARNING",
+                "description": "Expected state 0 (running).",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "windows-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "services"
+                  },
+                  {
+                    "tag": "service",
+                    "value": "salt-minion"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "c179ff743d254c4087adfd193829711d",
+            "name": "wuauserv service state",
+            "type": "ZABBIX_ACTIVE",
+            "key": "service.info[wuauserv]",
+            "delay": "5m",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "UNSIGNED",
+            "description": "Native service.info[wuauserv] (state). 0=running, 1=paused, 6=stopped, 255=service does not exist. Expected: running (0). Visibility only, no trigger -- wuauserv is demand-start and legitimately stopped most of the time even when healthy; a 'not running' check would be a guaranteed false positive.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "services"
+              },
+              {
+                "tag": "service",
+                "value": "wuauserv"
+              }
+            ]
+          },
+          {
+            "uuid": "17e30d67d1534b9681ed681e682f76c2",
+            "name": "sacsvr startup configured (Server only)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "service.info[sacsvr]",
+            "delay": "5m",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "UNSIGNED",
+            "description": "Native service.info[sacsvr] (state). 0=running, 1=paused, 6=stopped, 255=service does not exist. Expected: running (0). Visibility only -- sacsvr is auto-start but only actually RUNS after the next reboot (tasks/sac_ems.yml's own 2026-08-14 finding); a 'not running' trigger would false-positive on every box that hasn't rebooted since the BCD settings were applied.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "services"
+              },
+              {
+                "tag": "service",
+                "value": "sacsvr"
+              }
+            ]
+          },
+          {
+            "uuid": "9b45f44140124ecabfa55111a264399b",
+            "name": "Package installed: 7zip.install",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[C:\\ProgramData\\chocolatey\\lib\\7zip.install\\7zip.install.nuspec]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if C:\\ProgramData\\chocolatey\\lib\\7zip.install\\7zip.install.nuspec exists, 0 otherwise. Every installed Chocolatey package ships this NuGet metadata file directly in its own lib folder (standard NuGet convention) -- same role as Linux's /usr/share/doc/<pkg>/copyright trick, one uniform file name regardless of what's inside the package's own tools\\ folder. UNVERIFIED against a real live box -- flagged explicitly, same as this series' other working hypotheses until proven.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "7zip.install"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "49e98150bbe6454992e3a5f31a050de3",
+                "expression": "last(/Windows Tools (Example Music)/vfs.file.exists[C:\\ProgramData\\chocolatey\\lib\\7zip.install\\7zip.install.nuspec])=0",
+                "name": "Hey! {HOST.NAME} is missing 7zip.install package",
+                "priority": "WARNING",
+                "description": "7zip.install is expected (choco_packages_common/choco_packages_gui or a hypervisor-conditional install) but not installed. Re-run the bootstrap/hygiene choco stage.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "windows-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "7zip.install"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "0f4a05cf484c42bca158615ac0e0a557",
+            "name": "Package installed: notepadplusplus.install",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[C:\\ProgramData\\chocolatey\\lib\\notepadplusplus.install\\notepadplusplus.install.nuspec]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if C:\\ProgramData\\chocolatey\\lib\\notepadplusplus.install\\notepadplusplus.install.nuspec exists, 0 otherwise. Every installed Chocolatey package ships this NuGet metadata file directly in its own lib folder (standard NuGet convention) -- same role as Linux's /usr/share/doc/<pkg>/copyright trick, one uniform file name regardless of what's inside the package's own tools\\ folder. UNVERIFIED against a real live box -- flagged explicitly, same as this series' other working hypotheses until proven.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "notepadplusplus.install"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "314dd1abffe74445a05acb422ff6dd98",
+                "expression": "last(/Windows Tools (Example Music)/vfs.file.exists[C:\\ProgramData\\chocolatey\\lib\\notepadplusplus.install\\notepadplusplus.install.nuspec])=0",
+                "name": "Hey! {HOST.NAME} is missing notepadplusplus.install package",
+                "priority": "WARNING",
+                "description": "notepadplusplus.install is expected (choco_packages_common/choco_packages_gui or a hypervisor-conditional install) but not installed. Re-run the bootstrap/hygiene choco stage.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "windows-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "notepadplusplus.install"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "36ee52898b474121a75fbc16c6ff1a42",
+            "name": "Package installed: powershell-core",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[C:\\ProgramData\\chocolatey\\lib\\powershell-core\\powershell-core.nuspec]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if C:\\ProgramData\\chocolatey\\lib\\powershell-core\\powershell-core.nuspec exists, 0 otherwise. Every installed Chocolatey package ships this NuGet metadata file directly in its own lib folder (standard NuGet convention) -- same role as Linux's /usr/share/doc/<pkg>/copyright trick, one uniform file name regardless of what's inside the package's own tools\\ folder. UNVERIFIED against a real live box -- flagged explicitly, same as this series' other working hypotheses until proven.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "powershell-core"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "5024ac0ae25c4250b4a42fef938ebcaf",
+                "expression": "last(/Windows Tools (Example Music)/vfs.file.exists[C:\\ProgramData\\chocolatey\\lib\\powershell-core\\powershell-core.nuspec])=0",
+                "name": "Hey! {HOST.NAME} is missing powershell-core package",
+                "priority": "WARNING",
+                "description": "powershell-core is expected (choco_packages_common/choco_packages_gui or a hypervisor-conditional install) but not installed. Re-run the bootstrap/hygiene choco stage.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "windows-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "powershell-core"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "ac09d437e2ef41afafb959a0d23a5441",
+            "name": "Package installed: hyper",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[C:\\ProgramData\\chocolatey\\lib\\hyper\\hyper.nuspec]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if C:\\ProgramData\\chocolatey\\lib\\hyper\\hyper.nuspec exists, 0 otherwise. Every installed Chocolatey package ships this NuGet metadata file directly in its own lib folder (standard NuGet convention) -- same role as Linux's /usr/share/doc/<pkg>/copyright trick, one uniform file name regardless of what's inside the package's own tools\\ folder. UNVERIFIED against a real live box -- flagged explicitly, same as this series' other working hypotheses until proven.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "hyper"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "ec97fcce99ce49abae9021a9d98ef209",
+                "expression": "last(/Windows Tools (Example Music)/vfs.file.exists[C:\\ProgramData\\chocolatey\\lib\\hyper\\hyper.nuspec])=0",
+                "name": "Hey! {HOST.NAME} is missing hyper package",
+                "priority": "WARNING",
+                "description": "hyper is expected (choco_packages_common/choco_packages_gui or a hypervisor-conditional install) but not installed. Re-run the bootstrap/hygiene choco stage.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "windows-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "hyper"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "694391b7c85042258db0ef9f71e3ba65",
+            "name": "Package installed: far",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[C:\\ProgramData\\chocolatey\\lib\\far\\far.nuspec]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if C:\\ProgramData\\chocolatey\\lib\\far\\far.nuspec exists, 0 otherwise. Every installed Chocolatey package ships this NuGet metadata file directly in its own lib folder (standard NuGet convention) -- same role as Linux's /usr/share/doc/<pkg>/copyright trick, one uniform file name regardless of what's inside the package's own tools\\ folder. UNVERIFIED against a real live box -- flagged explicitly, same as this series' other working hypotheses until proven.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "far"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "d7c36cef6b624749bbe7299ed1ac9691",
+                "expression": "last(/Windows Tools (Example Music)/vfs.file.exists[C:\\ProgramData\\chocolatey\\lib\\far\\far.nuspec])=0",
+                "name": "Hey! {HOST.NAME} is missing far package",
+                "priority": "WARNING",
+                "description": "far is expected (choco_packages_common/choco_packages_gui or a hypervisor-conditional install) but not installed. Re-run the bootstrap/hygiene choco stage.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "windows-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "far"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "23f8265270c74f09baa111470a568f68",
+            "name": "Package installed: edit",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[C:\\ProgramData\\chocolatey\\lib\\edit\\edit.nuspec]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if C:\\ProgramData\\chocolatey\\lib\\edit\\edit.nuspec exists, 0 otherwise. Every installed Chocolatey package ships this NuGet metadata file directly in its own lib folder (standard NuGet convention) -- same role as Linux's /usr/share/doc/<pkg>/copyright trick, one uniform file name regardless of what's inside the package's own tools\\ folder. UNVERIFIED against a real live box -- flagged explicitly, same as this series' other working hypotheses until proven.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "edit"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "14423cd8328f47e881867c5a0d393557",
+                "expression": "last(/Windows Tools (Example Music)/vfs.file.exists[C:\\ProgramData\\chocolatey\\lib\\edit\\edit.nuspec])=0",
+                "name": "Hey! {HOST.NAME} is missing edit package",
+                "priority": "WARNING",
+                "description": "edit is expected (choco_packages_common/choco_packages_gui or a hypervisor-conditional install) but not installed. Re-run the bootstrap/hygiene choco stage.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "windows-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "edit"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "6bad39e7d67f4a7ca2c35247efa0f403",
+            "name": "Package installed: sdelete",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[C:\\ProgramData\\chocolatey\\lib\\sdelete\\sdelete.nuspec]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if C:\\ProgramData\\chocolatey\\lib\\sdelete\\sdelete.nuspec exists, 0 otherwise. Every installed Chocolatey package ships this NuGet metadata file directly in its own lib folder (standard NuGet convention) -- same role as Linux's /usr/share/doc/<pkg>/copyright trick, one uniform file name regardless of what's inside the package's own tools\\ folder. UNVERIFIED against a real live box -- flagged explicitly, same as this series' other working hypotheses until proven.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "sdelete"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "ba9eb7896b7e494eb3c8ff95bc2279cd",
+                "expression": "last(/Windows Tools (Example Music)/vfs.file.exists[C:\\ProgramData\\chocolatey\\lib\\sdelete\\sdelete.nuspec])=0",
+                "name": "Hey! {HOST.NAME} is missing sdelete package",
+                "priority": "WARNING",
+                "description": "sdelete is expected (choco_packages_common/choco_packages_gui or a hypervisor-conditional install) but not installed. Re-run the bootstrap/hygiene choco stage.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "windows-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "sdelete"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "4b1e1a87bef34aaa8345745f69c125de",
+            "name": "Package installed: putty.install",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[C:\\ProgramData\\chocolatey\\lib\\putty.install\\putty.install.nuspec]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if C:\\ProgramData\\chocolatey\\lib\\putty.install\\putty.install.nuspec exists, 0 otherwise. Every installed Chocolatey package ships this NuGet metadata file directly in its own lib folder (standard NuGet convention) -- same role as Linux's /usr/share/doc/<pkg>/copyright trick, one uniform file name regardless of what's inside the package's own tools\\ folder. UNVERIFIED against a real live box -- flagged explicitly, same as this series' other working hypotheses until proven.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "putty.install"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "f74146077ced432aa59e2f697f238c3e",
+                "expression": "last(/Windows Tools (Example Music)/vfs.file.exists[C:\\ProgramData\\chocolatey\\lib\\putty.install\\putty.install.nuspec])=0",
+                "name": "Hey! {HOST.NAME} is missing putty.install package",
+                "priority": "WARNING",
+                "description": "putty.install is expected (choco_packages_common/choco_packages_gui or a hypervisor-conditional install) but not installed. Re-run the bootstrap/hygiene choco stage.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "windows-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "putty.install"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "06d2562de9aa48ea9c6af218c598d539",
+            "name": "Package installed: winscp.install",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[C:\\ProgramData\\chocolatey\\lib\\winscp.install\\winscp.install.nuspec]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if C:\\ProgramData\\chocolatey\\lib\\winscp.install\\winscp.install.nuspec exists, 0 otherwise. Every installed Chocolatey package ships this NuGet metadata file directly in its own lib folder (standard NuGet convention) -- same role as Linux's /usr/share/doc/<pkg>/copyright trick, one uniform file name regardless of what's inside the package's own tools\\ folder. UNVERIFIED against a real live box -- flagged explicitly, same as this series' other working hypotheses until proven.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "winscp.install"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "2eee5078faa24e4da55b154822fcc082",
+                "expression": "last(/Windows Tools (Example Music)/vfs.file.exists[C:\\ProgramData\\chocolatey\\lib\\winscp.install\\winscp.install.nuspec])=0",
+                "name": "Hey! {HOST.NAME} is missing winscp.install package",
+                "priority": "WARNING",
+                "description": "winscp.install is expected (choco_packages_common/choco_packages_gui or a hypervisor-conditional install) but not installed. Re-run the bootstrap/hygiene choco stage.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "windows-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "winscp.install"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "01e90b2c85974f068296f1d6e603de05",
+            "name": "Package installed: rustdesk.install",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[C:\\ProgramData\\chocolatey\\lib\\rustdesk.install\\rustdesk.install.nuspec]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if C:\\ProgramData\\chocolatey\\lib\\rustdesk.install\\rustdesk.install.nuspec exists, 0 otherwise. Every installed Chocolatey package ships this NuGet metadata file directly in its own lib folder (standard NuGet convention) -- same role as Linux's /usr/share/doc/<pkg>/copyright trick, one uniform file name regardless of what's inside the package's own tools\\ folder. UNVERIFIED against a real live box -- flagged explicitly, same as this series' other working hypotheses until proven.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "rustdesk.install"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "28f9e2c048c141339aa15f0321c95790",
+                "expression": "last(/Windows Tools (Example Music)/vfs.file.exists[C:\\ProgramData\\chocolatey\\lib\\rustdesk.install\\rustdesk.install.nuspec])=0",
+                "name": "Hey! {HOST.NAME} is missing rustdesk.install package",
+                "priority": "WARNING",
+                "description": "rustdesk.install is expected (choco_packages_common/choco_packages_gui or a hypervisor-conditional install) but not installed. Re-run the bootstrap/hygiene choco stage.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "windows-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "rustdesk.install"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "0bfc976f00454bbdb2ea68782dcfadfd",
+            "name": "Package installed: wget",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[C:\\ProgramData\\chocolatey\\lib\\wget\\wget.nuspec]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if C:\\ProgramData\\chocolatey\\lib\\wget\\wget.nuspec exists, 0 otherwise. Every installed Chocolatey package ships this NuGet metadata file directly in its own lib folder (standard NuGet convention) -- same role as Linux's /usr/share/doc/<pkg>/copyright trick, one uniform file name regardless of what's inside the package's own tools\\ folder. UNVERIFIED against a real live box -- flagged explicitly, same as this series' other working hypotheses until proven.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "wget"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "996a96347aa14507886e857f7091895f",
+                "expression": "last(/Windows Tools (Example Music)/vfs.file.exists[C:\\ProgramData\\chocolatey\\lib\\wget\\wget.nuspec])=0",
+                "name": "Hey! {HOST.NAME} is missing wget package",
+                "priority": "WARNING",
+                "description": "wget is expected (choco_packages_common/choco_packages_gui or a hypervisor-conditional install) but not installed. Re-run the bootstrap/hygiene choco stage.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "windows-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "wget"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "18c48d07fe40480788d8ba23f6c33d5d",
+            "name": "Package installed: busybox",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[C:\\ProgramData\\chocolatey\\lib\\busybox\\busybox.nuspec]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if C:\\ProgramData\\chocolatey\\lib\\busybox\\busybox.nuspec exists, 0 otherwise. Every installed Chocolatey package ships this NuGet metadata file directly in its own lib folder (standard NuGet convention) -- same role as Linux's /usr/share/doc/<pkg>/copyright trick, one uniform file name regardless of what's inside the package's own tools\\ folder. UNVERIFIED against a real live box -- flagged explicitly, same as this series' other working hypotheses until proven.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "busybox"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "aeeb66f387be4138a6333bb6ce8b8477",
+                "expression": "last(/Windows Tools (Example Music)/vfs.file.exists[C:\\ProgramData\\chocolatey\\lib\\busybox\\busybox.nuspec])=0",
+                "name": "Hey! {HOST.NAME} is missing busybox package",
+                "priority": "WARNING",
+                "description": "busybox is expected (choco_packages_common/choco_packages_gui or a hypervisor-conditional install) but not installed. Re-run the bootstrap/hygiene choco stage.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "windows-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "busybox"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "bf545eaf853546dfb27c85b4917d51c3",
+            "name": "Package installed: elinks",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[C:\\ProgramData\\chocolatey\\lib\\elinks\\elinks.nuspec]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if C:\\ProgramData\\chocolatey\\lib\\elinks\\elinks.nuspec exists, 0 otherwise. Every installed Chocolatey package ships this NuGet metadata file directly in its own lib folder (standard NuGet convention) -- same role as Linux's /usr/share/doc/<pkg>/copyright trick, one uniform file name regardless of what's inside the package's own tools\\ folder. UNVERIFIED against a real live box -- flagged explicitly, same as this series' other working hypotheses until proven.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "elinks"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "9c41fb5c5b5c43efbbabedde3283b4ea",
+                "expression": "last(/Windows Tools (Example Music)/vfs.file.exists[C:\\ProgramData\\chocolatey\\lib\\elinks\\elinks.nuspec])=0",
+                "name": "Hey! {HOST.NAME} is missing elinks package",
+                "priority": "WARNING",
+                "description": "elinks is expected (choco_packages_common/choco_packages_gui or a hypervisor-conditional install) but not installed. Re-run the bootstrap/hygiene choco stage.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "windows-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "elinks"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "99877b41e49d49029a6c771ccf3bd61f",
+            "name": "Package installed: fastfetch",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[C:\\ProgramData\\chocolatey\\lib\\fastfetch\\fastfetch.nuspec]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if C:\\ProgramData\\chocolatey\\lib\\fastfetch\\fastfetch.nuspec exists, 0 otherwise. Every installed Chocolatey package ships this NuGet metadata file directly in its own lib folder (standard NuGet convention) -- same role as Linux's /usr/share/doc/<pkg>/copyright trick, one uniform file name regardless of what's inside the package's own tools\\ folder. UNVERIFIED against a real live box -- flagged explicitly, same as this series' other working hypotheses until proven.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "fastfetch"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "ed3907703be1415ba10a74493e981d39",
+                "expression": "last(/Windows Tools (Example Music)/vfs.file.exists[C:\\ProgramData\\chocolatey\\lib\\fastfetch\\fastfetch.nuspec])=0",
+                "name": "Hey! {HOST.NAME} is missing fastfetch package",
+                "priority": "WARNING",
+                "description": "fastfetch is expected (choco_packages_common/choco_packages_gui or a hypervisor-conditional install) but not installed. Re-run the bootstrap/hygiene choco stage.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "windows-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "fastfetch"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "c12760a993e246548e807ec9794d763a",
+            "name": "Package installed: miller",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[C:\\ProgramData\\chocolatey\\lib\\miller\\miller.nuspec]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if C:\\ProgramData\\chocolatey\\lib\\miller\\miller.nuspec exists, 0 otherwise. Every installed Chocolatey package ships this NuGet metadata file directly in its own lib folder (standard NuGet convention) -- same role as Linux's /usr/share/doc/<pkg>/copyright trick, one uniform file name regardless of what's inside the package's own tools\\ folder. UNVERIFIED against a real live box -- flagged explicitly, same as this series' other working hypotheses until proven.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "miller"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "d29a8999f4a8422ab1822a94c726b716",
+                "expression": "last(/Windows Tools (Example Music)/vfs.file.exists[C:\\ProgramData\\chocolatey\\lib\\miller\\miller.nuspec])=0",
+                "name": "Hey! {HOST.NAME} is missing miller package",
+                "priority": "WARNING",
+                "description": "miller is expected (choco_packages_common/choco_packages_gui or a hypervisor-conditional install) but not installed. Re-run the bootstrap/hygiene choco stage.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "windows-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "miller"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "3283a07c2996470d8ceda72be1c54484",
+            "name": "Package installed: vcredist-all",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[C:\\ProgramData\\chocolatey\\lib\\vcredist-all\\vcredist-all.nuspec]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if C:\\ProgramData\\chocolatey\\lib\\vcredist-all\\vcredist-all.nuspec exists, 0 otherwise. Every installed Chocolatey package ships this NuGet metadata file directly in its own lib folder (standard NuGet convention) -- same role as Linux's /usr/share/doc/<pkg>/copyright trick, one uniform file name regardless of what's inside the package's own tools\\ folder. UNVERIFIED against a real live box -- flagged explicitly, same as this series' other working hypotheses until proven.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "vcredist-all"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "c5098f0415654b7c8fe468742114df19",
+                "expression": "last(/Windows Tools (Example Music)/vfs.file.exists[C:\\ProgramData\\chocolatey\\lib\\vcredist-all\\vcredist-all.nuspec])=0",
+                "name": "Hey! {HOST.NAME} is missing vcredist-all package",
+                "priority": "WARNING",
+                "description": "vcredist-all is expected (choco_packages_common/choco_packages_gui or a hypervisor-conditional install) but not installed. Re-run the bootstrap/hygiene choco stage.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "windows-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "vcredist-all"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "f8cd5026693b4bb8ad71c4d1fd95baa8",
+            "name": "Package installed: dotnetfx",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[C:\\ProgramData\\chocolatey\\lib\\dotnetfx\\dotnetfx.nuspec]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if C:\\ProgramData\\chocolatey\\lib\\dotnetfx\\dotnetfx.nuspec exists, 0 otherwise. Every installed Chocolatey package ships this NuGet metadata file directly in its own lib folder (standard NuGet convention) -- same role as Linux's /usr/share/doc/<pkg>/copyright trick, one uniform file name regardless of what's inside the package's own tools\\ folder. UNVERIFIED against a real live box -- flagged explicitly, same as this series' other working hypotheses until proven.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "dotnetfx"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "170813cab761496394380558f475f5ae",
+                "expression": "last(/Windows Tools (Example Music)/vfs.file.exists[C:\\ProgramData\\chocolatey\\lib\\dotnetfx\\dotnetfx.nuspec])=0",
+                "name": "Hey! {HOST.NAME} is missing dotnetfx package",
+                "priority": "WARNING",
+                "description": "dotnetfx is expected (choco_packages_common/choco_packages_gui or a hypervisor-conditional install) but not installed. Re-run the bootstrap/hygiene choco stage.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "windows-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "dotnetfx"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "8bbebc448ce640cabeb52f18ac4ba4f7",
+            "name": "Package installed: windirstat",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[C:\\ProgramData\\chocolatey\\lib\\windirstat\\windirstat.nuspec]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if C:\\ProgramData\\chocolatey\\lib\\windirstat\\windirstat.nuspec exists, 0 otherwise. Every installed Chocolatey package ships this NuGet metadata file directly in its own lib folder (standard NuGet convention) -- same role as Linux's /usr/share/doc/<pkg>/copyright trick, one uniform file name regardless of what's inside the package's own tools\\ folder. UNVERIFIED against a real live box -- flagged explicitly, same as this series' other working hypotheses until proven.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "windirstat"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "de88aa2fe8284097840e5d0517a9a03f",
+                "expression": "last(/Windows Tools (Example Music)/vfs.file.exists[C:\\ProgramData\\chocolatey\\lib\\windirstat\\windirstat.nuspec])=0",
+                "name": "Hey! {HOST.NAME} is missing windirstat package",
+                "priority": "WARNING",
+                "description": "windirstat is expected (choco_packages_common/choco_packages_gui or a hypervisor-conditional install) but not installed. Re-run the bootstrap/hygiene choco stage.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "windows-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "windirstat"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "24be646d0abf4772a4ca34611172ce94",
+            "name": "Package installed: googlechrome",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[C:\\ProgramData\\chocolatey\\lib\\googlechrome\\googlechrome.nuspec]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if C:\\ProgramData\\chocolatey\\lib\\googlechrome\\googlechrome.nuspec exists, 0 otherwise. Every installed Chocolatey package ships this NuGet metadata file directly in its own lib folder (standard NuGet convention) -- same role as Linux's /usr/share/doc/<pkg>/copyright trick, one uniform file name regardless of what's inside the package's own tools\\ folder. UNVERIFIED against a real live box -- flagged explicitly, same as this series' other working hypotheses until proven. Trigger only fires when InstallationType isn't \"Server Core\" -- GUI packages are Client-OS-always / Server-with-Desktop-Experience-only (40-choco-packages.yml's own has_gui logic).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "googlechrome"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "3c7e1b68d297406aa95e0b3aead1255a",
+                "expression": "last(/Windows Tools (Example Music)/registry.data[\"HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\",\"InstallationType\"])<>\"Server Core\" and last(/Windows Tools (Example Music)/vfs.file.exists[C:\\ProgramData\\chocolatey\\lib\\googlechrome\\googlechrome.nuspec])=0",
+                "name": "Hey! {HOST.NAME} is missing googlechrome package",
+                "priority": "WARNING",
+                "description": "googlechrome is expected (choco_packages_common/choco_packages_gui or a hypervisor-conditional install) but not installed. Re-run the bootstrap/hygiene choco stage.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "windows-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "googlechrome"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "f26941bdca104f4a992dc90feaa42f46",
+            "name": "Package installed: firefox",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[C:\\ProgramData\\chocolatey\\lib\\firefox\\firefox.nuspec]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if C:\\ProgramData\\chocolatey\\lib\\firefox\\firefox.nuspec exists, 0 otherwise. Every installed Chocolatey package ships this NuGet metadata file directly in its own lib folder (standard NuGet convention) -- same role as Linux's /usr/share/doc/<pkg>/copyright trick, one uniform file name regardless of what's inside the package's own tools\\ folder. UNVERIFIED against a real live box -- flagged explicitly, same as this series' other working hypotheses until proven. Trigger only fires when InstallationType isn't \"Server Core\" -- GUI packages are Client-OS-always / Server-with-Desktop-Experience-only (40-choco-packages.yml's own has_gui logic).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "firefox"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "7bb21aede9704a6fa29ff6ac2838cb31",
+                "expression": "last(/Windows Tools (Example Music)/registry.data[\"HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\",\"InstallationType\"])<>\"Server Core\" and last(/Windows Tools (Example Music)/vfs.file.exists[C:\\ProgramData\\chocolatey\\lib\\firefox\\firefox.nuspec])=0",
+                "name": "Hey! {HOST.NAME} is missing firefox package",
+                "priority": "WARNING",
+                "description": "firefox is expected (choco_packages_common/choco_packages_gui or a hypervisor-conditional install) but not installed. Re-run the bootstrap/hygiene choco stage.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "windows-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "firefox"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "1d8d776f2fc64004afc2cbf901f96ee4",
+            "name": "Package installed: vlc",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[C:\\ProgramData\\chocolatey\\lib\\vlc\\vlc.nuspec]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if C:\\ProgramData\\chocolatey\\lib\\vlc\\vlc.nuspec exists, 0 otherwise. Every installed Chocolatey package ships this NuGet metadata file directly in its own lib folder (standard NuGet convention) -- same role as Linux's /usr/share/doc/<pkg>/copyright trick, one uniform file name regardless of what's inside the package's own tools\\ folder. UNVERIFIED against a real live box -- flagged explicitly, same as this series' other working hypotheses until proven. Trigger only fires when InstallationType isn't \"Server Core\" -- GUI packages are Client-OS-always / Server-with-Desktop-Experience-only (40-choco-packages.yml's own has_gui logic).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "vlc"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "647b3759154f4807afacbd273eb8f75d",
+                "expression": "last(/Windows Tools (Example Music)/registry.data[\"HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\",\"InstallationType\"])<>\"Server Core\" and last(/Windows Tools (Example Music)/vfs.file.exists[C:\\ProgramData\\chocolatey\\lib\\vlc\\vlc.nuspec])=0",
+                "name": "Hey! {HOST.NAME} is missing vlc package",
+                "priority": "WARNING",
+                "description": "vlc is expected (choco_packages_common/choco_packages_gui or a hypervisor-conditional install) but not installed. Re-run the bootstrap/hygiene choco stage.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "windows-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "vlc"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "93b44e8692074fcda75739357ab433ec",
+            "name": "Package installed: microsoft-windows-terminal",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[C:\\ProgramData\\chocolatey\\lib\\microsoft-windows-terminal\\microsoft-windows-terminal.nuspec]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if C:\\ProgramData\\chocolatey\\lib\\microsoft-windows-terminal\\microsoft-windows-terminal.nuspec exists, 0 otherwise. Every installed Chocolatey package ships this NuGet metadata file directly in its own lib folder (standard NuGet convention) -- same role as Linux's /usr/share/doc/<pkg>/copyright trick, one uniform file name regardless of what's inside the package's own tools\\ folder. UNVERIFIED against a real live box -- flagged explicitly, same as this series' other working hypotheses until proven. Trigger only fires when InstallationType isn't \"Server Core\" -- GUI packages are Client-OS-always / Server-with-Desktop-Experience-only (40-choco-packages.yml's own has_gui logic).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "microsoft-windows-terminal"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "65edfd32d4ef44a2bc8261afbaab6a0a",
+                "expression": "last(/Windows Tools (Example Music)/registry.data[\"HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\",\"InstallationType\"])<>\"Server Core\" and last(/Windows Tools (Example Music)/vfs.file.exists[C:\\ProgramData\\chocolatey\\lib\\microsoft-windows-terminal\\microsoft-windows-terminal.nuspec])=0",
+                "name": "Hey! {HOST.NAME} is missing microsoft-windows-terminal package",
+                "priority": "WARNING",
+                "description": "microsoft-windows-terminal is expected (choco_packages_common/choco_packages_gui or a hypervisor-conditional install) but not installed. Re-run the bootstrap/hygiene choco stage.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "windows-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "microsoft-windows-terminal"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "6973d0df9f924d6aaa274ae8e8129d1f",
+            "name": "Package installed: winevdm",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[C:\\ProgramData\\chocolatey\\lib\\winevdm\\winevdm.nuspec]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if C:\\ProgramData\\chocolatey\\lib\\winevdm\\winevdm.nuspec exists, 0 otherwise. Every installed Chocolatey package ships this NuGet metadata file directly in its own lib folder (standard NuGet convention) -- same role as Linux's /usr/share/doc/<pkg>/copyright trick, one uniform file name regardless of what's inside the package's own tools\\ folder. UNVERIFIED against a real live box -- flagged explicitly, same as this series' other working hypotheses until proven. Trigger only fires when InstallationType isn't \"Server Core\" -- GUI packages are Client-OS-always / Server-with-Desktop-Experience-only (40-choco-packages.yml's own has_gui logic).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "winevdm"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "fe3be7d4baca4a6cbfe6894b46d6be00",
+                "expression": "last(/Windows Tools (Example Music)/registry.data[\"HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\",\"InstallationType\"])<>\"Server Core\" and last(/Windows Tools (Example Music)/vfs.file.exists[C:\\ProgramData\\chocolatey\\lib\\winevdm\\winevdm.nuspec])=0",
+                "name": "Hey! {HOST.NAME} is missing winevdm package",
+                "priority": "WARNING",
+                "description": "winevdm is expected (choco_packages_common/choco_packages_gui or a hypervisor-conditional install) but not installed. Re-run the bootstrap/hygiene choco stage.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "windows-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "winevdm"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "e2f1ea402e1d4a13aa63a1f92ab8a105",
+            "name": "Package installed: qemu-guest-agent",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[C:\\ProgramData\\chocolatey\\lib\\qemu-guest-agent\\qemu-guest-agent.nuspec]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if C:\\ProgramData\\chocolatey\\lib\\qemu-guest-agent\\qemu-guest-agent.nuspec exists, 0 otherwise. Every installed Chocolatey package ships this NuGet metadata file directly in its own lib folder (standard NuGet convention) -- same role as Linux's /usr/share/doc/<pkg>/copyright trick, one uniform file name regardless of what's inside the package's own tools\\ folder. UNVERIFIED against a real live box -- flagged explicitly, same as this series' other working hypotheses until proven.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "packages"
+              },
+              {
+                "tag": "package",
+                "value": "qemu-guest-agent"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "ceab06b91e4a41e5986acebdb8e14fdd",
+                "expression": "{$WINDOWSTOOLS.QEMU_GUEST_AGENT_EXPECTED}=\"yes\" and last(/Windows Tools (Example Music)/vfs.file.exists[C:\\ProgramData\\chocolatey\\lib\\qemu-guest-agent\\qemu-guest-agent.nuspec])=0",
+                "name": "Hey! {HOST.NAME} is missing qemu-guest-agent package",
+                "priority": "WARNING",
+                "description": "qemu-guest-agent is expected (choco_packages_common/choco_packages_gui or a hypervisor-conditional install) but not installed. Re-run the bootstrap/hygiene choco stage.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "windows-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "packages"
+                  },
+                  {
+                    "tag": "package",
+                    "value": "qemu-guest-agent"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "6315241fa6b14c8eb35b8fe791c195bd",
+            "name": "VMware Tools installed (vmtoolsd.exe)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[C:\\Program Files\\VMware\\VMware Tools\\vmtoolsd.exe]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if C:\\Program Files\\VMware\\VMware Tools\\vmtoolsd.exe exists, 0 otherwise. NOT Chocolatey-installed (tasks/guest_tools.yml's own 2026-09-21 finding -- VMware's own hypervisor mechanism installs this, not our Ansible). Confirmed real path via a public Nagios check reference, not independently verified against a live box in this estate.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "files"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "e3acf68a1b97408997739c57d759da93",
+                "expression": "{$WINDOWSTOOLS.VMWARE_TOOLS_EXPECTED}=\"yes\" and last(/Windows Tools (Example Music)/vfs.file.exists[C:\\Program Files\\VMware\\VMware Tools\\vmtoolsd.exe])=0",
+                "name": "Hey! {HOST.NAME} is missing VMware Tools installed (vmtoolsd.exe)",
+                "priority": "WARNING",
+                "description": "Expected C:\\Program Files\\VMware\\VMware Tools\\vmtoolsd.exe to exist.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "windows-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "files"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "5e19ef83cb2840148b9e57e5a3736956",
+            "name": "Chocolatey installed (choco.exe)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[C:\\ProgramData\\chocolatey\\bin\\choco.exe]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if C:\\ProgramData\\chocolatey\\bin\\choco.exe exists, 0 otherwise.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "files"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "d3dd41469add4fba9d959509cfd817aa",
+                "expression": "last(/Windows Tools (Example Music)/vfs.file.exists[C:\\ProgramData\\chocolatey\\bin\\choco.exe])=0",
+                "name": "Hey! {HOST.NAME} is missing Chocolatey installed (choco.exe)",
+                "priority": "WARNING",
+                "description": "Expected C:\\ProgramData\\chocolatey\\bin\\choco.exe to exist.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "windows-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "files"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "b6969be8127a4a6999b69ad5d9210ac1",
+            "name": "administrators_authorized_keys deployed",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[C:\\ProgramData\\ssh\\administrators_authorized_keys]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if C:\\ProgramData\\ssh\\administrators_authorized_keys exists, 0 otherwise.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "files"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "317f780aa53b4f7a8c3ab3c4fa92a21a",
+                "expression": "last(/Windows Tools (Example Music)/vfs.file.exists[C:\\ProgramData\\ssh\\administrators_authorized_keys])=0",
+                "name": "Hey! {HOST.NAME} is missing administrators_authorized_keys deployed",
+                "priority": "WARNING",
+                "description": "Expected C:\\ProgramData\\ssh\\administrators_authorized_keys to exist.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "windows-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "files"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "5f906a42ea874319a1794829939688d5",
+            "name": "OpenRSAT.exe installed (Server Core RSAT substitute)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[C:\\Windows\\System32\\OpenRSAT.exe]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if C:\\Windows\\System32\\OpenRSAT.exe exists, 0 otherwise.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "files"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "2a5dace23fa04ddb86415120baaac6b0",
+                "expression": "last(/Windows Tools (Example Music)/registry.data[\"HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\",\"InstallationType\"])=\"Server Core\" and last(/Windows Tools (Example Music)/vfs.file.exists[C:\\Windows\\System32\\OpenRSAT.exe])=0",
+                "name": "Hey! {HOST.NAME} is Server Core but missing OpenRSAT.exe",
+                "priority": "WARNING",
+                "description": "Server Core gets OpenRSAT instead of native RSAT Windows Features (tasks/rsat.yml, Robert's 2026-09-26 call) -- only alerts when this host genuinely IS Server Core AND the substitute is also missing.",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "windows-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "files"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "a66cd439a223481ead81b2b2b3271a4c",
+            "name": "dsa.exe symlink exists (Server Core)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.exists[C:\\Windows\\System32\\dsa.exe]",
+            "delay": "1h",
+            "history": "30d",
+            "trends": "90d",
+            "value_type": "UNSIGNED",
+            "description": "1 if C:\\Windows\\System32\\dsa.exe exists, 0 otherwise.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "files"
+              }
+            ]
+          },
+          {
+            "uuid": "4bbad0a712274df98d125f811b826142",
+            "name": "Firewall: OpenSSH-Server-In-TCP enabled",
+            "type": "ZABBIX_ACTIVE",
+            "key": "system.run[powershell -command \"(Get-NetFirewallRule -Name 'OpenSSH-Server-In-TCP').Enabled.ToString()\",wait]",
+            "delay": "1h",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "No native Zabbix Windows item exists for this -- PowerShell via system.run[]. Expected: True",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "other"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "6819869bb1584e6c8f24e3bab8459f12",
+                "expression": "last(/Windows Tools (Example Music)/system.run[powershell -command \"(Get-NetFirewallRule -Name 'OpenSSH-Server-In-TCP').Enabled.ToString()\",wait])<>\"True\"",
+                "name": "Hey! {HOST.NAME} — OpenSSH firewall rule is not enabled",
+                "priority": "WARNING",
+                "description": "True",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "windows-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "other"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "fbdb5f04499b4aa4b05736d1765ba28d",
+            "name": "Firewall: Remote Desktop group enabled",
+            "type": "ZABBIX_ACTIVE",
+            "key": "system.run[powershell -command \"(Get-NetFirewallRule -Group 'Remote Desktop' | Where Enabled -eq True | Measure-Object).Count\",wait]",
+            "delay": "1h",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "UNSIGNED",
+            "description": "No native Zabbix Windows item exists for this -- PowerShell via system.run[]. Expected: At least 1 enabled rule in the Remote Desktop group",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "other"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "9134d0938ee6409984db384ea262473f",
+                "expression": "last(/Windows Tools (Example Music)/system.run[powershell -command \"(Get-NetFirewallRule -Group 'Remote Desktop' | Where Enabled -eq True | Measure-Object).Count\",wait])=0",
+                "name": "Hey! {HOST.NAME} — no enabled Remote Desktop firewall rules",
+                "priority": "WARNING",
+                "description": "At least 1 enabled rule in the Remote Desktop group",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "windows-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "other"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "cc7be4ff43f74577b1010973714f2d1e",
+            "name": "Domain join state",
+            "type": "ZABBIX_ACTIVE",
+            "key": "system.run[powershell -command \"(Get-WmiObject Win32_ComputerSystem).PartOfDomain.ToString()\",wait]",
+            "delay": "1h",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "No native Zabbix Windows item exists for this -- PowerShell via system.run[]. Expected: True for every domain-joined role",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "other"
+              }
+            ],
+            "triggers": [
+              {
+                "uuid": "c017921e477d4d6c8fc309dbe0a49edc",
+                "expression": "last(/Windows Tools (Example Music)/system.run[powershell -command \"(Get-WmiObject Win32_ComputerSystem).PartOfDomain.ToString()\",wait])<>\"True\"",
+                "name": "Hey! {HOST.NAME} is not domain-joined",
+                "priority": "INFO",
+                "description": "True for every domain-joined role",
+                "tags": [
+                  {
+                    "tag": "component",
+                    "value": "windows-tools"
+                  },
+                  {
+                    "tag": "scope",
+                    "value": "other"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "uuid": "2c444cab90f94c90b1cdf1871ce125af",
+            "name": "Windows activation status",
+            "type": "ZABBIX_ACTIVE",
+            "key": "system.run[cscript //nologo C:\\Windows\\System32\\slmgr.vbs /xpr,wait]",
+            "delay": "1h",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Visibility only, no native Zabbix Windows item exists for this -- a plain PowerShell/cmd invocation via system.run[], same category as this repo's own Linux system.run[] checks (e.g. systemctl is-enabled via the firewall template).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "other"
+              }
+            ]
+          },
+          {
+            "uuid": "0db3ef5938734c6e840ac4f4ef2cdf0e",
+            "name": "Logged-in users",
+            "type": "ZABBIX_ACTIVE",
+            "key": "system.run[powershell -command \"(Get-WMIObject Win32_ComputerSystem).UserName\",wait]",
+            "delay": "1h",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Visibility only, no native Zabbix Windows item exists for this -- a plain PowerShell/cmd invocation via system.run[], same category as this repo's own Linux system.run[] checks (e.g. systemctl is-enabled via the firewall template).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "other"
+              }
+            ]
+          },
+          {
+            "uuid": "ab52e22b457a47a298028da77ff70502",
+            "name": "PSWindowsUpdate module installed",
+            "type": "ZABBIX_ACTIVE",
+            "key": "system.run[powershell -command \"(Get-Module -ListAvailable PSWindowsUpdate | Measure-Object).Count\",wait]",
+            "delay": "1h",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "UNSIGNED",
+            "description": "Visibility only, no native Zabbix Windows item exists for this -- a plain PowerShell/cmd invocation via system.run[], same category as this repo's own Linux system.run[] checks (e.g. systemctl is-enabled via the firewall template).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "other"
+              }
+            ]
+          },
+          {
+            "uuid": "39403cd7136a496f818179e6dbcfe7a1",
+            "name": "Disk idle timeout (AC), powercfg",
+            "type": "ZABBIX_ACTIVE",
+            "key": "system.run[powercfg /query SCHEME_CURRENT SUB_DISK DISKIDLE,wait]",
+            "delay": "1h",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Visibility only, no native Zabbix Windows item exists for this -- a plain PowerShell/cmd invocation via system.run[], same category as this repo's own Linux system.run[] checks (e.g. systemctl is-enabled via the firewall template).",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "windows-tools"
+              },
+              {
+                "tag": "scope",
+                "value": "other"
+              }
+            ]
+          }
+        ],
+        "macros": [
+          {
+            "macro": "{$NODEINFO.MAXAGE}",
+            "value": "2d",
+            "description": "How long nodeinfo.json can go without a fresh write before the staleness trigger fires. Same convention as every other template in this series."
+          },
+          {
+            "macro": "{$NODEINFO.KEY_PREFIX}",
+            "value": "examplemusic",
+            "description": "Item-key namespace prefix for every examplemusic.nodeinfo.* dependent item. Same macro, same purpose, as every Linux template in this series."
+          },
+          {
+            "macro": "{$WINDOWSTOOLS.LOCK_TIMEOUT_SECS}",
+            "value": "3600",
+            "description": "Expected screen-lock inactivity timeout in seconds, matching exa_lock_timeout_secs (group_vars/all/vars.yml)."
+          },
+          {
+            "macro": "{$WINDOWSTOOLS.HIBERNATION_EXPECTED}",
+            "value": "0",
+            "description": "Expected HibernateEnabled DWORD value (0 or 1, not yes/no -- compared directly against the registry item). Chassis-dependent (70-hibernation.yml, exa_hibernation_enabled) -- default 0 matches desktop/server, the majority case; override to 1 per real laptop/tablet host, same per-host-override pattern as {$PROXMOX.OPEN_VM_TOOLS_EXPECTED}."
+          },
+          {
+            "macro": "{$WINDOWSTOOLS.QEMU_GUEST_AGENT_EXPECTED}",
+            "value": "no",
+            "description": "Whether this host is a KVM/Proxmox guest and should have qemu-guest-agent installed (tasks/guest_tools.yml, hypervisor==\"KVM\" only -- Physical/Hyper-V/VMware hosts never get it). Default \"no\"; override to \"yes\" per real host based on its actual hypervisor."
+          },
+          {
+            "macro": "{$WINDOWSTOOLS.VMWARE_TOOLS_EXPECTED}",
+            "value": "no",
+            "description": "Whether this host is a VMware guest and should have VMware Tools present (installed by the hypervisor itself, not Chocolatey -- tasks/guest_tools.yml). Default \"no\"; override to \"yes\" per real VMware-hosted host."
+          },
+          {
+            "macro": "{$WINDOWSTOOLS.DEADVERTISE_EXPECTED}",
+            "value": "no",
+            "description": "Whether Windows Consumer Features/advertising should be suppressed on this host (playbooks/25-deadvertise.yml, exa_deadvertise_enabled -- desktop/laptop only, false on servers). Default \"no\" matches servers, the majority case in this estate; override to \"yes\" per real desktop/laptop host."
+          },
+          {
+            "macro": "{$WINDOWSTOOLS.ZABBIX_CONF_PATH}",
+            "value": "C:\\Program Files\\Zabbix Agent\\zabbix_agentd.conf",
+            "description": "Real install path from tasks/zabbix_agent_onboard_windows.yml's own zbx_win_install_folder default. Not currently used by any item in this v1 build -- reserved for config-line checks if/when wanted, deliberately pointing at the one real path this estate actually uses (ex1_windows.json's own dual-path legacy check doesn't apply here)."
+          }
+        ]
+      }
+    ]
+  }
+}
