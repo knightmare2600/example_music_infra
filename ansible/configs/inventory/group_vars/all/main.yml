@@ -37,6 +37,11 @@ common_packages:
   - git-lfs
   - grc
   - htop
+  # iftop -- added 2026-10-26 (Robert), ported from a real reference Zabbix template
+  # (docs/zabbix_templates/ex1_linux.json, gitignored, never committed) alongside
+  # traceroute/tasksel/qemu-guest-agent -- same shape as every other plain
+  # package-presence check in linuxtools_examplemusic.
+  - iftop
   - jq
   - mc
   # miller (binary: mlr) -- jq's CSV-native equivalent, added 2026-08-29
@@ -64,7 +69,20 @@ common_packages:
   # changelog). Not previously in this list at all; growing a disk online was always a
   # manual, unscripted step before now.
   - parted
+  # qemu-guest-agent -- added 2026-10-26 (Robert), same ported-from-ex1_linux.json
+  # round as iftop above. Robert's explicit call: installed estate-wide via this
+  # list (not conditionally, unlike proxmox_examplemusic's own open-vm-tools check
+  # for the rare VMware-nested-under-Proxmox edge case) -- since nearly every real
+  # Linux host here is itself a Proxmox/KVM guest, a universal common_packages
+  # entry means the package is genuinely present everywhere, no host-level macro
+  # override needed even on the few real bare-metal PVE nodes (harmless there,
+  # just unused).
+  - qemu-guest-agent
+  # tasksel -- added 2026-10-26 (Robert), same ported-from-ex1_linux.json round.
+  - tasksel
   - telnet
+  # traceroute -- added 2026-10-26 (Robert), same ported-from-ex1_linux.json round.
+  - traceroute
   - tmux
   - tree
   - unattended-upgrades
