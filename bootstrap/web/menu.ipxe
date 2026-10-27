@@ -404,7 +404,8 @@ set hostname ipxe-${net0/mac:hexhyp}
 
 # ---------------------------------------------------------------------------
 # For better hallway vision - (C) John Bender Saturday March 24th 1984
-#console --x 1024 --y 768 --depth 32
+# console --x 1024 --y 768 --depth 32
+console --x 1024 --y 768 --depth 32 || echo Framebuffer console unavailable, carrying on
 # ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
