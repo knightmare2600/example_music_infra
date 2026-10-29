@@ -161,7 +161,7 @@
   ansible.builtin.set_fact:
     fw_wg_role: "hub-regional"
   when: fw_is_black_site
-  tags: [nftables]
+  tags: [nftables, always]
 
 # ── Hub bootstrap detection (2026-07-18) ─────────────────────────────────────
 # Mirrors windows_dc's dc_is_forest_root guard: is this the estate's designated
@@ -298,14 +298,14 @@
         {%- set manual = (fw_wan_manual.user_input | default('')) if fw_wan_manual is defined else '' -%}
         {{ (manual | trim) if (manual | trim) != '' else (fw_available_ifaces[0] | default('ens33')) }}
       {%- endif -%}
-  tags: [nftables]
+  tags: [nftables, always]
 
 # ── LAN interface (was 01_interfaces.yml) ────────────────────────────────────
 
 - name: "[Ask] Build LAN candidates"
   ansible.builtin.set_fact:
     fw_lan_candidates: "{{ fw_available_ifaces | reject('equalto', fw_wan_iface) | list }}"
-  tags: [nftables]
+  tags: [nftables, always]
 
 - name: "[Ask] Show remaining interfaces for LAN"
   ansible.builtin.debug:
@@ -328,7 +328,7 @@
         {%- set inp = (fw_lan_prompt.user_input | default('')) if fw_lan_prompt is defined else '' -%}
         {{ (inp | trim) if (inp | trim) != '' else (fw_lan_candidates[0] | default('ens34')) }}
       {%- endif -%}
-  tags: [nftables]
+  tags: [nftables, always]
 
 - name: "[Ask] FAIL — LAN and WAN cannot be the same"
   ansible.builtin.fail:
@@ -375,10 +375,22 @@
 # IP. Robert: "in a number of cases you already know... the answer... instead of outright
 # prompting, give sensible defaults."
 
+# Real live crash, 2026-10-29: same bug class as fw_wan_iface/fw_lan_iface/
+# fw_wg_role above, found one run later -- 14_finish.yml's nodeinfo write is
+# tagged "always" (nodeinfo must refresh regardless of which narrow tag
+# subset was requested), and it needs fw_lan_ip, which for a black site only
+# ever came from this chain. Tagged the three quiet tasks "always" (not just
+# "nftables" -- this consumer runs under ANY tag combination, not only a
+# nftables-scoped one), left the interactive prompt alone, and guarded the
+# resolve task's Jinja with "is defined" first -- a tag-excluded task's
+# register: var is never created at all, not even as a skipped stub, so the
+# bare ".user_input | default('')" this previously relied on would have
+# thrown the exact same class of error one level deeper.
 - name: "[Ask] CLD: look up known LAN IP from sites.csv"
   ansible.builtin.set_fact:
     fw_cld_lan_ip_default: "{{ (_sites_csv_raw.list | selectattr('Site', 'equalto', fw_site_code) | list | first | default({})).Gateway | default('') }}"
   when: fw_is_black_site
+  tags: [always]
 
 - name: "[Ask] CLD: prompt for LAN IP (not on fw_subnet — enter full IP)"
   ansible.builtin.pause:
@@ -400,10 +412,11 @@
     fw_cld_lan_ip_resolved: >-
       {%- if fw_cld_lan_ip_override is defined -%}{{ fw_cld_lan_ip_override }}
       {%- else -%}
-      {%- set inp = fw_cld_lan_ip_prompt.user_input | default('') | trim -%}
-      {{ inp if inp != '' else fw_cld_lan_ip_default }}
+      {%- set inp = (fw_cld_lan_ip_prompt.user_input | default('')) if fw_cld_lan_ip_prompt is defined else '' -%}
+      {{ (inp | trim) if (inp | trim) != '' else fw_cld_lan_ip_default }}
       {%- endif -%}
   when: fw_is_black_site
+  tags: [always]
 
 - name: "[Ask] CLD: validate LAN IP"
   ansible.builtin.assert:
@@ -417,11 +430,13 @@
       - fw_cld_lan_ip_resolved is match('^(\d{1,3}\.){3}\d{1,3}$')
     fail_msg: "{{ _c.R }}[ERROR]{{ _c.NC }} Enter a valid IPv4 address (sites.csv had no known value to default to)."
   when: fw_is_black_site
+  tags: [always]
 
 - name: "[Ask] CLD: set LAN IP fact"
   ansible.builtin.set_fact:
     fw_lan_ip: "{{ fw_cld_lan_ip_resolved }}"
   when: fw_is_black_site
+  tags: [always]
 
 # ── WAN mode (was 02_wan_config.yml) ──────────────────────────────────────────
 
