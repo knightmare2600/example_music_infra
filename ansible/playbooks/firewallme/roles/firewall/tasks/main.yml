@@ -78,10 +78,10 @@
 # =============================================================================
 
 - import_tasks: 00_preflight_1_derive.yml
-  tags: [firewall, preflight]
+  tags: [firewall, preflight, nftables]
 
 - import_tasks: 00_preflight_2_interfaces.yml
-  tags: [firewall, preflight, interfaces]
+  tags: [firewall, preflight, interfaces, nftables]
 
 - import_tasks: 00_preflight_3_ask.yml
   tags: [firewall, preflight, ask, wan, wireguard]
