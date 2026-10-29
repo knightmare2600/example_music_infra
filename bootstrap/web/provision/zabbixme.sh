@@ -1133,6 +1133,20 @@ for site_code in $(echo "${!SITE_OCTET[@]}" | tr ' ' '\n' | sort); do
     comment "Zabbix trapper ${site_code}" 2>/dev/null || true
 done
 
+# 2026-10-29, real live finding (see ansible/playbooks/zabbix/zabbix_server.yml's own
+# matching task for the full story): every rule above is scoped to a site's real LAN
+# /24, which only ever matches a LAN client's own traffic. A spoke firewall's OWN
+# self-monitoring agent sources its active-check traffic from its WireGuard tunnel
+# address (10.0.<same site octet>.0/24) when it leaves via wg0, not from its LAN
+# subnet, so none of the per-site rules above ever matched it -- confirmed live via
+# conntrack on EXAFWLCLD001, FAL's and ABD's SYNs forwarded correctly all the way to
+# EXAZABCLD001 and sat in SYN_SENT [UNREPLIED] forever. One supernet rule, not 60 more
+# per-site ones -- every site's tunnel /24 is 10.0.<octet>.0/24 for octet 0-255, so the
+# full range is exactly 10.0.0.0/16, and that whole /16 is dedicated purely to
+# WireGuard tunnel addressing.
+ufw allow from "10.0.0.0/16" to any port 10051 proto tcp \
+  comment "Zabbix trapper WireGuard tunnel (spoke self-monitoring)" 2>/dev/null || true
+
 ufw --force enable
 ufw status verbose
 success "UFW configured."
