@@ -1,12 +1,4 @@
-# Proxmox VE Serial Console and Dell iDRAC9 SOL
-## Configuration procedure — `EXAPVEFAL001`
-
-**Document status:** Configuration and SOL login tested; post-reboot kernel-console verification still required  
-**Last evidence captured:** 28 October 2026  
-**Host:** Dell PowerEdge T140  
-**Proxmox node:** `EXAPVEFAL001`  
-**Proxmox management URL:** `https://192.168.76.5:8006/`  
-**iDRAC address:** `192.168.76.2`
+# Proxmox VE — Serial Console and Dell iDRAC9 SOL
 
 ## Changelog
 
@@ -14,6 +6,13 @@
 |---|---|
 | 2026-10-28 | Initial document — serial console + Dell iDRAC9 SOL configuration, assembled from a real PuTTY session + iDRAC web-interface settings (Robert) |
 | 2026-10-29 | Sanitized for this repo — real hostname/IPs replaced with `EXAPVEFAL001`/FAL's real `192.168.76.0/24` octets from `devices.csv` |
+
+**Document status:** Configuration and SOL login tested; post-reboot kernel-console verification still required  
+**Last evidence captured:** 28 October 2026  
+**Host:** Dell PowerEdge T140  
+**Proxmox node:** `EXAPVEFAL001`  
+**Proxmox management URL:** `https://192.168.76.5:8006/`  
+**iDRAC address:** `192.168.76.2`
 
 ---
 
