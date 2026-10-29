@@ -22,11 +22,19 @@ in the environment this check was built in) -- informational by default,
 ALWAYS a hard failure regardless of --strict -- there's no "soft" leaked
 credential.
 
-Uses .gitleaks.toml's allowlist (repo root) -- see that file's own header
-for what's excluded and why (checked safe, not guessed broad). First real
-run against actual gitleaks will likely surface findings needing allowlist
-additions -- this check was built and syntax-checked without gitleaks
-installed, not run against the real tool yet.
+Uses .gitleaks.toml (repo root) -- see that file's own header for the
+2026-10-29 fix (useDefault was missing, so the entire built-in ruleset was
+previously disabled) and why exclusions live in .gitleaksignore instead of
+a [[allowlists]] block (that mechanism doesn't work against the gitleaks
+build this was tested against).
+
+If .gitleaks.local.toml exists (repo root, gitignored -- never committed),
+it is used INSTEAD of .gitleaks.toml. This is for custom rules that need a
+real, non-fictional value in their own regex pattern (e.g. a real email
+domain) -- the rule's pattern text is never committed, only the
+.gitleaksignore fingerprints it generates (which are opaque hashes/paths,
+not the matched value itself). Robert's explicit instruction, 2026-10-29:
+"do not commit the file with the real data in it, in fact, exclude it."
 
 Deliberately does NOT print the actual secret value gitleaks finds, even in
 its own informational output -- only file/line/rule-id, enough to triage
@@ -47,10 +55,13 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 GITLEAKS_CONFIG = REPO_ROOT / ".gitleaks.toml"
+GITLEAKS_LOCAL_CONFIG = REPO_ROOT / ".gitleaks.local.toml"
 
 
 def main():
     strict = "--strict" in sys.argv
+
+    config_path = GITLEAKS_LOCAL_CONFIG if GITLEAKS_LOCAL_CONFIG.is_file() else GITLEAKS_CONFIG
 
     gitleaks_bin = shutil.which("gitleaks")
     if gitleaks_bin is None:
@@ -71,7 +82,7 @@ def main():
             [
                 gitleaks_bin, "detect",
                 "--source", str(REPO_ROOT),
-                "--config", str(GITLEAKS_CONFIG),
+                "--config", str(config_path),
                 "--report-format", "json",
                 "--report-path", str(report_path),
                 "--exit-code", "0",  # always 0 from gitleaks itself -- we parse the report ourselves
@@ -95,7 +106,7 @@ def main():
 
     if not findings:
         print("gitleaks scanned the full git history, no secrets found "
-              f"(config: {GITLEAKS_CONFIG.relative_to(REPO_ROOT)}).")
+              f"(config: {config_path.relative_to(REPO_ROOT)}).")
         return 0
 
     print(f"{len(findings)} potential secret(s) found by gitleaks -- NOT shown here "
@@ -107,7 +118,7 @@ def main():
     print(
         "\nTriage each finding directly with gitleaks (not through this check's output) --"
         " it prints the actual matched value:\n"
-        f"  gitleaks detect --source . --config {GITLEAKS_CONFIG.relative_to(REPO_ROOT)}"
+        f"  gitleaks detect --source . --config {config_path.relative_to(REPO_ROOT)}"
         " --report-format json --report-path report.json\n"
         "If a finding is a real secret: rotate it, then remove it from history (this repo's"
         " own git history, not just a new commit).\n"

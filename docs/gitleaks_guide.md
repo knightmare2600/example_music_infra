@@ -84,25 +84,44 @@ Get the real fingerprint for a specific finding you want to ignore by running a 
 report first (see Section 4) — each finding in the report already has a `Fingerprint` field in
 exactly this format; copy it verbatim into `.gitleaksignore`.
 
-### Ignoring a whole path/pattern — `.gitleaks.toml`
+### Ignoring a whole path/pattern — doesn't reliably work here, use `.gitleaksignore` instead
 
-To exclude entire paths, extensions, or known-fake test strings (`test-data/`, `*.example`,
-`docs/`, a specific fake key), use a `.gitleaks.toml` config's `[[allowlists]]` block instead —
-`.gitleaksignore` has no path/glob mechanism at all:
+The gitleaks docs describe a `.gitleaks.toml` `[[allowlists]]` (or singular `[allowlist]`, or a
+rule-scoped `[rules.allowlist]`) block for excluding whole paths/patterns at once. **Tested
+directly against the gitleaks build installed for this repo, 2026-10-29, and confirmed broken**:
+a trivial custom rule with an exact-matching `paths` entry in a top-level `[[allowlists]]` or
+`[allowlist]` block still fired on the excluded path. `[rules.allowlist]` (nested under the
+specific rule) behaved even more surprisingly — it suppressed the rule's matches on *every* path
+in the scan, not just the allowlisted one, once any path in its list matched anywhere. None of
+these three forms is safe to rely on without re-testing them directly first — don't assume any
+syntax from gitleaks' own docs works here without proving it the same way (plant a trivial rule
++ a known match in both an allowed and a disallowed path, confirm only the disallowed one fires).
+
+Until/unless that's re-verified against a gitleaks upgrade, use `.gitleaksignore` for
+*everything*, including a whole class of known-safe matches across many files — it's just a flat
+list of fingerprints, so "exclude this file/pattern" becomes "exclude every fingerprint that file/
+pattern currently produces," generated once from a real scan and pasted in. Fingerprints carry no
+secret content (they're `<commit>:<file>:<rule-id>:<line>`), so this is safe to commit even for
+hundreds of lines. See `.gitleaksignore`'s own header in this repo for a worked example (815
+fingerprints for one repo-wide placeholder-domain rule, generated this way).
+
+### Don't forget `useDefault` — a config with none of your own `[[rules]]` disables ALL detection
+
+A `--config` file that has no `[[rules]]` of its own and no `[extend] useDefault = true` runs
+gitleaks with **zero active detection rules** — it will report "no secrets found" against any
+content at all, including a planted real-looking AWS key, confirmed directly 2026-10-29 (this
+repo's own `.gitleaks.toml` had exactly this bug from 2026-08-04 until then: an allowlist-only
+config with no rules and no `useDefault`, silently scanning for nothing every single run). Any
+custom config here starts with:
 
 ```toml
-[[allowlists]]
-paths = [
-  '''test-data/.*''',
-  '''.*\.example$''',
-  '''docs/.*''',
-]
-regexes = [
-  '''FAKE_API_KEY_123456''',
-]
+[extend]
+useDefault = true
 ```
 
-Then run scans with `gitleaks detect --config .gitleaks.toml ...`.
+before adding its own `[[rules]]` — `useDefault` and `extend.path` (extending another config
+file) can't be combined in the same `[extend]` block, confirmed directly: if you need both the
+default ruleset AND another file's content, copy that content in rather than pointing at it.
 
 ---
 
