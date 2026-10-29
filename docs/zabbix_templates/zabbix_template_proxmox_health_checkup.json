@@ -999,7 +999,7 @@
                     {
                         "uuid": "00d335a502a349e3af7cf62e8c6d6761",
                         "name": "/usr/local/bin/enable_vm_trim_discard.sh script checksum",
-                        "key": "vfs.file.cksum[/usr/local/bin/enable_vm_trim_discard.sh]",
+                        "key": "vfs.file.cksum[/usr/local/bin/enable_vm_trim_discard.sh,crc32]",
                         "delay": "1h",
                         "history": "1d",
                         "trends": "0",
@@ -1007,7 +1007,7 @@
                         "triggers": [
                             {
                                 "uuid": "06eee3c81639432ba5cf872e942f92a1",
-                                "expression": "last(/Proxmox Health Checkup/vfs.file.cksum[/usr/local/bin/enable_vm_trim_discard.sh])<>{$PVE_TRIM_ENABLE_CKSUM} and {$PVE_TRIM_ENABLE_CKSUM}<>0",
+                                "expression": "last(/Proxmox Health Checkup/vfs.file.cksum[/usr/local/bin/enable_vm_trim_discard.sh,crc32])<>{$PVE_TRIM_ENABLE_CKSUM} and {$PVE_TRIM_ENABLE_CKSUM}<>0",
                                 "name": "PVE enable trim script enable_vm_trim_discard.sh checksum mismatch on {HOST.NAME}",
                                 "priority": "INFO",
                                 "manual_close": "YES"
@@ -1035,14 +1035,14 @@
                     {
                         "uuid": "6a76e27bd908461fbf0d08f3f2139732",
                         "name": "PVE Hoover script CRC32 checksum",
-                        "key": "vfs.file.cksum[/usr/local/bin/pve-monthly-hoover.sh]",
+                        "key": "vfs.file.cksum[/usr/local/bin/pve-monthly-hoover.sh,crc32]",
                         "delay": "1h",
                         "history": "1d",
                         "trends": "0",
                         "triggers": [
                             {
                                 "uuid": "74b619c6427444a7b5cb089abdedfcc9",
-                                "expression": "last(/Proxmox Health Checkup/vfs.file.cksum[/usr/local/bin/pve-monthly-hoover.sh])<>{$PVE_HOOVER_SCRIPT_CKSUM} and {$PVE_HOOVER_SCRIPT_CKSUM}<>0",
+                                "expression": "last(/Proxmox Health Checkup/vfs.file.cksum[/usr/local/bin/pve-monthly-hoover.sh,crc32])<>{$PVE_HOOVER_SCRIPT_CKSUM} and {$PVE_HOOVER_SCRIPT_CKSUM}<>0",
                                 "name": "PVE script /usr/local/bin/pve-monthly-hoover.sh checksum mismatch on {HOST.NAME}",
                                 "priority": "INFO",
                                 "manual_close": "YES"
@@ -1052,7 +1052,7 @@
                     {
                         "uuid": "233d215e68cc4869a371c88625d6bbcc",
                         "name": "PVE - /usr/local/bin/pve-snapshot-check.py Script checksum",
-                        "key": "vfs.file.cksum[/usr/local/bin/pve-snapshot-check.py]",
+                        "key": "vfs.file.cksum[/usr/local/bin/pve-snapshot-check.py,crc32]",
                         "delay": "1h",
                         "history": "1d",
                         "trends": "0",
@@ -1060,7 +1060,7 @@
                         "triggers": [
                             {
                                 "uuid": "37a1a38f8e3e43ae9fb8addf26ee962a",
-                                "expression": "last(/Proxmox Health Checkup/vfs.file.cksum[/usr/local/bin/pve-snapshot-check.py])<>{$PVE_SNAPSHOT_SCRIPT_CKSUM} and {$PVE_SNAPSHOT_SCRIPT_CKSUM}<>0",
+                                "expression": "last(/Proxmox Health Checkup/vfs.file.cksum[/usr/local/bin/pve-snapshot-check.py,crc32])<>{$PVE_SNAPSHOT_SCRIPT_CKSUM} and {$PVE_SNAPSHOT_SCRIPT_CKSUM}<>0",
                                 "name": "PVE script /usr/local/bin/pve-snapshot-check.py checksum mismatch on {HOST.NAME}",
                                 "priority": "INFO",
                                 "manual_close": "YES"
@@ -1108,7 +1108,7 @@
                     {
                         "uuid": "00eb1699ef6a43e6b816a2e65301bc17",
                         "name": "PVE - Kernel Cleanup Config File Exists",
-                        "key": "vfs.file.exists[/etc/apt/apt.conf.d/52unattended-upgrades-pve]",
+                        "key": "vfs.file.exists[/etc/apt/apt.conf.d/52unattended-upgrades-pve,file]",
                         "delay": "1h",
                         "history": "1d",
                         "trends": "1d",
@@ -1117,7 +1117,7 @@
                         "triggers": [
                             {
                                 "uuid": "08cfdca982a94eb08fb14d1093c3e6ba",
-                                "expression": "last(/Proxmox Health Checkup/vfs.file.exists[/etc/apt/apt.conf.d/52unattended-upgrades-pve])=0",
+                                "expression": "last(/Proxmox Health Checkup/vfs.file.exists[/etc/apt/apt.conf.d/52unattended-upgrades-pve,file])=0",
                                 "name": "PVE - {HOST.NAME} Kernel Cleanup Config File Missing",
                                 "priority": "HIGH",
                                 "description": "The kernel cleanup configuration file is missing.\nAction: Re-deploy /etc/apt/apt.conf.d/52unattended-upgrades-pve",
@@ -1327,7 +1327,7 @@
                     {
                         "uuid": "23a7640440c648f8b10a31fdaed1907a",
                         "name": "/usr/local/bin/enable_vm_trim_discard.sh script exists",
-                        "key": "vfs.file.exists[/usr/local/bin/enable_vm_trim_discard.sh]",
+                        "key": "vfs.file.exists[/usr/local/bin/enable_vm_trim_discard.sh,file]",
                         "delay": "1h",
                         "history": "1d",
                         "trends": "1d",
@@ -1335,7 +1335,7 @@
                         "triggers": [
                             {
                                 "uuid": "e6ac9a345fc346fbb7cc93b6ac8d50de",
-                                "expression": "last(/Proxmox Health Checkup/vfs.file.exists[/usr/local/bin/enable_vm_trim_discard.sh])=0",
+                                "expression": "last(/Proxmox Health Checkup/vfs.file.exists[/usr/local/bin/enable_vm_trim_discard.sh,file])=0",
                                 "name": "/usr/local/bin/enable_vm_trim_discard.sh file not installed",
                                 "priority": "WARNING",
                                 "manual_close": "YES"
@@ -1364,7 +1364,7 @@
                     {
                         "uuid": "8f97233e6b7848449cf0d132753f285a",
                         "name": "PVE - Monthly Hoover Script Exists",
-                        "key": "vfs.file.exists[/usr/local/bin/pve-monthly-hoover.sh]",
+                        "key": "vfs.file.exists[/usr/local/bin/pve-monthly-hoover.sh,file]",
                         "delay": "1h",
                         "history": "1d",
                         "trends": "1d",
@@ -1373,7 +1373,7 @@
                         "triggers": [
                             {
                                 "uuid": "0c4360a887264b078169205ee29da91c",
-                                "expression": "last(/Proxmox Health Checkup/vfs.file.exists[/usr/local/bin/pve-monthly-hoover.sh])=0",
+                                "expression": "last(/Proxmox Health Checkup/vfs.file.exists[/usr/local/bin/pve-monthly-hoover.sh,file])=0",
                                 "name": "PVE - Monthly Hoover Script Missing",
                                 "priority": "HIGH",
                                 "description": "The monthly hoover script is missing.\nAction: Re-deploy /usr/local/bin/pve-monthly-hoover.sh",
@@ -1384,7 +1384,7 @@
                     {
                         "uuid": "ef291186012047a4b4a1b2c2297657e5",
                         "name": "PVE - /usr/local/bin/pve-snapshot-check.py Script exists",
-                        "key": "vfs.file.exists[/usr/local/bin/pve-snapshot-check.py]",
+                        "key": "vfs.file.exists[/usr/local/bin/pve-snapshot-check.py,file]",
                         "delay": "1h",
                         "history": "1d",
                         "trends": "1d",
@@ -1392,7 +1392,7 @@
                         "triggers": [
                             {
                                 "uuid": "bab0dc0991cd49589ddde6d4343fe82a",
-                                "expression": "last(/Proxmox Health Checkup/vfs.file.exists[/usr/local/bin/pve-snapshot-check.py])=0",
+                                "expression": "last(/Proxmox Health Checkup/vfs.file.exists[/usr/local/bin/pve-snapshot-check.py,file])=0",
                                 "name": "PVE - Snapshot Check Script Missing",
                                 "priority": "HIGH",
                                 "description": "The snapshot check script has been removed from this host.",
@@ -1421,14 +1421,14 @@
                     {
                         "uuid": "4704d2248f6944489058c20052f75a42",
                         "name": "jq package installed",
-                        "key": "vfs.file.exists[/usr/share/doc/jq/copyright]",
+                        "key": "vfs.file.exists[/usr/share/doc/jq/copyright,file]",
                         "delay": "6h",
                         "history": "1d",
                         "trends": "0",
                         "triggers": [
                             {
                                 "uuid": "31c17a49a7cd448c8a069babff63aedf",
-                                "expression": "last(/Proxmox Health Checkup/vfs.file.exists[/usr/share/doc/jq/copyright])=0",
+                                "expression": "last(/Proxmox Health Checkup/vfs.file.exists[/usr/share/doc/jq/copyright,file])=0",
                                 "name": "PVE - {HOST.NAME} jq package not installed",
                                 "priority": "INFO",
                                 "description": "sudo apt install jq"
