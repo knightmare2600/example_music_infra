@@ -1,0 +1,12 @@
+[Unit]
+Description=Run pve-backup-check every 6 hours
+
+[Timer]
+OnCalendar=*-*-* 00/6:15:00
+OnBootSec=5min
+RandomizedDelaySec=2min
+Persistent=true
+Unit=pve-backup-check.service
+
+[Install]
+WantedBy=timers.target

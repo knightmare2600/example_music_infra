@@ -13,6 +13,7 @@
 #   /usr/local/bin/add_missing_disk_serials.sh        -- disk serial= retrofit helper
 #   /usr/local/bin/pve-monthly-hoover.sh              -- monthly cleanup script
 #   /usr/local/bin/pve-snapshot-check.py              -- snapshot audit script
+#   /usr/local/bin/pve-backup-check.py                -- backup status check (Proxmox Health Checkup template)
 #   /usr/local/bin/proxmox-replica-nic-guard.py       -- NIC link_down guard for replicas
 #   /usr/local/bin/proxmox-zfs-vm-audit.py            -- ZFS VM pool placement audit
 #   /etc/apt/apt.conf.d/52unattended-upgrades-pve     -- blocks proxmox-ve from auto-upgrade
@@ -56,6 +57,10 @@
 # Tags: scripts
 # =============================================================================
 # Changelog:
+#   2026-10-29  Added pve-backup-check.py to the deploy loop -- feeds the standalone
+#               "Proxmox Health Checkup" Zabbix template (docs/zabbix_templates/
+#               zabbix_template_proxmox_health_checkup.json), not zabbix_template_proxmox.json.
+#               Ported from Robert's real build, leak-swept clean.
 #   2026-10-24  Added add_missing_disk_serials.sh to the deploy loop -- Robert's ask,
 #               same shape as enable_vm_trim_discard.sh (colour vars, qemu-server/*.conf
 #               loop, running-vs-stopped safety split, confirm-before-changing prompt).
@@ -136,6 +141,7 @@
         - add_missing_disk_serials.sh
         - pve-monthly-hoover.sh
         - pve-snapshot-check.py
+        - pve-backup-check.py
         - proxmox-replica-nic-guard.py
         - proxmox-zfs-vm-audit.py
       tags: scripts
