@@ -273,6 +273,7 @@ standalone bundle — see `zabbix_vms_on_wrong_pool/` for the canonical shape.
 | [proxmox_zabbix_cleanup/zabbix_vms_on_wrong_pool/README.md](proxmox_zabbix_cleanup/zabbix_vms_on_wrong_pool/README.md) | NET-PVE-ZBX-POOL-001 | ZFS VM pool-placement audit setup |
 | [proxmox_zabbix_cleanup/pve-snapshot-check/README.md](proxmox_zabbix_cleanup/pve-snapshot-check/README.md) | — | Directory README — the snapshot-check deployment bundle itself; procedure doc is the row below |
 | [proxmox_zabbix_cleanup/pve-snapshot-check/PVE-Snapshot-Check-Procedure.md](proxmox_zabbix_cleanup/pve-snapshot-check/PVE-Snapshot-Check-Procedure.md) | NET-PVE-ZBX-SNAP-001 | PVE snapshot check automation setup |
+| [proxmox_zabbix_cleanup/pve-backup-check/README.md](proxmox_zabbix_cleanup/pve-backup-check/README.md) | — | Directory README — the backup-status-check deployment bundle itself; feeds the standalone `Proxmox Health Checkup` template's checksum macro + `Guest VM Discovery` LLD rule |
 
 > **Resolved 2026-07-15, per Robert:** `pve-maintenance-automation.md` above is the one exception
 > to "each subdirectory is a self-contained bundle" — it lived both at `docs/` root and as
