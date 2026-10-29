@@ -577,13 +577,33 @@
     # that whole /16 is dedicated purely to WireGuard tunnel addressing (nothing else
     # is ever routed there), so there's no granularity trade-off to make here unlike
     # the real per-site LAN rules above.
-    - name: "[UFW] Allow Zabbix trapper port (10051/tcp) from the WireGuard tunnel range (spoke firewalls' own self-monitoring)"
+    - name: "[UFW] Allow Zabbix agent + trapper ports (10050+10051/tcp) from the WireGuard tunnel range (spoke firewalls' own self-monitoring)"
       community.general.ufw:
         rule: allow
         src: "10.0.0.0/16"
-        port: "10051"
+        port: "{{ item }}"
         proto: tcp
-        comment: "Zabbix trapper WireGuard tunnel (spoke self-monitoring)"
+        comment: "Zabbix {{ 'agent' if item == '10050' else 'trapper' }} WireGuard tunnel (spoke self-monitoring)"
+      loop: ["10050", "10051"]
+      no_log: true
+      tags: [zabbix, monitoring]
+
+    # Robert, 2026-10-29: explicit outbound rule for SNMP polling (UDP/161) -- the
+    # server (and later any Zabbix proxy) reaches out to poll an SNMP-enabled device,
+    # same direction as a passive check. UFW's own default outgoing policy already
+    # allows this unconditionally (see "[UFW] Set default policies" above), so this
+    # rule changes nothing today -- it documents the real requirement explicitly and
+    # keeps it correct if that default policy is ever tightened later. Scope is
+    # [[project_snmp_monitoring_rollout]] Phase 2. SNMP *traps* (a device pushing an
+    # unsolicited alert) are a different port (UDP/162) and a different piece of work
+    # entirely (a trap receiver daemon) -- not in scope here.
+    - name: "[UFW] Allow outbound SNMP polling (161/udp) -- explicit, documents what the default outgoing policy already permits"
+      community.general.ufw:
+        rule: allow
+        direction: out
+        port: "161"
+        proto: udp
+        comment: "SNMP polling (Zabbix server/proxy -> device)"
       no_log: true
       tags: [zabbix, monitoring]
 

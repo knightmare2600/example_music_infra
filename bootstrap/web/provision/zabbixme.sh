@@ -1144,8 +1144,20 @@ done
 # per-site ones -- every site's tunnel /24 is 10.0.<octet>.0/24 for octet 0-255, so the
 # full range is exactly 10.0.0.0/16, and that whole /16 is dedicated purely to
 # WireGuard tunnel addressing.
+ufw allow from "10.0.0.0/16" to any port 10050 proto tcp \
+  comment "Zabbix agent WireGuard tunnel (spoke self-monitoring)" 2>/dev/null || true
 ufw allow from "10.0.0.0/16" to any port 10051 proto tcp \
   comment "Zabbix trapper WireGuard tunnel (spoke self-monitoring)" 2>/dev/null || true
+
+# Robert, 2026-10-29: explicit outbound rule for SNMP polling (UDP/161) -- the server
+# (and later any Zabbix proxy) reaches out to poll an SNMP-enabled device, same
+# direction as a passive check. UFW's default outgoing policy already allows this
+# unconditionally, so this rule changes nothing today -- it documents the real
+# requirement explicitly and keeps it correct if that default policy is ever
+# tightened later. SNMP *traps* (a device pushing an unsolicited alert) are a
+# different port (UDP/162) and a different piece of work entirely -- not in scope.
+ufw allow out to any port 161 proto udp \
+  comment "SNMP polling (Zabbix server/proxy -- device)" 2>/dev/null || true
 
 ufw --force enable
 ufw status verbose
