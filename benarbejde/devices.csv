@@ -874,3 +874,4 @@ MRS,ILO,1,3,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE1),,no,,yes
 MRS,PVE,2,6,Dell,ssh,,"PLANNED -- new-site boilerplate (Vendor 'Dell' is a default pick, not confirmed.)",,no,,yes
 MRS,RAC,2,4,,snmp,,PLANNED -- new-site boilerplate (BMC for PVE2),,no,,yes
 MRS,DCS,1,10,,ssh,,"PLANNED -- new-site boilerplate (Standard boilerplate, not yet built.)",,no,,yes
+FAL,PBS,1,8,Debian 13 (Proxmox Backup Server),ssh,yes,"Proxmox Backup Server for FAL (EXAPBSFAL001) -- NFS-backed datastore on EXANASFAL001 (QNAP), PVE storage ID rccpbspen01, confirmed real and working (Robert, 2026-10-28 build).",,,,

@@ -73,6 +73,7 @@ diagram change in this repo.
 | SVR | 🗄️ | Generic server (current naming) | |
 | SRV | 🗄️ | Generic server (legacy naming) | Same symbol as SVR — same role. Corrected 2026-08-04, direction had flip-flopped twice before |
 | PVE | 🗂️ | Proxmox hypervisor node | Layered/stacked feel, deliberately distinct from a generic server |
+| PBS | 🗳️ | Proxmox Backup Server | Added 2026-10-29 — standard `.8` slot, immediately after `PVE`'s own `.5-.7` reserved range. First real device `EXAPBSFAL001`. Ballot-box emoji (archival storage), distinct from `PVE`'s 🗂️ |
 | ESX | 💾 | VMware ESXi hypervisor (legacy) | Added 2026-07-31 for old-network diagram restyling — found live at FAL (single HP ML310e host), not `PVE` as the original hand-written box wrongly assumed. No VMware logo usable (trademarked, same rule as Cisco/AT&T/Atari elsewhere in this legend) — generic floppy disk, Robert's call, deliberately distinct from `PVE`'s 🗂️ |
 | VCT | 🛰️ | VMware vCenter (legacy cluster management) | Added 2026-07-31 — found live at ODE, the real 3-node ESXi cluster's central management console. No VMware logo usable, same rule as `ESX` above — satellite dish (a central controller directing distributed hosts) |
 | RUD | ⚙️ | Rudder (config mgmt) | Standard `.12` slot, CLD only. Was `RDR` until 2026-07-20 — split apart because `devices.csv` reused the same three letters for badge readers too (see RDR under Endpoints below) |
