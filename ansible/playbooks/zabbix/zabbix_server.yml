@@ -561,6 +561,32 @@
       no_log: true
       tags: [zabbix, monitoring]
 
+    # 2026-10-29, real live finding: every rule above is scoped to a site's real LAN
+    # /24 (sites.csv's Subnet column) -- correct for a LAN client's own traffic, which
+    # keeps its real LAN source address the whole way through a spoke's forward chain.
+    # But a spoke firewall's OWN self-monitoring agent (zabbix_agentd running on
+    # EXAFWL<SITE>001 itself) sources its active-check traffic from its WireGuard tunnel
+    # address (fw_wg_tunnel_net, 10.0.<same site octet>.0/24) when it leaves via wg0 --
+    # never from the LAN subnet -- so none of the per-site rules above ever matched it.
+    # Confirmed live via conntrack on EXAFWLCLD001: FAL's and ABD's SYNs
+    # (10.0.76.1/10.0.224.1) forwarded correctly all the way to EXAZABCLD001's own
+    # ens19, sitting in SYN_SENT [UNREPLIED] forever, while CLD's own LAN-sourced
+    # traffic (192.168.69.253, matched by rule [17] above) completed every time.
+    # One supernet rule, not 60 more per-site ones -- every site's tunnel /24 is
+    # 10.0.<octet>.0/24 for octet 0-255, so the full range is exactly 10.0.0.0/16, and
+    # that whole /16 is dedicated purely to WireGuard tunnel addressing (nothing else
+    # is ever routed there), so there's no granularity trade-off to make here unlike
+    # the real per-site LAN rules above.
+    - name: "[UFW] Allow Zabbix trapper port (10051/tcp) from the WireGuard tunnel range (spoke firewalls' own self-monitoring)"
+      community.general.ufw:
+        rule: allow
+        src: "10.0.0.0/16"
+        port: "10051"
+        proto: tcp
+        comment: "Zabbix trapper WireGuard tunnel (spoke self-monitoring)"
+      no_log: true
+      tags: [zabbix, monitoring]
+
     # zabbix-agent is installed on this box too (line ~648, shared apt list with
     # zabbix_agent_onboard.yml) so EXAZABCLD001 can monitor itself, same as every other
     # host -- every companion template built so far (docs/zabbix_templates/*.json) uses
