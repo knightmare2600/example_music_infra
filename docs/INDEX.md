@@ -247,6 +247,8 @@ Proxmox VE administration, storage, networking, and planning documents.
 | [proxmox/virtio-driver-disk.md](proxmox/virtio-driver-disk.md) | NET-PVE-VIO-001 | VirtIO driver disk preparation for Windows VMs |
 | [proxmox/v2v-scenario-walkthroughs.md](proxmox/v2v-scenario-walkthroughs.md) | NET-PVE-V2V-001 | V2V migration walkthroughs — physical/VMware/Hyper-V to Proxmox |
 | [proxmox/proxmox-dcm-pbs-planning.md](proxmox/proxmox-dcm-pbs-planning.md) | NET-PVE-PBS-001 | Proxmox Backup Server and DC migration planning |
+| [proxmox/pbs-nfs-qnap-procedure.md](proxmox/pbs-nfs-qnap-procedure.md) | NET-PVE-PBS-002 | PBS NFS datastore on QNAP, PVE↔PBS storage connection, local ZFS build on an ex-ESXi node — first real PBS instance, `EXAPBSFAL001` |
+| [proxmox/proxmox-dell-idrac9-serial-console-procedure.md](proxmox/proxmox-dell-idrac9-serial-console-procedure.md) | NET-PVE-IDRAC-001 | Serial console + Dell iDRAC9 Serial-Over-LAN configuration procedure |
 | [proxmox/pegaprox-evaluation.md](proxmox/pegaprox-evaluation.md) | NET-PVE-EVAL-001 | PegaProx evaluation notes |
 | [proxmox/pdm-enterprise-proposal.md](proxmox/pdm-enterprise-proposal.md) | NET-PVE-PDM-001 | Proxmox Datacenter Manager enterprise proposal |
 | [proxmox/NET-BMC-001-proxmoxbmc-setup.md](proxmox/NET-BMC-001-proxmoxbmc-setup.md) | NET-BMC-001 | Virtual BMC / IPMI emulation (`proxmoxbmc`) setup |
