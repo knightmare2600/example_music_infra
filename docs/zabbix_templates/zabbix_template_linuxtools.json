@@ -1951,10 +1951,10 @@
             "triggers": [
               {
                 "uuid": "bb5bcbd599094d178b75d738c6576864",
-                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/etc/example-music/nodeinfo.json])=0",
+                "expression": "last(/Linux Tools (Example Music)/vfs.file.exists[/etc/example-music/nodeinfo.json])=0 and {$NODEINFO.ENABLED}=1",
                 "name": "Hey! {HOST.NAME} is missing /etc/example-music/nodeinfo.json",
                 "priority": "WARNING",
-                "description": "Re-run linux/tools.yml. If this fires, something is wrong with the host's own hostname/build, not just a missing file.",
+                "description": "Re-run linux/tools.yml. If this fires, something is wrong with the host's own hostname/build, not just a missing file. Gated by {$NODEINFO.ENABLED} -- override to 0 on a generic/non-estate host where this file is expected to be absent.",
                 "tags": [
                   {
                     "tag": "component",
@@ -1995,10 +1995,10 @@
             "triggers": [
               {
                 "uuid": "698fc337f215460887a71691d0eacd48",
-                "expression": "nodata(/Linux Tools (Example Music)/vfs.file.contents[/etc/example-music/nodeinfo.json],{$NODEINFO.MAXAGE})=1",
+                "expression": "nodata(/Linux Tools (Example Music)/vfs.file.contents[/etc/example-music/nodeinfo.json],{$NODEINFO.MAXAGE})=1 and {$NODEINFO.ENABLED}=1",
                 "name": "Hey! {HOST.NAME} hasn't had linux/tools.yml run in {$NODEINFO.MAXAGE}",
                 "priority": "WARNING",
-                "description": "nodeinfo.json hasn't been rewritten within {$NODEINFO.MAXAGE} -- linux/tools.yml hasn't run against this host recently.",
+                "description": "nodeinfo.json hasn't been rewritten within {$NODEINFO.MAXAGE} -- linux/tools.yml hasn't run against this host recently. Gated by {$NODEINFO.ENABLED}, same reasoning as the exists trigger above -- kept independent of that trigger's own dependency relationship so a generic host is covered even if the dependency chain alone wouldn't suppress this.",
                 "tags": [
                   {
                     "tag": "component",
@@ -3422,6 +3422,11 @@
           }
         ],
         "macros": [
+          {
+            "macro": "{$NODEINFO.ENABLED}",
+            "value": "1",
+            "description": "Gates both nodeinfo.json triggers below (missing-file + staleness). Added 2026-10-29: linuxtools_examplemusic is meant to be linkable to a generic Proxmox node that isn't part of this estate's Ansible-managed fleet (see zabbix_template_proxmox_health_checkup.json's own design) -- nodeinfo.json is an Example-Music-specific artifact and would never exist there by design, not by failure. Override to 0 at the host level for any such host. A fully-automatic version of this (set via a hostname-regex auto-registration action rather than a manual per-host override) is a separate, not-yet-built follow-up."
+          },
           {
             "macro": "{$NODEINFO.MAXAGE}",
             "value": "2d",
