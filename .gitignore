@@ -307,3 +307,17 @@ docs/zabbix_templates/ex[0-9]*.json
 ###############################################################################
 
 /private/
+
+###############################################################################
+# Local-only gitleaks custom rules -- same pattern as the KeePassXC master
+# password above: a real identifying value (e.g. Robert's real email domain)
+# needs to sit in a rule's own regex pattern for gitleaks to detect future
+# leaks of it, but the pattern text itself must never be committed. Robert's
+# explicit instruction, 2026-10-29: "do not commit the file with the real
+# data in it, in fact, exclude it." check_gitleaks.py uses this file INSTEAD
+# of .gitleaks.toml when present; .gitleaksignore (the findings this rule
+# generates, and everything else) stays committed as normal -- fingerprints
+# are opaque, not the leaked value itself.
+###############################################################################
+
+.gitleaks.local.toml
