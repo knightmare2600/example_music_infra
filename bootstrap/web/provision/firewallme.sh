@@ -1730,7 +1730,11 @@ flush ruleset
 table ip nat {
   chain POSTROUTING {
     type nat hook postrouting priority 100; policy accept;
-    oifname "${WAN_IFACE}" masquerade
+    # Excludes the vRACK/provisioning network (192.168.139.0/24), 2026-10-29 --
+    # same fix as ansible/playbooks/firewallme/roles/firewall/tasks/07_nftables.yml,
+    # see that file's own comment for the full real-world finding (masquerading
+    # this internally-routed network broke a Zabbix agent's Server= IP allowlist).
+    oifname "${WAN_IFACE}" ip daddr != 192.168.139.0/24 masquerade
   }
 }
 
