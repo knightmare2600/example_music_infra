@@ -5,17 +5,40 @@
 # =============================================================================
 # Mirrors firewallme.sh WG section: generate keypair (preserve if exists),
 # write /etc/wireguard/wg0.conf, enable wg-quick@wg0.
-# Key generation / wg0.conf [Interface] write / drop-in are skipped for CLD
-# (fw_is_black_site) unless fw_hub_bootstrap_confirmed is true (2026-07-18,
-# 00_preflight_3_ask.yml's CLD-only "no existing hub config found" prompt) --
-# the keypair and [Interface] section are generic, not CLD-specific; only the
-# hand-maintained multi-hub [Peer] list is genuinely something Ansible can't
-# construct, and that stays entirely with add-wg-spoke.yml/10_register_spoke_
-# on_hub.yml regardless of this flag. Also gated on fw_wg_role == 'none'.
+# fw_hub_bootstrap_confirmed (fw_is_black_site only, 2026-07-18,
+# 00_preflight_3_ask.yml's CLD-only "no existing hub config found" prompt)
+# gates exactly ONE action for CLD: generating a brand-new keypair. That's
+# the only genuinely risky step -- rotating an already-paired hub's keys
+# would break every one of its spoke peers' configured PublicKey instantly,
+# so it stays behind an explicit human confirmation. Everything else that
+# only reads back an EXISTING key (private/public key read, [Interface]
+# write, drop-in) self-heals on every run once the keypair exists on disk,
+# same as any non-black-site firewall (2026-10-29, Robert's explicit ask --
+# see that day's changelog entry below for the real gap this closed). The
+# hand-maintained multi-hub [Peer] list stays entirely with
+# add-wg-spoke.yml/10_register_spoke_on_hub.yml regardless, unaffected by
+# any of this -- Ansible genuinely can't construct that list itself.
+# Also gated on fw_wg_role == 'none'.
 # Enabling/starting/verifying wg-quick@wg0 is NOT skipped for CLD (2026-07-17)
 # regardless of bootstrap confirmation -- every FWL node must have WireGuard
 # enabled, full stop; that guarantee doesn't need CLD-specific config knowledge.
 # Changelog:
+#   2026-10-29  Robert: "the whole point of the ansible thing is to have ways
+#               to self-heal this type of thing" -- narrowed
+#               fw_hub_bootstrap_confirmed's reach down to just the
+#               brand-new-keypair-generation step (the one genuinely
+#               destructive action); every other task it used to gate for
+#               CLD now also runs whenever wg_privkey_existing.stat.exists,
+#               so a template improvement (like the PostUp/PreDown nft
+#               lines) reaches an already-bootstrapped hub on its next
+#               routine run instead of staying frozen at whatever the
+#               template looked like on bootstrap day forever. The two
+#               wg-quick@wg0 drop-in tasks never depended on the key
+#               material at all -- ungated entirely, not just loosened.
+#               Real finding that surfaced this: CLD's live wg0.conf was
+#               missing its PostUp/PreDown lines, added to this template
+#               after CLD's original bootstrap and never backfilled (see
+#               feedback_zabbix_trapper_ufw_wg_tunnel_range_2026_10_29).
 #   2026-06-20  Initial file
 #   2026-06-29  Add wg-quick@wg0 network-online.target drop-in (bug fix: shipped
 #               unit only has After=network.target which fires before any interface
@@ -80,22 +103,35 @@
 #               pause.py), not something this repo's YAML controls.
 # =============================================================================
 
-- name: "[WireGuard] Skip — not applicable (role=none or black site not bootstrapping)"
-  ansible.builtin.debug:
-    msg: "WireGuard role is '{{ fw_wg_role }}' — skipping WG deployment."
-  when: fw_wg_role == 'none' or (fw_is_black_site and not fw_hub_bootstrap_confirmed)
-
-# ── Key generation (preserve if already exists) ───────────────────────────────
-# fw_hub_bootstrap_confirmed (set in 00_preflight_3_ask.yml, only ever true for
-# the black site, only when the operator confirmed a from-scratch hub setup)
-# lets these run for CLD too -- the keypair itself is generic, not CLD-specific;
-# only the multi-hub peer list is hand-maintained outside this role.
-
 - name: "[WireGuard] Check for existing private key"
   ansible.builtin.stat:
     path: /etc/wireguard/private.key
   register: wg_privkey_existing
-  when: fw_wg_role != 'none' and (not fw_is_black_site or fw_hub_bootstrap_confirmed)
+  when: fw_wg_role != 'none'
+
+- name: "[WireGuard] Skip — not applicable (role=none or black site never bootstrapped)"
+  ansible.builtin.debug:
+    msg: "WireGuard role is '{{ fw_wg_role }}' — skipping WG deployment."
+  when: fw_wg_role == 'none' or (fw_is_black_site and not fw_hub_bootstrap_confirmed and not wg_privkey_existing.stat.exists)
+
+# ── Key generation (preserve if already exists) ───────────────────────────────
+# 2026-10-29, Robert's explicit ask -- "the whole point of the ansible thing is
+# to have ways to self-heal this type of thing": fw_hub_bootstrap_confirmed
+# (set in 00_preflight_3_ask.yml, only ever true for the black site, only when
+# the operator confirmed a from-scratch hub setup) used to gate EVERYTHING
+# below for CLD, every single run, forever -- not just the one genuinely risky
+# action (generating a brand-new keypair, which WOULD break every one of
+# CLD's ~47 spoke peers' configured PublicKey if it ever happened by accident
+# on an already-paired hub, and rightly stays behind an explicit human
+# confirmation). Reading an EXISTING key back, and re-syncing [Interface]
+# content from the current template, carry none of that risk -- narrowed the
+# gate so those self-heal on every run once the keypair already exists,
+# instead of being frozen at whatever the template looked like on day one of
+# CLD's original bootstrap. Real live finding that surfaced this: CLD's hub
+# wg0.conf was missing its own PostUp/PreDown nft rule lines entirely, added
+# to this template after CLD's original bootstrap and never backfilled since
+# -- see feedback_zabbix_trapper_ufw_wg_tunnel_range_2026_10_29 for the fuller
+# story (a different, unrelated bug ended up surfacing this one along the way).
 
 - name: "[WireGuard] Generate private key (new install)"
   ansible.builtin.shell: |
@@ -112,19 +148,19 @@
   ansible.builtin.slurp:
     src: /etc/wireguard/private.key
   register: wg_privkey_b64
-  when: fw_wg_role != 'none' and (not fw_is_black_site or fw_hub_bootstrap_confirmed)
+  when: fw_wg_role != 'none' and (not fw_is_black_site or fw_hub_bootstrap_confirmed or wg_privkey_existing.stat.exists)
 
 - name: "[WireGuard] Read public key"
   ansible.builtin.slurp:
     src: /etc/wireguard/public.key
   register: wg_pubkey_b64
-  when: fw_wg_role != 'none' and (not fw_is_black_site or fw_hub_bootstrap_confirmed)
+  when: fw_wg_role != 'none' and (not fw_is_black_site or fw_hub_bootstrap_confirmed or wg_privkey_existing.stat.exists)
 
 - name: "[WireGuard] Set key facts"
   ansible.builtin.set_fact:
     fw_wg_privkey: "{{ wg_privkey_b64.content | b64decode | trim }}"
     fw_wg_pubkey:  "{{ wg_pubkey_b64.content | b64decode | trim }}"
-  when: fw_wg_role != 'none' and (not fw_is_black_site or fw_hub_bootstrap_confirmed)
+  when: fw_wg_role != 'none' and (not fw_is_black_site or fw_hub_bootstrap_confirmed or wg_privkey_existing.stat.exists)
 
 - name: "[WireGuard] Display public key (needed for hub peer registration)"
   ansible.builtin.debug:
@@ -236,7 +272,7 @@
       PreDown  = nft delete rule inet filter forward oifname "wg0" accept
   when:
     - fw_wg_role in ['hub-primary', 'hub-regional']
-    - not fw_is_black_site or fw_hub_bootstrap_confirmed
+    - not fw_is_black_site or fw_hub_bootstrap_confirmed or wg_privkey_existing.stat.exists
   notify: restart wireguard
 
 # ── wg-quick network-online.target drop-in ────────────────────────────────────
@@ -275,7 +311,14 @@
     path: /etc/systemd/system/wg-quick@wg0.service.d
     state: directory
     mode: '0755'
-  when: fw_wg_role != 'none' and (not fw_is_black_site or fw_hub_bootstrap_confirmed)
+  # 2026-10-29: this and the drop-in file below never actually depended on
+  # fw_wg_privkey/the bootstrap-confirmed gate at all -- static systemd unit
+  # content, no key material involved, gated the same way as everything else
+  # above purely by copy-paste consistency rather than a real dependency.
+  # Ungated entirely (fw_wg_role != 'none' only) as part of the same
+  # self-heal fix -- a black-site hub's wg-quick boot-reliability fix
+  # deserves to self-heal every run same as any other site's.
+  when: fw_wg_role != 'none'
 
 - name: "[WireGuard] Write network-online.target drop-in for wg-quick@wg0"
   ansible.builtin.copy:
@@ -293,7 +336,7 @@
       RestartSec=10
       StartLimitIntervalSec=60
       StartLimitBurst=3
-  when: fw_wg_role != 'none' and (not fw_is_black_site or fw_hub_bootstrap_confirmed)
+  when: fw_wg_role != 'none'
 
 # ── Enable wg-quick ───────────────────────────────────────────────────────────
 # Robert, 2026-07-17: NOT gated on fw_is_black_site, unlike everything above --
