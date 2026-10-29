@@ -1,0 +1,11 @@
+[Unit]
+Description=PVE backup status check (JSON report for Zabbix)
+After=pve-cluster.service pvedaemon.service
+Wants=pve-cluster.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /usr/local/bin/pve-backup-check.py
+TimeoutStartSec=10min
+Nice=10
+IOSchedulingClass=idle
