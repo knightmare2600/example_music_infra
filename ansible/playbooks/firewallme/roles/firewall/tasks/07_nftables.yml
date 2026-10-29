@@ -95,10 +95,23 @@
       # --------------------------------------------------------------------------
       # NAT — masquerade LAN → WAN
       # --------------------------------------------------------------------------
+      # Excludes the 192.168.139.0/24 vRACK/provisioning network, 2026-10-29 real
+      # finding: CLD's own WAN interface is the direct, physically-routed uplink to
+      # this shared management network (VRK's real hosts sit on it, confirmed via
+      # EXAPVEVRK001's own zabbix_agentd.log -- it rejected incoming connections
+      # from 192.168.139.69, CLD's own WAN-side address, not the real Zabbix server
+      # at 192.168.69.13, because this masquerade rule was blindly rewriting LAN
+      # traffic bound for that network the same as real internet-bound traffic).
+      # Masquerading this traffic breaks any IP-based allowlist a host on that
+      # network checks against (Zabbix's Server=, and potentially others) -- it's
+      # an internally-routable network, not the real WAN, so it never needed NAT in
+      # the first place. Harmless on every other site's firewall: this exclusion
+      # only ever matches when something is actually routed toward that specific
+      # subnet via the WAN interface, which doesn't happen anywhere else.
       table ip nat {
         chain postrouting {
           type nat hook postrouting priority srcnat; policy accept;
-          oifname "{{ fw_wan_iface }}" masquerade
+          oifname "{{ fw_wan_iface }}" ip daddr != 192.168.139.0/24 masquerade
         }
       }
 
