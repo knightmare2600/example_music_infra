@@ -132,3 +132,4 @@ DHCP,247,yes,"DHCP pool (dnsmasq dhcp-range on every site firewall, .150-.250 --
 DHCP,248,yes,"DHCP pool (dnsmasq dhcp-range on every site firewall, .150-.250 -- see firewallme.sh DHCP_START/DHCP_END, 00_preflight_1_derive.yml fw_dhcp_start/fw_dhcp_end). Added 2026-09-04 so suggest_free_ip.py excludes it automatically instead of by hand."
 DHCP,249,yes,"DHCP pool (dnsmasq dhcp-range on every site firewall, .150-.250 -- see firewallme.sh DHCP_START/DHCP_END, 00_preflight_1_derive.yml fw_dhcp_start/fw_dhcp_end). Added 2026-09-04 so suggest_free_ip.py excludes it automatically instead of by hand."
 DHCP,250,yes,"DHCP pool (dnsmasq dhcp-range on every site firewall, .150-.250 -- see firewallme.sh DHCP_START/DHCP_END, 00_preflight_1_derive.yml fw_dhcp_start/fw_dhcp_end). Added 2026-09-04 so suggest_free_ip.py excludes it automatically instead of by hand."
+PBS,14,no,Proxmox Backup Server

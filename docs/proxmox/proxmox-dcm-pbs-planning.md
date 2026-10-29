@@ -368,6 +368,20 @@ maintain in this document at all.
 > Conventions" checklist when actually rolling this out — this is exactly the class of change
 > that guide section exists for.
 
+> **Follow-up, 2026-10-29 — first real box, ahead of the phase order above:** `EXAPBSFAL001`
+> installed at FAL (`192.168.76.14`), not CLD as the Implementation Phasing table below expected
+> — Robert built it as part of a real FAL site NFS/QNAP/ZFS storage rework (see
+> `docs/proxmox/pbs-nfs-qnap-procedure.md`), independent of the DCM/enterprise-support
+> prerequisite chain this document otherwise assumes. `.14` is confirmed collision-free at FAL
+> and is now live, not just a proposed reservation: `PBS,14,no,Proxmox Backup Server` added to
+> `benarbejde/address_policy.csv`'s `offsets_single` (the file this document still calls
+> `address_policy.json` by its pre-2026-07-30 name — see `generate_inventory.py`'s own changelog
+> for that migration), a `PBS` row added to `benarbejde/role_codes.csv`
+> (`ConnectionMethod=ssh`) and `docs/emojis/README.md`'s legend, and a real `devices.csv` row
+> added for FAL specifically — same pattern as `EXANASFAL001`'s own first-real-box treatment in
+> the Site Storage section below. PDM/DCM and the enterprise-support rollout plan above are
+> otherwise unaffected; this is a standalone PBS instance, not a PDM remote yet.
+
 ### Backup Architecture
 
 ```
