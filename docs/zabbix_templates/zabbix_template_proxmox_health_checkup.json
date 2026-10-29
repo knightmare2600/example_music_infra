@@ -1,0 +1,2074 @@
+{
+    "zabbix_export": {
+        "version": "7.0",
+        "template_groups": [
+            {
+                "uuid": "d9792c7e70434b53b6c23fab791afeab",
+                "name": "Templates"
+            }
+        ],
+        "templates": [
+            {
+                "uuid": "17b0bbacfb9b4e29a884e0d881b03f19",
+                "template": "Proxmox Health Checkup",
+                "name": "Proxmox Health Checkup",
+                "description": "Check snapshots, non-vacuumed systemd unit files, old unpurged but not-in-use kernels, etc.\n\nImage hygiene but for PVE nodes.",
+                "groups": [
+                    {
+                        "name": "Templates"
+                    }
+                ],
+                "items": [
+                    {
+                        "uuid": "cffd061ba34c496781f9bf5bbf6da251",
+                        "name": "PVE - Snapshot CRITICAL Count",
+                        "type": "DEPENDENT",
+                        "key": "pve.all.snapshot.critical.count",
+                        "delay": "0",
+                        "history": "1d",
+                        "trends": "1d",
+                        "description": "Number of VMs or LXC containers at CRITICAL severity.",
+                        "preprocessing": [
+                            {
+                                "type": "JSONPATH",
+                                "parameters": [
+                                    "$.summary.critical_count"
+                                ]
+                            }
+                        ],
+                        "master_item": {
+                            "key": "vfs.file.contents[/tmp/pve-snapshot-check.json]"
+                        }
+                    },
+                    {
+                        "uuid": "fed5d0d334cd4df5888c8ef75f71ef99",
+                        "name": "PVE - Backup jobs critical count",
+                        "type": "DEPENDENT",
+                        "key": "pve.backup.critical.count",
+                        "delay": "0",
+                        "history": "7d",
+                        "trends": "0",
+                        "preprocessing": [
+                            {
+                                "type": "JSONPATH",
+                                "parameters": [
+                                    "$.summary.critical_count"
+                                ]
+                            },
+                            {
+                                "type": "DISCARD_UNCHANGED_HEARTBEAT",
+                                "parameters": [
+                                    "6h"
+                                ]
+                            }
+                        ],
+                        "master_item": {
+                            "key": "vfs.file.contents[/tmp/pve-backup-check.json]"
+                        }
+                    },
+                    {
+                        "uuid": "8f4013ddd9844a99b2135295c96c5799",
+                        "name": "PVE - Backup Report Generated (Unix timestamp)",
+                        "type": "DEPENDENT",
+                        "key": "pve.backup.generated.unix",
+                        "delay": "0",
+                        "history": "7d",
+                        "trends": "0",
+                        "units": "unixtime",
+                        "preprocessing": [
+                            {
+                                "type": "JSONPATH",
+                                "parameters": [
+                                    "$.generated_unix"
+                                ]
+                            }
+                        ],
+                        "master_item": {
+                            "key": "vfs.file.contents[/tmp/pve-backup-check.json]"
+                        },
+                        "triggers": [
+                            {
+                                "uuid": "d89f258bbb3d4183a228aca0acc94996",
+                                "expression": "fuzzytime(/Proxmox Health Checkup/pve.backup.generated.unix,46800)=0",
+                                "name": "PVE - {HOST.NAME} backup report stale (>13h)",
+                                "priority": "DISASTER",
+                                "dependencies": [
+                                    {
+                                        "name": "PVE - {HOST.NAME} backup report missing",
+                                        "expression": "last(/Proxmox Health Checkup/vfs.file.exists[/tmp/pve-backup-check.json])=0"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "e9e3ebe93c3f4cd3beaf79d17b53fde6",
+                        "name": "PVE - Backup jobs high count",
+                        "type": "DEPENDENT",
+                        "key": "pve.backup.high.count",
+                        "delay": "0",
+                        "history": "7d",
+                        "trends": "0",
+                        "preprocessing": [
+                            {
+                                "type": "JSONPATH",
+                                "parameters": [
+                                    "$.summary.high_count"
+                                ]
+                            },
+                            {
+                                "type": "DISCARD_UNCHANGED_HEARTBEAT",
+                                "parameters": [
+                                    "6h"
+                                ]
+                            }
+                        ],
+                        "master_item": {
+                            "key": "vfs.file.contents[/tmp/pve-backup-check.json]"
+                        }
+                    },
+                    {
+                        "uuid": "677847d2abd84090bfe48cc25e7d5fb7",
+                        "name": "PVE - Backup jobs count",
+                        "type": "DEPENDENT",
+                        "key": "pve.backup.jobs.count",
+                        "delay": "0",
+                        "history": "7d",
+                        "trends": "0",
+                        "preprocessing": [
+                            {
+                                "type": "JSONPATH",
+                                "parameters": [
+                                    "$.backup_jobs.length()"
+                                ]
+                            },
+                            {
+                                "type": "DISCARD_UNCHANGED_HEARTBEAT",
+                                "parameters": [
+                                    "6h"
+                                ]
+                            }
+                        ],
+                        "master_item": {
+                            "key": "vfs.file.contents[/tmp/pve-backup-check.json]"
+                        }
+                    },
+                    {
+                        "uuid": "c15499b786b4414c96811b6838f4048a",
+                        "name": "PVE - Backup schedule parse errors",
+                        "type": "DEPENDENT",
+                        "key": "pve.backup.parse.errors",
+                        "delay": "0",
+                        "history": "7d",
+                        "trends": "0",
+                        "preprocessing": [
+                            {
+                                "type": "JSONPATH",
+                                "parameters": [
+                                    "$.summary.guests_schedule_parse_error"
+                                ]
+                            },
+                            {
+                                "type": "DISCARD_UNCHANGED_HEARTBEAT",
+                                "parameters": [
+                                    "6h"
+                                ]
+                            }
+                        ],
+                        "master_item": {
+                            "key": "vfs.file.contents[/tmp/pve-backup-check.json]"
+                        },
+                        "triggers": [
+                            {
+                                "uuid": "ede20b62c5be4f36b85590db37fc4861",
+                                "expression": "last(/Proxmox Health Checkup/pve.backup.parse.errors)>0",
+                                "name": "PVE - {HOST.NAME} backup schedule(s) unparseable",
+                                "opdata": "{ITEM.LASTVALUE1} guest(s) on fallback thresholds",
+                                "priority": "WARNING"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "bf86854967ab4dcd9476a9d83a1e6abf",
+                        "name": "PVE - Backup storages visible count",
+                        "type": "DEPENDENT",
+                        "key": "pve.backup.storages.count",
+                        "delay": "0",
+                        "history": "7d",
+                        "trends": "0",
+                        "preprocessing": [
+                            {
+                                "type": "JSONPATH",
+                                "parameters": [
+                                    "$.backup_storages.length()"
+                                ]
+                            },
+                            {
+                                "type": "DISCARD_UNCHANGED_HEARTBEAT",
+                                "parameters": [
+                                    "6h"
+                                ]
+                            }
+                        ],
+                        "master_item": {
+                            "key": "vfs.file.contents[/tmp/pve-backup-check.json]"
+                        },
+                        "triggers": [
+                            {
+                                "uuid": "c82ac0a878d74e8fa24ddbc1596a616d",
+                                "expression": "last(/Proxmox Health Checkup/pve.backup.storages.count)=0",
+                                "name": "PVE - {HOST.NAME} no backup storages visible",
+                                "priority": "HIGH"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "bd9f66d8081c4ebba217eb7c713fde83",
+                        "name": "PVE - vzdump task failures (last 24h)",
+                        "type": "DEPENDENT",
+                        "key": "pve.backup.task.failures.24h",
+                        "delay": "0",
+                        "history": "7d",
+                        "trends": "0",
+                        "preprocessing": [
+                            {
+                                "type": "JSONPATH",
+                                "parameters": [
+                                    "$.summary.recent_vzdump_failures_24h"
+                                ]
+                            },
+                            {
+                                "type": "DISCARD_UNCHANGED_HEARTBEAT",
+                                "parameters": [
+                                    "6h"
+                                ]
+                            }
+                        ],
+                        "master_item": {
+                            "key": "vfs.file.contents[/tmp/pve-backup-check.json]"
+                        },
+                        "triggers": [
+                            {
+                                "uuid": "0d42d44fb6e64e0b93a6f903df261254",
+                                "expression": "last(/Proxmox Health Checkup/pve.backup.task.failures.24h)>0",
+                                "name": "PVE - {HOST.NAME} recent vzdump task failures",
+                                "opdata": "{ITEM.LASTVALUE1} failed task(s) in recent history",
+                                "priority": "WARNING"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "a1094805ad314ba188317f2d49c0df4c",
+                        "name": "PVE - Guests not in any backup job",
+                        "type": "DEPENDENT",
+                        "key": "pve.backup.unmanaged.count",
+                        "delay": "0",
+                        "history": "7d",
+                        "trends": "0",
+                        "preprocessing": [
+                            {
+                                "type": "JSONPATH",
+                                "parameters": [
+                                    "$.summary.guests_unmanaged"
+                                ]
+                            },
+                            {
+                                "type": "DISCARD_UNCHANGED_HEARTBEAT",
+                                "parameters": [
+                                    "6h"
+                                ]
+                            }
+                        ],
+                        "master_item": {
+                            "key": "vfs.file.contents[/tmp/pve-backup-check.json]"
+                        }
+                    },
+                    {
+                        "uuid": "4c4d1c83342449159d02228621e5fdc0",
+                        "name": "PVE - Backup jobs warning count",
+                        "type": "DEPENDENT",
+                        "key": "pve.backup.warning.count",
+                        "delay": "0",
+                        "history": "7d",
+                        "trends": "0",
+                        "preprocessing": [
+                            {
+                                "type": "JSONPATH",
+                                "parameters": [
+                                    "$.summary.warning_count"
+                                ]
+                            },
+                            {
+                                "type": "DISCARD_UNCHANGED_HEARTBEAT",
+                                "parameters": [
+                                    "6h"
+                                ]
+                            }
+                        ],
+                        "master_item": {
+                            "key": "vfs.file.contents[/tmp/pve-backup-check.json]"
+                        }
+                    },
+                    {
+                        "uuid": "0eadc8baaaed46c1bc42d93b2ae980fe",
+                        "name": "PVE - Backup jobs Containers Checked",
+                        "type": "DEPENDENT",
+                        "key": "pve.lxc.backup.total.checked",
+                        "delay": "0",
+                        "history": "7d",
+                        "trends": "0",
+                        "preprocessing": [
+                            {
+                                "type": "JSONPATH",
+                                "parameters": [
+                                    "$.summary.total_lxc_checked"
+                                ]
+                            },
+                            {
+                                "type": "DISCARD_UNCHANGED_HEARTBEAT",
+                                "parameters": [
+                                    "6h"
+                                ]
+                            }
+                        ],
+                        "master_item": {
+                            "key": "vfs.file.contents[/tmp/pve-backup-check.json]"
+                        }
+                    },
+                    {
+                        "uuid": "5030bd6b63474817b467495087817c40",
+                        "name": "PVE - Containers in Critical snapshot Status",
+                        "type": "DEPENDENT",
+                        "key": "pve.lxc.snapshot.critical.names",
+                        "delay": "0",
+                        "history": "1d",
+                        "value_type": "TEXT",
+                        "trends": "0",
+                        "description": "Names of LXC containers at CRITICAL severity.",
+                        "preprocessing": [
+                            {
+                                "type": "JSONPATH",
+                                "parameters": [
+                                    "$.lxc[?(@.severity_int>=3)].name"
+                                ],
+                                "error_handler": "CUSTOM_VALUE",
+                                "error_handler_params": "[]"
+                            }
+                        ],
+                        "master_item": {
+                            "key": "vfs.file.contents[/tmp/pve-snapshot-check.json]"
+                        },
+                        "triggers": [
+                            {
+                                "uuid": "8ec109ef90814a00b645418c25e655b5",
+                                "expression": "last(/Proxmox Health Checkup/pve.lxc.snapshot.critical.names)<>\"[]\"",
+                                "name": "PVE - {HOST.NAME} has CRITICAL snapshot containers: {ITEM.LASTVALUE}",
+                                "opdata": "{?last(/Proxmox Health Checkup/pve.lxc.snapshot.critical.names)}",
+                                "priority": "HIGH",
+                                "manual_close": "YES"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "f4ba6fdd480749508527123c654ae23f",
+                        "name": "PVE - Containers in High snapshot Status",
+                        "type": "DEPENDENT",
+                        "key": "pve.lxc.snapshot.high.names",
+                        "delay": "0",
+                        "history": "1d",
+                        "value_type": "TEXT",
+                        "trends": "0",
+                        "description": "Names of LXC containers at HIGH severity.",
+                        "preprocessing": [
+                            {
+                                "type": "JSONPATH",
+                                "parameters": [
+                                    "$.lxc[?(@.severity_int==2)].name"
+                                ],
+                                "error_handler": "CUSTOM_VALUE",
+                                "error_handler_params": "[]"
+                            }
+                        ],
+                        "master_item": {
+                            "key": "vfs.file.contents[/tmp/pve-snapshot-check.json]"
+                        },
+                        "triggers": [
+                            {
+                                "uuid": "9631b3a77329463caa85e1b3446fcafa",
+                                "expression": "last(/Proxmox Health Checkup/pve.lxc.snapshot.high.names)<>\"[]\"",
+                                "name": "PVE - {HOST.NAME} has HIGH snapshot containers: {ITEM.LASTVALUE}",
+                                "opdata": "{?last(/Proxmox Health Checkup/pve.lxc.snapshot.high.names)}",
+                                "priority": "AVERAGE",
+                                "manual_close": "YES"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "ebe5db9419414fb3a952a41175e58734",
+                        "name": "PVE - Containers in Unknown snapshot Status",
+                        "type": "DEPENDENT",
+                        "key": "pve.lxc.snapshot.unknown.names",
+                        "delay": "0",
+                        "history": "1d",
+                        "value_type": "TEXT",
+                        "trends": "0",
+                        "description": "Names of LXC containers at UNKNOWN severity (pvesh query failed).",
+                        "preprocessing": [
+                            {
+                                "type": "JSONPATH",
+                                "parameters": [
+                                    "$.lxc[?(@.severity_int==-1)].name"
+                                ],
+                                "error_handler": "CUSTOM_VALUE",
+                                "error_handler_params": "[]"
+                            }
+                        ],
+                        "master_item": {
+                            "key": "vfs.file.contents[/tmp/pve-snapshot-check.json]"
+                        },
+                        "triggers": [
+                            {
+                                "uuid": "575c4c2c51cb4bb4a51d72c8e4685b62",
+                                "expression": "last(/Proxmox Health Checkup/pve.lxc.snapshot.unknown.names)<>\"[]\"",
+                                "name": "PVE - {HOST.NAME} has UNKNOWN snapshot containers: {ITEM.LASTVALUE}",
+                                "opdata": "{?last(/Proxmox Health Checkup/pve.lxc.snapshot.unknown.names)}",
+                                "priority": "INFO",
+                                "manual_close": "YES"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "c93403aa015f41d89268ec36ba30032f",
+                        "name": "PVE - Containers in Warning snapshot Status",
+                        "type": "DEPENDENT",
+                        "key": "pve.lxc.snapshot.warning.names",
+                        "delay": "0",
+                        "history": "1d",
+                        "value_type": "TEXT",
+                        "trends": "0",
+                        "description": "Names of LXC containers at WARNING severity.",
+                        "preprocessing": [
+                            {
+                                "type": "JSONPATH",
+                                "parameters": [
+                                    "$.lxc[?(@.severity_int==1)].name"
+                                ],
+                                "error_handler": "CUSTOM_VALUE",
+                                "error_handler_params": "[]"
+                            }
+                        ],
+                        "master_item": {
+                            "key": "vfs.file.contents[/tmp/pve-snapshot-check.json]"
+                        },
+                        "triggers": [
+                            {
+                                "uuid": "db0079727499472087b8f1bb8cc7a13c",
+                                "expression": "last(/Proxmox Health Checkup/pve.lxc.snapshot.warning.names)<>\"[]\"",
+                                "name": "PVE - {HOST.NAME} has WARNING snapshot containers: {ITEM.LASTVALUE}",
+                                "opdata": "{?last(/Proxmox Health Checkup/pve.lxc.snapshot.warning.names)}",
+                                "priority": "WARNING",
+                                "manual_close": "YES"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "951a1c95ec4e436b8bb1229ab73079c3",
+                        "name": "PVE - Containers with snapshots Names",
+                        "type": "DEPENDENT",
+                        "key": "pve.lxc.snapshot.with.snapshots.names",
+                        "delay": "0",
+                        "history": "1d",
+                        "value_type": "TEXT",
+                        "trends": "0",
+                        "description": "Names of LXC containers with at least one snapshot.",
+                        "preprocessing": [
+                            {
+                                "type": "JSONPATH",
+                                "parameters": [
+                                    "$.lxc[?(@.snapshot_count>0)].name"
+                                ],
+                                "error_handler": "CUSTOM_VALUE",
+                                "error_handler_params": "none"
+                            }
+                        ],
+                        "master_item": {
+                            "key": "vfs.file.contents[/tmp/pve-snapshot-check.json]"
+                        }
+                    },
+                    {
+                        "uuid": "b5fdf6d906cd49a0a787d42d292e9eaf",
+                        "name": "PVE - Containers With Snapshots",
+                        "type": "DEPENDENT",
+                        "key": "pve.lxc.with.snapshots",
+                        "delay": "0",
+                        "history": "1d",
+                        "trends": "1d",
+                        "description": "Count of LXC containers with at least one snapshot.",
+                        "preprocessing": [
+                            {
+                                "type": "JSONPATH",
+                                "parameters": [
+                                    "$.summary.lxc_with_snapshots"
+                                ]
+                            }
+                        ],
+                        "master_item": {
+                            "key": "vfs.file.contents[/tmp/pve-snapshot-check.json]"
+                        }
+                    },
+                    {
+                        "uuid": "69949652948a4c75b7c7b71d10ecf029",
+                        "name": "PVE - Snapshot Report Generated (Unix timestamp)",
+                        "type": "DEPENDENT",
+                        "key": "pve.snapshot.generated.unix",
+                        "delay": "0",
+                        "history": "1d",
+                        "trends": "1d",
+                        "description": "Unix timestamp of when the report was generated. Used to detect a stale report (timer or script failure).\n\nTrigger fires if this has not advanced in 2 hours.",
+                        "preprocessing": [
+                            {
+                                "type": "JSONPATH",
+                                "parameters": [
+                                    "$.generated_unix"
+                                ]
+                            }
+                        ],
+                        "master_item": {
+                            "key": "vfs.file.contents[/tmp/pve-snapshot-check.json]"
+                        },
+                        "triggers": [
+                            {
+                                "uuid": "1ba5c7e13ede438790bf99167e9354cc",
+                                "expression": "fuzzytime(/Proxmox Health Checkup/pve.snapshot.generated.unix,7200)=0",
+                                "name": "PVE - {HOST.NAME} snapshot report not updating (stale or frozen)",
+                                "priority": "DISASTER",
+                                "manual_close": "YES",
+                                "dependencies": [
+                                    {
+                                        "name": "PVE - Snapshot report file missing on {HOST.NAME}",
+                                        "expression": "last(/Proxmox Health Checkup/vfs.file.exists[/tmp/pve-snapshot-check.json])=0"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "2b16617227ff4a6484a71d4166a7d958",
+                        "name": "PVE - Snapshot HIGH Count",
+                        "type": "DEPENDENT",
+                        "key": "pve.snapshot.high.count",
+                        "delay": "0",
+                        "history": "1d",
+                        "trends": "1d",
+                        "description": "Number of VMs or LXC containers at HIGH severity.",
+                        "preprocessing": [
+                            {
+                                "type": "JSONPATH",
+                                "parameters": [
+                                    "$.summary.high_count"
+                                ]
+                            }
+                        ],
+                        "master_item": {
+                            "key": "vfs.file.contents[/tmp/pve-snapshot-check.json]"
+                        }
+                    },
+                    {
+                        "uuid": "503fbd6edcff4e718d713347b2636796",
+                        "name": "PVE - Total Containers Checked",
+                        "type": "DEPENDENT",
+                        "key": "pve.snapshot.total.lxc.checked",
+                        "delay": "0",
+                        "history": "1d",
+                        "trends": "1d",
+                        "description": "Total LXC containers enumerated on this node during last check.",
+                        "preprocessing": [
+                            {
+                                "type": "JSONPATH",
+                                "parameters": [
+                                    "$.summary.total_lxc_checked"
+                                ]
+                            }
+                        ],
+                        "master_item": {
+                            "key": "vfs.file.contents[/tmp/pve-snapshot-check.json]"
+                        },
+                        "triggers": [
+                            {
+                                "uuid": "7a1030fec1cc4d60885f7a9ee46c7b57",
+                                "expression": "nodata(/Proxmox Health Checkup/pve.snapshot.total.lxc.checked,2h)=1",
+                                "name": "PVE - {HOST.NAME} snapshot check not reporting Container count (no data 2h)",
+                                "priority": "DISASTER",
+                                "manual_close": "YES",
+                                "dependencies": [
+                                    {
+                                        "name": "PVE - {HOST.NAME} snapshot report not updating (stale or frozen)",
+                                        "expression": "fuzzytime(/Proxmox Health Checkup/pve.snapshot.generated.unix,7200)=0"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "17c963a0ab50404f9c4db5cf89843258",
+                        "name": "PVE - Snapshot UNKNOWN Count",
+                        "type": "DEPENDENT",
+                        "key": "pve.snapshot.unknown.count",
+                        "delay": "0",
+                        "history": "1d",
+                        "trends": "1d",
+                        "description": "Number of guests where pvesh query failed. Non-zero indicates a problem querying the API.",
+                        "preprocessing": [
+                            {
+                                "type": "JSONPATH",
+                                "parameters": [
+                                    "$.summary.unknown_count"
+                                ]
+                            }
+                        ],
+                        "master_item": {
+                            "key": "vfs.file.contents[/tmp/pve-snapshot-check.json]"
+                        }
+                    },
+                    {
+                        "uuid": "3dff1144d43442418ce09f944428e08a",
+                        "name": "PVE - VMs With Snapshots",
+                        "type": "DEPENDENT",
+                        "key": "pve.snapshot.vms.with.snapshots",
+                        "delay": "0",
+                        "history": "1d",
+                        "trends": "1d",
+                        "description": "Count of QEMU VMs with at least one snapshot.",
+                        "preprocessing": [
+                            {
+                                "type": "JSONPATH",
+                                "parameters": [
+                                    "$.summary.vms_with_snapshots"
+                                ]
+                            }
+                        ],
+                        "master_item": {
+                            "key": "vfs.file.contents[/tmp/pve-snapshot-check.json]"
+                        }
+                    },
+                    {
+                        "uuid": "b389b0aae1d34b7e898d4de53bc262f0",
+                        "name": "Snapshot WARNING Count",
+                        "type": "DEPENDENT",
+                        "key": "pve.snapshot.warning.count",
+                        "delay": "0",
+                        "history": "1d",
+                        "trends": "1d",
+                        "description": "Number of VMs or LXC containers at WARNING severity.",
+                        "preprocessing": [
+                            {
+                                "type": "JSONPATH",
+                                "parameters": [
+                                    "$.summary.warning_count"
+                                ]
+                            }
+                        ],
+                        "master_item": {
+                            "key": "vfs.file.contents[/tmp/pve-snapshot-check.json]"
+                        }
+                    },
+                    {
+                        "uuid": "f1c4980340434f188fbc3db6bfc7d730",
+                        "name": "PVE - Snapshot Worst Severity (integer)",
+                        "type": "DEPENDENT",
+                        "key": "pve.snapshot.worst.severity.int",
+                        "delay": "0",
+                        "history": "1d",
+                        "trends": "1d",
+                        "description": "Numeric worst severity across all VMs and LXC on this node.\n\n0=OK\n1=WARNING\n2=HIGH\n3=CRITICAL\n\nUse this item in trigger expressions.",
+                        "preprocessing": [
+                            {
+                                "type": "JSONPATH",
+                                "parameters": [
+                                    "$.summary.worst_severity_int"
+                                ]
+                            }
+                        ],
+                        "master_item": {
+                            "key": "vfs.file.contents[/tmp/pve-snapshot-check.json]"
+                        },
+                        "triggers": [
+                            {
+                                "uuid": "abfe96f7057542749e3a0b2ac9e7aa01",
+                                "expression": "last(/Proxmox Health Checkup/pve.snapshot.worst.severity.int)>=3",
+                                "name": "PVE - {HOST.NAME} CRITICAL snapshot state. Severity: {ITEM.LASTVALUE}",
+                                "status": "DISABLED",
+                                "priority": "HIGH",
+                                "description": "One or more VMs or LXC containers on {HOST.NAME} is in a CRITICAL snapshot state.\n\nThis means: a snapshot >= 7 days old exists, OR multiple snapshots exist with at least one >= 5 days old.\n\nReview /tmp/pve-snapshot-check.json on the host for the full list.\n\nDO NOT auto-remove snapshots \u2014 check with a senior admin first.\n\nSnapshots may be protecting an in-progress migration or backup job.",
+                                "manual_close": "YES"
+                            },
+                            {
+                                "uuid": "a2208f50c1894a40ac431c766e61e489",
+                                "expression": "last(/Proxmox Health Checkup/pve.snapshot.worst.severity.int)=2",
+                                "name": "PVE - {HOST.NAME} HIGH snapshot state. Current value: {ITEM.LASTVALUE}",
+                                "status": "DISABLED",
+                                "priority": "AVERAGE",
+                                "description": "One or more VMs or LXC containers on {HOST.NAME} has multiple snapshots.\n\nMultiple snapshots consume significant disk space and can cause unexpected behaviour during live migration. Review /tmp/pve-snapshot-check.json on the host.\n\nDO NOT auto-remove snapshots without authorisation.",
+                                "manual_close": "YES"
+                            },
+                            {
+                                "uuid": "606ad4016b7f4418ade564b687aa3372",
+                                "expression": "last(/Proxmox Health Checkup/pve.snapshot.worst.severity.int)=1",
+                                "name": "PVE - {HOST.NAME} WARNING snapshot. Current value: {ITEM.LASTVALUE}",
+                                "status": "DISABLED",
+                                "priority": "WARNING",
+                                "description": "One or more VMs or LXC containers on {HOST.NAME} has at least one snapshot.\n\nSnapshots are not inherently a problem but forgotten ones consume disk space and can grow over time.\n\nReview /tmp/pve-snapshot-check.json on the host.",
+                                "manual_close": "YES"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "9c5934c670d14052a1a6f8c790a841e6",
+                        "name": "PVE - Snapshot Worst Severity (text)",
+                        "type": "DEPENDENT",
+                        "key": "pve.snapshot.worst.severity.text",
+                        "delay": "0",
+                        "history": "1d",
+                        "value_type": "TEXT",
+                        "trends": "0",
+                        "description": "Human-readable worst severity. For display only \u2014 use the integer item in triggers.",
+                        "preprocessing": [
+                            {
+                                "type": "JSONPATH",
+                                "parameters": [
+                                    "$.summary.worst_severity"
+                                ]
+                            }
+                        ],
+                        "master_item": {
+                            "key": "vfs.file.contents[/tmp/pve-snapshot-check.json]"
+                        }
+                    },
+                    {
+                        "uuid": "365ce6dc0abb4cceb5bd87faf2121692",
+                        "name": "PVE - Backup jobs VMs Checked",
+                        "type": "DEPENDENT",
+                        "key": "pve.vms.backup.total.checked",
+                        "delay": "0",
+                        "history": "7d",
+                        "trends": "0",
+                        "preprocessing": [
+                            {
+                                "type": "JSONPATH",
+                                "parameters": [
+                                    "$.summary.total_vms_checked"
+                                ]
+                            },
+                            {
+                                "type": "DISCARD_UNCHANGED_HEARTBEAT",
+                                "parameters": [
+                                    "6h"
+                                ]
+                            }
+                        ],
+                        "master_item": {
+                            "key": "vfs.file.contents[/tmp/pve-backup-check.json]"
+                        }
+                    },
+                    {
+                        "uuid": "d485dc41c35046c787af1ec2e1a1368b",
+                        "name": "PVE - VMs in Critical snapshot Status",
+                        "type": "DEPENDENT",
+                        "key": "pve.vms.snapshot.critical.names",
+                        "delay": "0",
+                        "history": "1d",
+                        "value_type": "TEXT",
+                        "trends": "0",
+                        "description": "Names of QEMU VMs at CRITICAL severity.",
+                        "preprocessing": [
+                            {
+                                "type": "JSONPATH",
+                                "parameters": [
+                                    "$.vms[?(@.severity_int>=3)].name"
+                                ],
+                                "error_handler": "CUSTOM_VALUE",
+                                "error_handler_params": "[]"
+                            }
+                        ],
+                        "master_item": {
+                            "key": "vfs.file.contents[/tmp/pve-snapshot-check.json]"
+                        },
+                        "triggers": [
+                            {
+                                "uuid": "6b42aab39a34415fbb50d20e784b8f23",
+                                "expression": "last(/Proxmox Health Checkup/pve.vms.snapshot.critical.names)<>\"[]\"",
+                                "name": "PVE - {HOST.NAME} has CRITICAL snapshot VMs: {ITEM.LASTVALUE}",
+                                "priority": "HIGH",
+                                "manual_close": "YES"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "cedd5d3b1c7d4ebf97bc9992355fe0c3",
+                        "name": "PVE - VMs in High snapshot Status",
+                        "type": "DEPENDENT",
+                        "key": "pve.vms.snapshot.high.names",
+                        "delay": "0",
+                        "history": "1d",
+                        "value_type": "TEXT",
+                        "trends": "0",
+                        "description": "Names of QEMU VMs at HIGH severity.",
+                        "preprocessing": [
+                            {
+                                "type": "JSONPATH",
+                                "parameters": [
+                                    "$.vms[?(@.severity_int==2)].name"
+                                ],
+                                "error_handler": "CUSTOM_VALUE",
+                                "error_handler_params": "[]"
+                            }
+                        ],
+                        "master_item": {
+                            "key": "vfs.file.contents[/tmp/pve-snapshot-check.json]"
+                        },
+                        "triggers": [
+                            {
+                                "uuid": "f15805ce42d047dd9d5992d141b2dd65",
+                                "expression": "last(/Proxmox Health Checkup/pve.vms.snapshot.high.names)<>\"[]\"",
+                                "name": "PVE - {HOST.NAME} has HIGH snapshot VMs: {ITEM.LASTVALUE}",
+                                "priority": "AVERAGE",
+                                "manual_close": "YES"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "e45b261e66de4764b4b8ce69053a9b95",
+                        "name": "PVE - Total VMs Checked",
+                        "type": "DEPENDENT",
+                        "key": "pve.vms.snapshot.total.checked",
+                        "delay": "0",
+                        "history": "1d",
+                        "trends": "1d",
+                        "description": "Total QEMU VMs enumerated on this node during last check.",
+                        "preprocessing": [
+                            {
+                                "type": "JSONPATH",
+                                "parameters": [
+                                    "$.summary.total_vms_checked"
+                                ]
+                            }
+                        ],
+                        "master_item": {
+                            "key": "vfs.file.contents[/tmp/pve-snapshot-check.json]"
+                        },
+                        "triggers": [
+                            {
+                                "uuid": "c4126e33c0d441beb8b09b41a9104487",
+                                "expression": "nodata(/Proxmox Health Checkup/pve.vms.snapshot.total.checked,2h)=1",
+                                "name": "PVE - {HOST.NAME} snapshot check not reporting VM count (no data 2h)",
+                                "priority": "DISASTER",
+                                "manual_close": "YES",
+                                "dependencies": [
+                                    {
+                                        "name": "PVE - {HOST.NAME} snapshot report not updating (stale or frozen)",
+                                        "expression": "fuzzytime(/Proxmox Health Checkup/pve.snapshot.generated.unix,7200)=0"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "03b0fcd8ca854d27a43c00936d4b22c0",
+                        "name": "PVE - VMs in Unknown snapshot Status",
+                        "type": "DEPENDENT",
+                        "key": "pve.vms.snapshot.unknown.names",
+                        "delay": "0",
+                        "history": "1d",
+                        "value_type": "TEXT",
+                        "trends": "0",
+                        "description": "Names of QEMU VMs at UNKNOWN severity (pvesh query failed).",
+                        "preprocessing": [
+                            {
+                                "type": "JSONPATH",
+                                "parameters": [
+                                    "$.vms[?(@.severity_int==-1)].name"
+                                ],
+                                "error_handler": "CUSTOM_VALUE",
+                                "error_handler_params": "[]"
+                            }
+                        ],
+                        "master_item": {
+                            "key": "vfs.file.contents[/tmp/pve-snapshot-check.json]"
+                        },
+                        "triggers": [
+                            {
+                                "uuid": "ac0a4dc36d454640a160089ff0dd39d2",
+                                "expression": "last(/Proxmox Health Checkup/pve.vms.snapshot.unknown.names)<>\"[]\"",
+                                "name": "PVE - {HOST.NAME} has UNKNOWN snapshot VMs: {ITEM.LASTVALUE}",
+                                "priority": "INFO",
+                                "manual_close": "YES"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "b77b94c932004740aba841b544608bfc",
+                        "name": "PVE - VMs in Warning snapshot Status",
+                        "type": "DEPENDENT",
+                        "key": "pve.vms.snapshot.warning.names",
+                        "delay": "0",
+                        "history": "1d",
+                        "value_type": "TEXT",
+                        "trends": "0",
+                        "description": "Names of QEMU VMs at WARNING severity.",
+                        "preprocessing": [
+                            {
+                                "type": "JSONPATH",
+                                "parameters": [
+                                    "$.vms[?(@.severity_int==1)].name"
+                                ],
+                                "error_handler": "CUSTOM_VALUE",
+                                "error_handler_params": "[]"
+                            }
+                        ],
+                        "master_item": {
+                            "key": "vfs.file.contents[/tmp/pve-snapshot-check.json]"
+                        },
+                        "triggers": [
+                            {
+                                "uuid": "3bf472e3022240b2ad3f41e640ea18c4",
+                                "expression": "last(/Proxmox Health Checkup/pve.vms.snapshot.warning.names)<>\"[]\"",
+                                "name": "PVE - {HOST.NAME} has WARNING snapshot VMs: {ITEM.LASTVALUE}",
+                                "priority": "WARNING",
+                                "manual_close": "YES"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "1191138fc96d4a869502eed142b6f802",
+                        "name": "PVE - VMs with snapshots Names",
+                        "type": "DEPENDENT",
+                        "key": "pve.vms.snapshot.with.snapshots.names",
+                        "delay": "0",
+                        "history": "1d",
+                        "value_type": "TEXT",
+                        "trends": "0",
+                        "description": "Names of QEMU VMs with at least one snapshot.",
+                        "preprocessing": [
+                            {
+                                "type": "JSONPATH",
+                                "parameters": [
+                                    "$.vms[?(@.snapshot_count>0)].name"
+                                ],
+                                "error_handler": "CUSTOM_VALUE",
+                                "error_handler_params": "none"
+                            }
+                        ],
+                        "master_item": {
+                            "key": "vfs.file.contents[/tmp/pve-snapshot-check.json]"
+                        }
+                    },
+                    {
+                        "uuid": "ac5c4512d0e74445be1914d123c7967a",
+                        "name": "PVE Hoover service unit CRC32 checksum",
+                        "key": "vfs.file.cksum[/etc/systemd/system/pve-monthly-hoover.service]",
+                        "delay": "1h",
+                        "history": "1d",
+                        "trends": "0",
+                        "triggers": [
+                            {
+                                "uuid": "a3b071b22f1a46219f50708f8b61c14c",
+                                "expression": "last(/Proxmox Health Checkup/vfs.file.cksum[/etc/systemd/system/pve-monthly-hoover.service])<>{$PVE_HOOVER_SERVICE_CKSUM} and {$PVE_HOOVER_SERVICE_CKSUM}<>0",
+                                "name": "PVE hoover service unit /etc/systemd/system/pve-monthly-hoover.service checksum mismatch on {HOST.NAME}",
+                                "priority": "INFO",
+                                "manual_close": "YES"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "561da6dcf9fe475d9473d6679fcfa6ee",
+                        "name": "PVE Hoover timer CRC32 checksum",
+                        "key": "vfs.file.cksum[/etc/systemd/system/pve-monthly-hoover.timer]",
+                        "delay": "1h",
+                        "history": "1d",
+                        "trends": "0",
+                        "triggers": [
+                            {
+                                "uuid": "6954c467d21e4cd6886f067cb56dc7e8",
+                                "expression": "last(/Proxmox Health Checkup/vfs.file.cksum[/etc/systemd/system/pve-monthly-hoover.timer])<>{$PVE_HOOVER_TIMER_CKSUM} and {$PVE_HOOVER_TIMER_CKSUM}<>0",
+                                "name": "PVE hoover timer checksum /etc/systemd/system/pve-monthly-hoover.timer mismatch on {HOST.NAME}",
+                                "priority": "INFO",
+                                "manual_close": "YES"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "00d335a502a349e3af7cf62e8c6d6761",
+                        "name": "/usr/local/bin/enable_vm_trim_discard.sh script checksum",
+                        "key": "vfs.file.cksum[/usr/local/bin/enable_vm_trim_discard.sh]",
+                        "delay": "1h",
+                        "history": "1d",
+                        "trends": "0",
+                        "description": "/usr/local/bin/enable_vm_trim_discard.sh allows backup sizes to be significantly reduced by allowing the \"zeroing\" of disks by PBS (and sdelete64.exe/zerofree)",
+                        "triggers": [
+                            {
+                                "uuid": "06eee3c81639432ba5cf872e942f92a1",
+                                "expression": "last(/Proxmox Health Checkup/vfs.file.cksum[/usr/local/bin/enable_vm_trim_discard.sh])<>{$PVE_TRIM_ENABLE_CKSUM} and {$PVE_TRIM_ENABLE_CKSUM}<>0",
+                                "name": "PVE enable trim script enable_vm_trim_discard.sh checksum mismatch on {HOST.NAME}",
+                                "priority": "INFO",
+                                "manual_close": "YES"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "b6524e554e2d4be3832c91d6a3a3ca75",
+                        "name": "PVE - /usr/local/bin/pve-backup-check.py Script checksum",
+                        "key": "vfs.file.cksum[/usr/local/bin/pve-backup-check.py]",
+                        "delay": "1h",
+                        "history": "1d",
+                        "trends": "0",
+                        "description": "/usr/local/bin/pve-backup-check.py is the script which does the heavy lifting for backup checks.",
+                        "triggers": [
+                            {
+                                "uuid": "e4f912a0c06441e2a7957af3b8e87eec",
+                                "expression": "last(/Proxmox Health Checkup/vfs.file.cksum[/usr/local/bin/pve-backup-check.py])<>{$PVE_BACKUP_SCRIPT_CKSUM} and {$PVE_BACKUP_SCRIPT_CKSUM}<>0",
+                                "name": "PVE script /usr/local/bin/pve-backup-check.py checksum mismatch on {HOST.NAME}",
+                                "priority": "INFO",
+                                "manual_close": "YES"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "6a76e27bd908461fbf0d08f3f2139732",
+                        "name": "PVE Hoover script CRC32 checksum",
+                        "key": "vfs.file.cksum[/usr/local/bin/pve-monthly-hoover.sh]",
+                        "delay": "1h",
+                        "history": "1d",
+                        "trends": "0",
+                        "triggers": [
+                            {
+                                "uuid": "74b619c6427444a7b5cb089abdedfcc9",
+                                "expression": "last(/Proxmox Health Checkup/vfs.file.cksum[/usr/local/bin/pve-monthly-hoover.sh])<>{$PVE_HOOVER_SCRIPT_CKSUM} and {$PVE_HOOVER_SCRIPT_CKSUM}<>0",
+                                "name": "PVE script /usr/local/bin/pve-monthly-hoover.sh checksum mismatch on {HOST.NAME}",
+                                "priority": "INFO",
+                                "manual_close": "YES"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "233d215e68cc4869a371c88625d6bbcc",
+                        "name": "PVE - /usr/local/bin/pve-snapshot-check.py Script checksum",
+                        "key": "vfs.file.cksum[/usr/local/bin/pve-snapshot-check.py]",
+                        "delay": "1h",
+                        "history": "1d",
+                        "trends": "0",
+                        "description": "/usr/local/bin/pve-snapshot-check.py is the script which does the heavy lifting for snapshot checks.",
+                        "triggers": [
+                            {
+                                "uuid": "37a1a38f8e3e43ae9fb8addf26ee962a",
+                                "expression": "last(/Proxmox Health Checkup/vfs.file.cksum[/usr/local/bin/pve-snapshot-check.py])<>{$PVE_SNAPSHOT_SCRIPT_CKSUM} and {$PVE_SNAPSHOT_SCRIPT_CKSUM}<>0",
+                                "name": "PVE script /usr/local/bin/pve-snapshot-check.py checksum mismatch on {HOST.NAME}",
+                                "priority": "INFO",
+                                "manual_close": "YES"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "c4ff3d142c934cdd9b87d62b01ba2ede",
+                        "name": "/usr/local/bin/qm_type.sh script checksum",
+                        "key": "vfs.file.cksum[/usr/local/bin/qm_type.sh]",
+                        "delay": "1h",
+                        "history": "1d",
+                        "trends": "0",
+                        "description": "/usr/local/bin/qm_type.sh allows text to be \"typed\" into a VM's console.\n\nFor example:\n\nqm_type 112 'Welcome2026!'\n\nwould type Welcome2026! into the console of VM ID 112.",
+                        "triggers": [
+                            {
+                                "uuid": "de2f0b540de44085834388340ad969ed",
+                                "expression": "last(/Proxmox Health Checkup/vfs.file.cksum[/usr/local/bin/qm_type.sh])<>{$QM_TYPE_CKSUM} and {$QM_TYPE_CKSUM}<>0",
+                                "name": "PVE script /usr/local/bin/qm_type.sh checksum mismatch on {HOST.NAME}",
+                                "priority": "INFO",
+                                "manual_close": "YES"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "93238f96c28f45188cbf13e3e99f8ed8",
+                        "name": "PVE - Backup Check Report (master)",
+                        "key": "vfs.file.contents[/tmp/pve-backup-check.json]",
+                        "delay": "1h",
+                        "history": "1d",
+                        "value_type": "TEXT",
+                        "trends": "0",
+                        "description": "Reads the full JSON report written by pve-backup-check.py.\n\nAll other backup items depend on this master item. Script runs hourly; Zabbix polls hourly \u2014 any given poll reads the most recent run's output."
+                    },
+                    {
+                        "uuid": "003bcc3d70564605a2fa555967682a2b",
+                        "name": "PVE - Snapshot Check Report (master)",
+                        "key": "vfs.file.contents[/tmp/pve-snapshot-check.json]",
+                        "delay": "1h",
+                        "history": "1d",
+                        "value_type": "TEXT",
+                        "trends": "0",
+                        "description": "Reads the full JSON report written by pve-snapshot-check.py.\n\nAll other snapshot items depend on this master item. Script runs hourly; Zabbix polls hourly \u2014 any given poll reads the most recent run's output."
+                    },
+                    {
+                        "uuid": "00eb1699ef6a43e6b816a2e65301bc17",
+                        "name": "PVE - Kernel Cleanup Config File Exists",
+                        "key": "vfs.file.exists[/etc/apt/apt.conf.d/52unattended-upgrades-pve]",
+                        "delay": "1h",
+                        "history": "1d",
+                        "trends": "1d",
+                        "units": "bool",
+                        "description": "Check if kernel cleanup configuration exists (1=exists, 0=missing)",
+                        "triggers": [
+                            {
+                                "uuid": "08cfdca982a94eb08fb14d1093c3e6ba",
+                                "expression": "last(/Proxmox Health Checkup/vfs.file.exists[/etc/apt/apt.conf.d/52unattended-upgrades-pve])=0",
+                                "name": "PVE - {HOST.NAME} Kernel Cleanup Config File Missing",
+                                "priority": "HIGH",
+                                "description": "The kernel cleanup configuration file is missing.\nAction: Re-deploy /etc/apt/apt.conf.d/52unattended-upgrades-pve",
+                                "manual_close": "YES"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "c68fc94211da4102aff8bfc85747d3ec",
+                        "name": "PVE - Backup Check Service File Exists",
+                        "key": "vfs.file.exists[/etc/systemd/system/pve-backup-check.service]",
+                        "delay": "1h",
+                        "history": "1d",
+                        "trends": "1d",
+                        "description": "1 = service file present, 0 = missing",
+                        "triggers": [
+                            {
+                                "uuid": "28247c73f2444094bfcab2c5a4269d34",
+                                "expression": "last(/Proxmox Health Checkup/vfs.file.exists[/etc/systemd/system/pve-backup-check.service])=0",
+                                "name": "/etc/systemd/system/pve-backup-check.service is missing",
+                                "priority": "WARNING",
+                                "manual_close": "YES"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "e58360ec5ce44f62979351f4a999c3f2",
+                        "name": "PVE - Backup Check Timer File Exists",
+                        "key": "vfs.file.exists[/etc/systemd/system/pve-backup-check.timer]",
+                        "delay": "1h",
+                        "history": "1d",
+                        "trends": "1d",
+                        "description": "1 = timer file present, 0 = missing",
+                        "triggers": [
+                            {
+                                "uuid": "19dfe4e06b284988b796beecdb1d16aa",
+                                "expression": "last(/Proxmox Health Checkup/vfs.file.exists[/etc/systemd/system/pve-backup-check.timer])=0",
+                                "name": "/etc/systemd/system/pve-backup-check.timer file not installed",
+                                "priority": "WARNING",
+                                "manual_close": "YES"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "be22a71c62664f9a9ecf37b931de5777",
+                        "name": "PVE - Monthly Hoover Service File Exists",
+                        "key": "vfs.file.exists[/etc/systemd/system/pve-monthly-hoover.service]",
+                        "delay": "1h",
+                        "history": "1d",
+                        "trends": "1d",
+                        "units": "bool",
+                        "description": "Check if systemd service file exists (1=exists, 0=missing)",
+                        "triggers": [
+                            {
+                                "uuid": "5d47a3204c814be483407805c39bf61b",
+                                "expression": "last(/Proxmox Health Checkup/vfs.file.exists[/etc/systemd/system/pve-monthly-hoover.service])=0",
+                                "name": "PVE - Monthly Hoover Service File Missing",
+                                "priority": "HIGH",
+                                "description": "The systemd service file is missing.\nAction: Re-deploy /etc/systemd/system/pve-monthly-hoover.service",
+                                "manual_close": "YES"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "bf7afe0c6dcb47018ce7ca93a01ea3fa",
+                        "name": "PVE - Monthly Hoover Timer File Exists",
+                        "key": "vfs.file.exists[/etc/systemd/system/pve-monthly-hoover.timer]",
+                        "delay": "1h",
+                        "history": "1d",
+                        "trends": "1d",
+                        "units": "bool",
+                        "description": "Check if systemd timer file exists (1=exists, 0=missing)",
+                        "triggers": [
+                            {
+                                "uuid": "bcb57576a6ce4f5d9886d8f964a07758",
+                                "expression": "last(/Proxmox Health Checkup/vfs.file.exists[/etc/systemd/system/pve-monthly-hoover.timer])=0",
+                                "name": "PVE - Monthly Hoover Timer File Missing",
+                                "priority": "HIGH",
+                                "description": "The systemd timer file is missing.\nAction: Re-deploy /etc/systemd/system/pve-monthly-hoover.timer",
+                                "manual_close": "YES"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "8d83f75c365c4500895fadcca6565ba8",
+                        "name": "PVE - Snapshot Check Service File Exists",
+                        "key": "vfs.file.exists[/etc/systemd/system/pve-snapshot-check.service]",
+                        "delay": "1h",
+                        "history": "1d",
+                        "trends": "1d",
+                        "description": "1 = service file present, 0 = missing",
+                        "triggers": [
+                            {
+                                "uuid": "38234499e78f44c59bdc07754cb0c846",
+                                "expression": "last(/Proxmox Health Checkup/vfs.file.exists[/etc/systemd/system/pve-snapshot-check.service])=0",
+                                "name": "/etc/systemd/system/pve-snapshot-check.service is missing",
+                                "priority": "WARNING",
+                                "manual_close": "YES"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "9e0ea54f618c47b2a4c7da55329bcd88",
+                        "name": "PVE - Snapshot Check Timer File Exists",
+                        "key": "vfs.file.exists[/etc/systemd/system/pve-snapshot-check.timer]",
+                        "delay": "1h",
+                        "history": "1d",
+                        "trends": "1d",
+                        "description": "1 = timer file present, 0 = missing",
+                        "triggers": [
+                            {
+                                "uuid": "9c90528d2e2948f6b90ddb6c3f07868b",
+                                "expression": "last(/Proxmox Health Checkup/vfs.file.exists[/etc/systemd/system/pve-snapshot-check.timer])=0",
+                                "name": "/etc/systemd/system/pve-snapshot-check.timer file not installed",
+                                "priority": "WARNING",
+                                "manual_close": "YES"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "7f93a4a9341c417483e4e56020c9ced6",
+                        "name": "PVE - Backup Check Timer Enabled Status",
+                        "key": "vfs.file.exists[/etc/systemd/system/timers.target.wants/pve-backup-check.timer]",
+                        "delay": "1h",
+                        "history": "1d",
+                        "trends": "0",
+                        "description": "1 = pve-backup-check.timer is enabled (symlink present in timers.target.wants),\n0 = not enabled.",
+                        "triggers": [
+                            {
+                                "uuid": "726ab49510774c2c9ac2d6f843d9860e",
+                                "expression": "last(/Proxmox Health Checkup/vfs.file.exists[/etc/systemd/system/timers.target.wants/pve-backup-check.timer])=0",
+                                "name": "PVE - {HOST.NAME} backup check timer not enabled",
+                                "priority": "HIGH",
+                                "description": "pve-backup-check.timer is not enabled.\n\nFix: systemctl enable --now pve-backup-check.timer + A stopped-but-enabled timer is caught by the backup report stale trigger.",
+                                "manual_close": "YES"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "58a9cb98eee6424ab853eadaf961dc45",
+                        "name": "PVE - Snapshot Check Timer Enabled Status",
+                        "key": "vfs.file.exists[/etc/systemd/system/timers.target.wants/pve-snapshot-check.timer]",
+                        "delay": "1h",
+                        "history": "1d",
+                        "trends": "0",
+                        "description": "1 = pve-snapshot-check.timer is enabled (symlink present in timers.target.wants),\n0 = not enabled.",
+                        "triggers": [
+                            {
+                                "uuid": "2892fd83bfea44aa8f591ee43e579857",
+                                "expression": "last(/Proxmox Health Checkup/vfs.file.exists[/etc/systemd/system/timers.target.wants/pve-snapshot-check.timer])=0",
+                                "name": "PVE - {HOST.NAME} snapshot check timer not enabled",
+                                "priority": "HIGH",
+                                "description": "pve-snapshot-check.timer is not enabled.\n\nFix: systemctl enable --now pve-snapshot-check.timer + A stopped-but-enabled timer is caught by the snapshot report stale trigger.",
+                                "manual_close": "YES"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "26d3cc26406b4f61af7b48a2ddd4ac64",
+                        "name": "PVE - Backup Check Report Exists",
+                        "key": "vfs.file.exists[/tmp/pve-backup-check.json]",
+                        "delay": "1h",
+                        "history": "1d",
+                        "trends": "0",
+                        "description": "1 = /tmp/pve-backup-check.json exists, 0 = missing. File is in /tmp so it is absent after a reboot until the timer next fires.",
+                        "triggers": [
+                            {
+                                "uuid": "ce86306b217e4b6884a50fa947070ec8",
+                                "expression": "last(/Proxmox Health Checkup/vfs.file.exists[/tmp/pve-backup-check.json])=0",
+                                "name": "PVE - {HOST.NAME} backup report missing",
+                                "priority": "HIGH",
+                                "description": "/tmp/pve-backup-check.json does not exist on {HOST.NAME}.\n\nThis is normal immediately after a reboot (file is in /tmp \u2014 volatile) and resolves once the timer fires (10 minutes after boot). If this persists beyond 15 minutes post-boot, investigate:\n\nCheck: systemctl status pve-backup-check.timer\nCheck: journalctl -u pve-backup-check.service -n 30",
+                                "dependencies": [
+                                    {
+                                        "name": "PVE - {HOST.NAME} backup check timer not enabled",
+                                        "expression": "last(/Proxmox Health Checkup/vfs.file.exists[/etc/systemd/system/timers.target.wants/pve-backup-check.timer])=0"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "52b5e3a34bc64474a456cb1633e60ec4",
+                        "name": "PVE - Snapshot Check Report Exists",
+                        "key": "vfs.file.exists[/tmp/pve-snapshot-check.json]",
+                        "delay": "1h",
+                        "history": "1d",
+                        "trends": "0",
+                        "description": "1 = /tmp/pve-snapshot-check.json exists, 0 = missing. File is in /tmp so it is absent after a reboot until the timer next fires.",
+                        "triggers": [
+                            {
+                                "uuid": "1e391e33042f4170ba09ba30a75417f0",
+                                "expression": "last(/Proxmox Health Checkup/vfs.file.exists[/tmp/pve-snapshot-check.json])=0",
+                                "name": "PVE - Snapshot report file missing on {HOST.NAME}",
+                                "priority": "HIGH",
+                                "description": "/tmp/pve-snapshot-check.json does not exist on {HOST.NAME}.\n\nThis is normal immediately after a reboot (file is in /tmp \u2014 volatile) and resolves once the timer fires (10 minutes after boot). If this persists beyond 15 minutes post-boot, investigate:\n\nCheck: systemctl status pve-snapshot-check.timer\nCheck: journalctl -u pve-snapshot-check.service -n 30",
+                                "manual_close": "YES",
+                                "dependencies": [
+                                    {
+                                        "name": "PVE - {HOST.NAME} snapshot check timer not enabled",
+                                        "expression": "last(/Proxmox Health Checkup/vfs.file.exists[/etc/systemd/system/timers.target.wants/pve-snapshot-check.timer])=0"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "23a7640440c648f8b10a31fdaed1907a",
+                        "name": "/usr/local/bin/enable_vm_trim_discard.sh script exists",
+                        "key": "vfs.file.exists[/usr/local/bin/enable_vm_trim_discard.sh]",
+                        "delay": "1h",
+                        "history": "1d",
+                        "trends": "1d",
+                        "description": "/usr/local/bin/enable_vm_trim_discard.sh allows backup sizes to be significantly reduced by allowing the \"zeroing\" of disks by PBS (and sdelete64.exe/zerofree)",
+                        "triggers": [
+                            {
+                                "uuid": "e6ac9a345fc346fbb7cc93b6ac8d50de",
+                                "expression": "last(/Proxmox Health Checkup/vfs.file.exists[/usr/local/bin/enable_vm_trim_discard.sh])=0",
+                                "name": "/usr/local/bin/enable_vm_trim_discard.sh file not installed",
+                                "priority": "WARNING",
+                                "manual_close": "YES"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "7df9e43be4f0414f91eaf33c6a316a34",
+                        "name": "PVE - /usr/local/bin/pve-backup-check.py Script exists",
+                        "key": "vfs.file.exists[/usr/local/bin/pve-backup-check.py]",
+                        "delay": "1h",
+                        "history": "1d",
+                        "trends": "1d",
+                        "description": "/usr/local/bin/pve-backup-check.py is the script which does the heavy lifting for backup checks.",
+                        "triggers": [
+                            {
+                                "uuid": "990a0ad40473457d80f4f87074df0167",
+                                "expression": "last(/Proxmox Health Checkup/vfs.file.exists[/usr/local/bin/pve-backup-check.py])=0",
+                                "name": "PVE - Backup Check Script Missing",
+                                "priority": "HIGH",
+                                "description": "The backup check script has been removed from this host.",
+                                "manual_close": "YES"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "8f97233e6b7848449cf0d132753f285a",
+                        "name": "PVE - Monthly Hoover Script Exists",
+                        "key": "vfs.file.exists[/usr/local/bin/pve-monthly-hoover.sh]",
+                        "delay": "1h",
+                        "history": "1d",
+                        "trends": "1d",
+                        "units": "bool",
+                        "description": "Check if monthly hoover script exists (1=exists, 0=missing)",
+                        "triggers": [
+                            {
+                                "uuid": "0c4360a887264b078169205ee29da91c",
+                                "expression": "last(/Proxmox Health Checkup/vfs.file.exists[/usr/local/bin/pve-monthly-hoover.sh])=0",
+                                "name": "PVE - Monthly Hoover Script Missing",
+                                "priority": "HIGH",
+                                "description": "The monthly hoover script is missing.\nAction: Re-deploy /usr/local/bin/pve-monthly-hoover.sh",
+                                "manual_close": "YES"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "ef291186012047a4b4a1b2c2297657e5",
+                        "name": "PVE - /usr/local/bin/pve-snapshot-check.py Script exists",
+                        "key": "vfs.file.exists[/usr/local/bin/pve-snapshot-check.py]",
+                        "delay": "1h",
+                        "history": "1d",
+                        "trends": "1d",
+                        "description": "/usr/local/bin/pve-snapshot-check.py is the script which does the heavy lifting for snapshot checks.",
+                        "triggers": [
+                            {
+                                "uuid": "bab0dc0991cd49589ddde6d4343fe82a",
+                                "expression": "last(/Proxmox Health Checkup/vfs.file.exists[/usr/local/bin/pve-snapshot-check.py])=0",
+                                "name": "PVE - Snapshot Check Script Missing",
+                                "priority": "HIGH",
+                                "description": "The snapshot check script has been removed from this host.",
+                                "manual_close": "YES"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "785bf91a5c574141887aeba157718ca4",
+                        "name": "/usr/local/bin/qm_type.sh script exists",
+                        "key": "vfs.file.exists[/usr/local/bin/qm_type.sh]",
+                        "delay": "1h",
+                        "history": "1d",
+                        "trends": "1d",
+                        "description": "1 = /usr/local/bin/qm_type.sh is installed, 0 = missing.",
+                        "triggers": [
+                            {
+                                "uuid": "3770c27ed5d643cbaf5c1f844ed88390",
+                                "expression": "last(/Proxmox Health Checkup/vfs.file.exists[/usr/local/bin/qm_type.sh])=0",
+                                "name": "/usr/local/bin/qm_type.sh file not installed",
+                                "priority": "WARNING",
+                                "manual_close": "YES"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "4704d2248f6944489058c20052f75a42",
+                        "name": "jq package installed",
+                        "key": "vfs.file.exists[/usr/share/doc/jq/copyright]",
+                        "delay": "6h",
+                        "history": "1d",
+                        "trends": "0",
+                        "triggers": [
+                            {
+                                "uuid": "31c17a49a7cd448c8a069babff63aedf",
+                                "expression": "last(/Proxmox Health Checkup/vfs.file.exists[/usr/share/doc/jq/copyright])=0",
+                                "name": "PVE - {HOST.NAME} jq package not installed",
+                                "priority": "INFO",
+                                "description": "sudo apt install jq"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "ccd6081d7ac2433890ff2260ecebfd91",
+                        "name": "unattended-upgrades package",
+                        "key": "vfs.file.exists[/usr/share/man/man8/unattended-upgrade.8.gz]",
+                        "delay": "30m",
+                        "history": "1d",
+                        "trends": "0",
+                        "description": "Check if unattended-upgrades is installed",
+                        "triggers": [
+                            {
+                                "uuid": "c8f14c87fd46415fbfbdb93c05578aa5",
+                                "expression": "last(/Proxmox Health Checkup/vfs.file.exists[/usr/share/man/man8/unattended-upgrade.8.gz])=0",
+                                "name": "{HOST.NAME} unattended-upgrades package not installed",
+                                "priority": "WARNING"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "336076bea76442629c0384c85eb94b7b",
+                        "name": "/etc/apt/apt.conf.d/50unattended-upgrades Mail Address",
+                        "key": "vfs.file.regmatch[/etc/apt/apt.conf.d/50unattended-upgrades,^Unattended-Upgrade::Mail \"backup\\.logs@example.com\";]",
+                        "delay": "1h",
+                        "history": "1d",
+                        "trends": "0",
+                        "description": "/etc/apt/apt.conf.d/50unattended-upgrades needs the line set to:\n\nUnattended-Upgrade::Mail \"backup\\.logs@example.com\";\n\nsed -i 's|^//Unattended-Upgrade::Mail \"\";|Unattended-Upgrade::Mail \"backup.logs@example.com\";|' /etc/apt/apt.conf.d/50unattended-upgrades",
+                        "triggers": [
+                            {
+                                "uuid": "effe3d49eb7a44ee8fd61d98d2910c08",
+                                "expression": "last(/Proxmox Health Checkup/vfs.file.regmatch[/etc/apt/apt.conf.d/50unattended-upgrades,^Unattended-Upgrade::Mail \"backup\\.logs@example.com\";])=0",
+                                "name": "Unattended-upgrades mail address not set to backup.logs@example.com",
+                                "priority": "WARNING"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "2c54fd27ca54495a98b88149286a2611",
+                        "name": "/etc/apt/apt.conf.d/50unattended-upgrades MailReport set to on-change",
+                        "key": "vfs.file.regmatch[/etc/apt/apt.conf.d/50unattended-upgrades,^Unattended-Upgrade::MailReport \"on-change\";]",
+                        "delay": "1h",
+                        "history": "1d",
+                        "trends": "0",
+                        "description": "/etc/apt/apt.conf.d/50unattended-upgrades needs the line set to:\n\nUnattended-Upgrade::MailReport \"on-change\";\n\nsed -i 's|^//Unattended-Upgrade::MailReport \"on-change\";|Unattended-Upgrade::MailReport \"on-change\";|' /etc/apt/apt.conf.d/50unattended-upgrades",
+                        "triggers": [
+                            {
+                                "uuid": "44d9f5f4e5d64639a497532ab7e1826a",
+                                "expression": "last(/Proxmox Health Checkup/vfs.file.regmatch[/etc/apt/apt.conf.d/50unattended-upgrades,^Unattended-Upgrade::MailReport \"on-change\";])=0",
+                                "name": "Unattended-upgrades MailReport not set to on-change",
+                                "priority": "WARNING"
+                            }
+                        ]
+                    }
+                ],
+                "discovery_rules": [
+                    {
+                        "uuid": "d5ec19e020c4461c8df0066b16c5a5b5",
+                        "name": "Guest VM Discovery",
+                        "type": "DEPENDENT",
+                        "key": "pve.backup.guest.discovery",
+                        "delay": "0",
+                        "item_prototypes": [
+                            {
+                                "uuid": "c76b931cb0554e63a9a1da9c5bb8b316",
+                                "name": "{#NAME} last backup age",
+                                "type": "DEPENDENT",
+                                "key": "pve.backup.guest.age[{#VMID}]",
+                                "delay": "0",
+                                "history": "7d",
+                                "value_type": "FLOAT",
+                                "trends": "0",
+                                "units": "h",
+                                "preprocessing": [
+                                    {
+                                        "type": "JSONPATH",
+                                        "parameters": [
+                                            "$.{#ARRAY}[?(@.vmid=={#VMID})].last_backup_age_hours.first()"
+                                        ],
+                                        "error_handler": "CUSTOM_VALUE",
+                                        "error_handler_params": "-1"
+                                    }
+                                ],
+                                "master_item": {
+                                    "key": "vfs.file.contents[/tmp/pve-backup-check.json]"
+                                },
+                                "tags": [
+                                    {
+                                        "tag": "component",
+                                        "value": "backup"
+                                    },
+                                    {
+                                        "tag": "guest",
+                                        "value": "{#NAME}"
+                                    }
+                                ]
+                            },
+                            {
+                                "uuid": "41826d3cd23744e0a8edbb4981545ec4",
+                                "name": "{#NAME} backup count",
+                                "type": "DEPENDENT",
+                                "key": "pve.backup.guest.count[{#VMID}]",
+                                "delay": "0",
+                                "history": "7d",
+                                "trends": "0",
+                                "preprocessing": [
+                                    {
+                                        "type": "JSONPATH",
+                                        "parameters": [
+                                            "$.{#ARRAY}[?(@.vmid=={#VMID})].backup_count.first()"
+                                        ]
+                                    }
+                                ],
+                                "master_item": {
+                                    "key": "vfs.file.contents[/tmp/pve-backup-check.json]"
+                                },
+                                "tags": [
+                                    {
+                                        "tag": "component",
+                                        "value": "backup"
+                                    },
+                                    {
+                                        "tag": "guest",
+                                        "value": "{#NAME}"
+                                    }
+                                ]
+                            },
+                            {
+                                "uuid": "993e5a1b28c344a9a3e47adf480e868c",
+                                "name": "{#NAME} expected backup interval",
+                                "type": "DEPENDENT",
+                                "key": "pve.backup.guest.expected[{#VMID}]",
+                                "delay": "0",
+                                "history": "7d",
+                                "value_type": "FLOAT",
+                                "trends": "0",
+                                "units": "h",
+                                "preprocessing": [
+                                    {
+                                        "type": "JSONPATH",
+                                        "parameters": [
+                                            "$.{#ARRAY}[?(@.vmid=={#VMID})].expected_interval_hours.first()"
+                                        ],
+                                        "error_handler": "CUSTOM_VALUE",
+                                        "error_handler_params": "-1"
+                                    }
+                                ],
+                                "master_item": {
+                                    "key": "vfs.file.contents[/tmp/pve-backup-check.json]"
+                                },
+                                "tags": [
+                                    {
+                                        "tag": "component",
+                                        "value": "backup"
+                                    },
+                                    {
+                                        "tag": "guest",
+                                        "value": "{#NAME}"
+                                    }
+                                ]
+                            },
+                            {
+                                "uuid": "6f3b3aef7286400aa1a6547d400ad486",
+                                "name": "{#NAME} last backup time",
+                                "type": "DEPENDENT",
+                                "key": "pve.backup.guest.last[{#VMID}]",
+                                "delay": "0",
+                                "history": "7d",
+                                "value_type": "TEXT",
+                                "trends": "0",
+                                "preprocessing": [
+                                    {
+                                        "type": "JSONPATH",
+                                        "parameters": [
+                                            "$.{#ARRAY}[?(@.vmid=={#VMID})].last_backup_ctime.first()"
+                                        ],
+                                        "error_handler": "CUSTOM_VALUE",
+                                        "error_handler_params": "never"
+                                    }
+                                ],
+                                "master_item": {
+                                    "key": "vfs.file.contents[/tmp/pve-backup-check.json]"
+                                },
+                                "tags": [
+                                    {
+                                        "tag": "component",
+                                        "value": "backup"
+                                    },
+                                    {
+                                        "tag": "guest",
+                                        "value": "{#NAME}"
+                                    }
+                                ]
+                            },
+                            {
+                                "uuid": "39ee98cfa52d4936b85c63b98b58fd99",
+                                "name": "{#NAME} backup overdue by",
+                                "type": "DEPENDENT",
+                                "key": "pve.backup.guest.overdue[{#VMID}]",
+                                "delay": "0",
+                                "history": "7d",
+                                "value_type": "FLOAT",
+                                "trends": "0",
+                                "units": "h",
+                                "preprocessing": [
+                                    {
+                                        "type": "JSONPATH",
+                                        "parameters": [
+                                            "$.{#ARRAY}[?(@.vmid=={#VMID})].overdue_hours.first()"
+                                        ],
+                                        "error_handler": "CUSTOM_VALUE",
+                                        "error_handler_params": "0"
+                                    }
+                                ],
+                                "master_item": {
+                                    "key": "vfs.file.contents[/tmp/pve-backup-check.json]"
+                                },
+                                "tags": [
+                                    {
+                                        "tag": "component",
+                                        "value": "backup"
+                                    },
+                                    {
+                                        "tag": "guest",
+                                        "value": "{#NAME}"
+                                    }
+                                ]
+                            },
+                            {
+                                "uuid": "b8aaa31d4994485ab23ab23856050ae5",
+                                "name": "{#NAME} backup status reason",
+                                "type": "DEPENDENT",
+                                "key": "pve.backup.guest.reason[{#VMID}]",
+                                "delay": "0",
+                                "history": "7d",
+                                "value_type": "TEXT",
+                                "trends": "0",
+                                "preprocessing": [
+                                    {
+                                        "type": "JSONPATH",
+                                        "parameters": [
+                                            "$.{#ARRAY}[?(@.vmid=={#VMID})].reason.first()"
+                                        ],
+                                        "error_handler": "CUSTOM_VALUE",
+                                        "error_handler_params": "no reason reported (script older than v1.2)"
+                                    }
+                                ],
+                                "master_item": {
+                                    "key": "vfs.file.contents[/tmp/pve-backup-check.json]"
+                                },
+                                "tags": [
+                                    {
+                                        "tag": "component",
+                                        "value": "backup"
+                                    },
+                                    {
+                                        "tag": "guest",
+                                        "value": "{#NAME}"
+                                    }
+                                ]
+                            },
+                            {
+                                "uuid": "5377a871b02040e589259b7ca75f558a",
+                                "name": "{#NAME} backup severity",
+                                "type": "DEPENDENT",
+                                "key": "pve.backup.guest.severity[{#VMID}]",
+                                "delay": "0",
+                                "history": "7d",
+                                "value_type": "FLOAT",
+                                "trends": "0",
+                                "valuemap": {
+                                    "name": "PVE backup severity"
+                                },
+                                "preprocessing": [
+                                    {
+                                        "type": "JSONPATH",
+                                        "parameters": [
+                                            "$.{#ARRAY}[?(@.vmid=={#VMID})].severity_int.first()"
+                                        ]
+                                    }
+                                ],
+                                "master_item": {
+                                    "key": "vfs.file.contents[/tmp/pve-backup-check.json]"
+                                },
+                                "tags": [
+                                    {
+                                        "tag": "component",
+                                        "value": "backup"
+                                    },
+                                    {
+                                        "tag": "guest",
+                                        "value": "{#NAME}"
+                                    }
+                                ]
+                            },
+                            {
+                                "uuid": "cdac03e898544d638a8b39468c2d86ea",
+                                "name": "{#NAME} not in any backup job",
+                                "type": "DEPENDENT",
+                                "key": "pve.backup.guest.unmanaged[{#VMID}]",
+                                "delay": "0",
+                                "history": "7d",
+                                "trends": "0",
+                                "valuemap": {
+                                    "name": "Yes/No"
+                                },
+                                "preprocessing": [
+                                    {
+                                        "type": "JSONPATH",
+                                        "parameters": [
+                                            "$.{#ARRAY}[?(@.vmid=={#VMID})].unmanaged.first()"
+                                        ]
+                                    },
+                                    {
+                                        "type": "BOOL_TO_DECIMAL",
+                                        "parameters": [
+                                            ""
+                                        ]
+                                    },
+                                    {
+                                        "type": "DISCARD_UNCHANGED_HEARTBEAT",
+                                        "parameters": [
+                                            "6h"
+                                        ]
+                                    }
+                                ],
+                                "master_item": {
+                                    "key": "vfs.file.contents[/tmp/pve-backup-check.json]"
+                                },
+                                "tags": [
+                                    {
+                                        "tag": "component",
+                                        "value": "backup"
+                                    },
+                                    {
+                                        "tag": "guest",
+                                        "value": "{#NAME}"
+                                    }
+                                ]
+                            },
+                            {
+                                "uuid": "74de4f7be79d4bb4828b20e0c10b740b",
+                                "name": "{#NAME} last backup verification",
+                                "type": "DEPENDENT",
+                                "key": "pve.backup.guest.verify[{#VMID}]",
+                                "delay": "0",
+                                "history": "7d",
+                                "value_type": "TEXT",
+                                "trends": "0",
+                                "preprocessing": [
+                                    {
+                                        "type": "JSONPATH",
+                                        "parameters": [
+                                            "$.{#ARRAY}[?(@.vmid=={#VMID})].last_backup_verification.first()"
+                                        ],
+                                        "error_handler": "CUSTOM_VALUE",
+                                        "error_handler_params": "none"
+                                    }
+                                ],
+                                "master_item": {
+                                    "key": "vfs.file.contents[/tmp/pve-backup-check.json]"
+                                },
+                                "tags": [
+                                    {
+                                        "tag": "component",
+                                        "value": "backup"
+                                    },
+                                    {
+                                        "tag": "guest",
+                                        "value": "{#NAME}"
+                                    }
+                                ]
+                            }
+                        ],
+                        "trigger_prototypes": [
+                            {
+                                "uuid": "a6658d62693a425eace02b592094f8d7",
+                                "expression": "last(/Proxmox Health Checkup/pve.backup.guest.severity[{#VMID}])=1 and {$PVE.BACKUP.IGNORE:\"{#VMID}\"}=0 and length(last(/Proxmox Health Checkup/pve.backup.guest.reason[{#VMID}]))>=0",
+                                "name": "{#TYPE} {#NAME} ({#VMID}) on {HOST.NAME}: backup overdue or unverified",
+                                "opdata": "{ITEM.LASTVALUE2}",
+                                "priority": "WARNING",
+                                "manual_close": "YES",
+                                "dependencies": [
+                                    {
+                                        "name": "{#TYPE} {#NAME} ({#VMID}) on {HOST.NAME}: stopped and unprotected, or backup verify failed",
+                                        "expression": "last(/Proxmox Health Checkup/pve.backup.guest.severity[{#VMID}])=2 and {$PVE.BACKUP.IGNORE:\"{#VMID}\"}=0 and length(last(/Proxmox Health Checkup/pve.backup.guest.reason[{#VMID}]))>=0"
+                                    }
+                                ],
+                                "tags": [
+                                    {
+                                        "tag": "component",
+                                        "value": "backup"
+                                    },
+                                    {
+                                        "tag": "guest",
+                                        "value": "{#NAME}"
+                                    },
+                                    {
+                                        "tag": "vmid",
+                                        "value": "{#VMID}"
+                                    }
+                                ]
+                            },
+                            {
+                                "uuid": "6d66e9334bd14cf1b80ddb36b8dad888",
+                                "expression": "last(/Proxmox Health Checkup/pve.backup.guest.severity[{#VMID}])=-1 and {$PVE.BACKUP.IGNORE:\"{#VMID}\"}=0 and length(last(/Proxmox Health Checkup/pve.backup.guest.reason[{#VMID}]))>=0",
+                                "name": "{#TYPE} {#NAME} ({#VMID}) on {HOST.NAME}: backup state unknown",
+                                "opdata": "{ITEM.LASTVALUE2}",
+                                "priority": "INFO",
+                                "manual_close": "YES",
+                                "dependencies": [
+                                    {
+                                        "name": "{#TYPE} {#NAME} ({#VMID}) on {HOST.NAME}: backup overdue or unverified",
+                                        "expression": "last(/Proxmox Health Checkup/pve.backup.guest.severity[{#VMID}])=1 and {$PVE.BACKUP.IGNORE:\"{#VMID}\"}=0 and length(last(/Proxmox Health Checkup/pve.backup.guest.reason[{#VMID}]))>=0"
+                                    }
+                                ],
+                                "tags": [
+                                    {
+                                        "tag": "component",
+                                        "value": "backup"
+                                    },
+                                    {
+                                        "tag": "guest",
+                                        "value": "{#NAME}"
+                                    },
+                                    {
+                                        "tag": "vmid",
+                                        "value": "{#VMID}"
+                                    }
+                                ]
+                            },
+                            {
+                                "uuid": "0428097caaf04302bb6c6bd6744073f6",
+                                "expression": "last(/Proxmox Health Checkup/pve.backup.guest.severity[{#VMID}])=3 and {$PVE.BACKUP.IGNORE:\"{#VMID}\"}=0 and length(last(/Proxmox Health Checkup/pve.backup.guest.reason[{#VMID}]))>=0",
+                                "name": "{#TYPE} {#NAME} ({#VMID}) on {HOST.NAME}: not backed up or critically overdue",
+                                "opdata": "{ITEM.LASTVALUE2}",
+                                "priority": "HIGH",
+                                "manual_close": "YES",
+                                "dependencies": [
+                                    {
+                                        "name": "PVE - {HOST.NAME} backup report missing",
+                                        "expression": "last(/Proxmox Health Checkup/vfs.file.exists[/tmp/pve-backup-check.json])=0"
+                                    },
+                                    {
+                                        "name": "PVE - {HOST.NAME} backup report stale (>13h)",
+                                        "expression": "fuzzytime(/Proxmox Health Checkup/pve.backup.generated.unix,46800)=0"
+                                    },
+                                    {
+                                        "name": "PVE - {HOST.NAME} no backup jobs read from cluster",
+                                        "expression": "last(/Proxmox Health Checkup/pve.backup.jobs.count)=0 and (last(/Proxmox Health Checkup/pve.vms.backup.total.checked)+last(/Proxmox Health Checkup/pve.lxc.backup.total.checked))>0"
+                                    },
+                                    {
+                                        "name": "PVE - {HOST.NAME} no backup storages visible",
+                                        "expression": "last(/Proxmox Health Checkup/pve.backup.storages.count)=0"
+                                    }
+                                ],
+                                "tags": [
+                                    {
+                                        "tag": "component",
+                                        "value": "backup"
+                                    },
+                                    {
+                                        "tag": "guest",
+                                        "value": "{#NAME}"
+                                    },
+                                    {
+                                        "tag": "vmid",
+                                        "value": "{#VMID}"
+                                    }
+                                ]
+                            },
+                            {
+                                "uuid": "e1bca88e01374c5ba47d8bdd483b353f",
+                                "expression": "last(/Proxmox Health Checkup/pve.backup.guest.severity[{#VMID}])=2 and {$PVE.BACKUP.IGNORE:\"{#VMID}\"}=0 and length(last(/Proxmox Health Checkup/pve.backup.guest.reason[{#VMID}]))>=0",
+                                "name": "{#TYPE} {#NAME} ({#VMID}) on {HOST.NAME}: stopped and unprotected, or backup verify failed",
+                                "opdata": "{ITEM.LASTVALUE2}",
+                                "priority": "AVERAGE",
+                                "manual_close": "YES",
+                                "dependencies": [
+                                    {
+                                        "name": "{#TYPE} {#NAME} ({#VMID}) on {HOST.NAME}: not backed up or critically overdue",
+                                        "expression": "last(/Proxmox Health Checkup/pve.backup.guest.severity[{#VMID}])=3 and {$PVE.BACKUP.IGNORE:\"{#VMID}\"}=0 and length(last(/Proxmox Health Checkup/pve.backup.guest.reason[{#VMID}]))>=0"
+                                    }
+                                ],
+                                "tags": [
+                                    {
+                                        "tag": "component",
+                                        "value": "backup"
+                                    },
+                                    {
+                                        "tag": "guest",
+                                        "value": "{#NAME}"
+                                    },
+                                    {
+                                        "tag": "vmid",
+                                        "value": "{#VMID}"
+                                    }
+                                ]
+                            }
+                        ],
+                        "master_item": {
+                            "key": "vfs.file.contents[/tmp/pve-backup-check.json]"
+                        },
+                        "preprocessing": [
+                            {
+                                "type": "JAVASCRIPT",
+                                "parameters": [
+                                    "var r = JSON.parse(value), out = [];\n[['vms','VM'],['lxc','CT']].forEach(function (p) {\n  (r[p[0]] || []).forEach(function (g) {\n    if (g.template) return;\n    out.push({'{#VMID}': String(g.vmid), '{#NAME}': g.name, '{#TYPE}': p[1], '{#ARRAY}': p[0]});\n  });\n});\nreturn JSON.stringify(out);"
+                                ]
+                            }
+                        ]
+                    }
+                ],
+                "macros": [
+                    {
+                        "macro": "{$PVE.BACKUP.IGNORE}",
+                        "value": "0",
+                        "description": "Per-guest override: {$PVE.BACKUP.IGNORE:\"<vmid>\"}=1 on a host to silence that guest"
+                    },
+                    {
+                        "macro": "{$PVE_BACKUP_SCRIPT_CKSUM}",
+                        "value": "3932868279"
+                    },
+                    {
+                        "macro": "{$PVE_HOOVER_SCRIPT_CKSUM}",
+                        "value": "3861992809",
+                        "description": "echo \"SCRIPT:  $(cksum /usr/local/bin/pve-monthly-hoover.sh | awk '{print $1}')\""
+                    },
+                    {
+                        "macro": "{$PVE_HOOVER_SERVICE_CKSUM}",
+                        "value": "1313715235",
+                        "description": "echo \"SERVICE: $(cksum /etc/systemd/system/pve-monthly-hoover.service | awk '{print $1}')\""
+                    },
+                    {
+                        "macro": "{$PVE_HOOVER_TIMER_CKSUM}",
+                        "value": "1262067610",
+                        "description": "echo \"TIMER:   $(cksum /etc/systemd/system/pve-monthly-hoover.timer   | awk '{print $1}')\""
+                    },
+                    {
+                        "macro": "{$PVE_SNAPSHOT_SCRIPT_CKSUM}",
+                        "value": "555983063"
+                    },
+                    {
+                        "macro": "{$PVE_TRIM_ENABLE_CKSUM}",
+                        "value": "221063360",
+                        "description": "echo \"TRIM:   $(cksum /usr/local/bin/enable_vm_trim_discard.sh  | awk '{print $1}')\""
+                    },
+                    {
+                        "macro": "{$QM_TYPE_CKSUM}",
+                        "value": "66485853",
+                        "description": "echo \"QMTYPE:   $(cksum /usr/local/bin/qm_type.sh  | awk '{print $1}')\""
+                    }
+                ],
+                "valuemaps": [
+                    {
+                        "uuid": "d338c2cbc9ce460aafd27e102d999ebe",
+                        "name": "PVE backup severity",
+                        "mappings": [
+                            {
+                                "value": "-1",
+                                "newvalue": "Unknown"
+                            },
+                            {
+                                "value": "0",
+                                "newvalue": "OK"
+                            },
+                            {
+                                "value": "1",
+                                "newvalue": "Warning"
+                            },
+                            {
+                                "value": "2",
+                                "newvalue": "High"
+                            },
+                            {
+                                "value": "3",
+                                "newvalue": "Critical"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "ab887abf079644f4860762b68ea7dca3",
+                        "name": "Yes/No",
+                        "mappings": [
+                            {
+                                "value": "0",
+                                "newvalue": "No"
+                            },
+                            {
+                                "value": "1",
+                                "newvalue": "Yes"
+                            }
+                        ]
+                    }
+                ]
+            }
+        ],
+        "triggers": [
+            {
+                "uuid": "31418840ec744a0a94ac73e7f84860ef",
+                "expression": "last(/Proxmox Health Checkup/pve.lxc.with.snapshots)>0 and length(last(/Proxmox Health Checkup/pve.lxc.snapshot.with.snapshots.names))>=0",
+                "name": "PVE - {HOST.NAME} has {ITEM.LASTVALUE1} container(s) with snapshots: {ITEM.LASTVALUE2}",
+                "priority": "HIGH",
+                "manual_close": "YES"
+            },
+            {
+                "uuid": "2d347b93176043a996140e6103630083",
+                "expression": "last(/Proxmox Health Checkup/pve.snapshot.unknown.count)>0 and length(last(/Proxmox Health Checkup/pve.vms.snapshot.unknown.names))>=0 and length(last(/Proxmox Health Checkup/pve.lxc.snapshot.unknown.names))>=0",
+                "name": "PVE - {HOST.NAME} has {ITEM.LASTVALUE1} UNKNOWN snapshot guest(s)",
+                "opdata": "VMs: {ITEM.LASTVALUE2} Containers: {ITEM.LASTVALUE3}",
+                "priority": "AVERAGE",
+                "description": "One or more guests on {HOST.NAME} could not be queried by pvesh. This may indicate pveproxy is down, a guest is in an inconsistent state, or the script does not have sufficient permissions.\n\nCheck: journalctl -u pve-snapshot-check.service -n 50",
+                "manual_close": "YES"
+            },
+            {
+                "uuid": "f8708a5ada434b08b9e5240ed511eed4",
+                "expression": "last(/Proxmox Health Checkup/pve.snapshot.vms.with.snapshots)>0 and length(last(/Proxmox Health Checkup/pve.vms.snapshot.with.snapshots.names))>=0",
+                "name": "PVE - {HOST.NAME} has {ITEM.LASTVALUE1} VM(s) with snapshots: {ITEM.LASTVALUE2}",
+                "priority": "HIGH",
+                "description": "One or more QEMU VMs on {HOST.NAME} have at least one snapshot.",
+                "manual_close": "YES"
+            },
+            {
+                "uuid": "16e39abaceba4f2a8f01d1eeff77c937",
+                "expression": "last(/Proxmox Health Checkup/pve.snapshot.warning.count)>0 and length(last(/Proxmox Health Checkup/pve.vms.snapshot.warning.names))>=0 and length(last(/Proxmox Health Checkup/pve.lxc.snapshot.warning.names))>=0",
+                "name": "PVE - {HOST.NAME} has {ITEM.LASTVALUE1} WARNING snapshot guest(s)",
+                "opdata": "VMs: {ITEM.LASTVALUE2} Containers: {ITEM.LASTVALUE3}",
+                "priority": "AVERAGE",
+                "description": "One or more guests on {HOST.NAME} are at WARNING snapshot severity.",
+                "manual_close": "YES"
+            },
+            {
+                "uuid": "b8bbc318e2df4ac69626c9a4a436c07f",
+                "expression": "last(/Proxmox Health Checkup/pve.backup.jobs.count)=0 and (last(/Proxmox Health Checkup/pve.vms.backup.total.checked)+last(/Proxmox Health Checkup/pve.lxc.backup.total.checked))>0",
+                "name": "PVE - {HOST.NAME} no backup jobs read from cluster",
+                "priority": "HIGH"
+            }
+        ]
+    }
+}
