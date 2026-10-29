@@ -386,7 +386,12 @@ def load_address_policy(policy_path: Path, role_codes_path: Path = None):
   #     suppresses the generic placeholder instead of duplicating it, the same mechanism WAP/SBC
   #     etc. already rely on.
   STANDARD_OFFSETS.clear()
-  FULL_RENDER_TYPES = {"SWI", "NAS", "RDR", "BMC", "WAP", "SBC", "WKS", "LAP", "FWL"}
+  FULL_RENDER_TYPES = {"SWI", "NAS", "RDR", "BMC", "WAP", "SBC", "WKS", "LAP", "FWL", "PBS"}
+  # PBS added 2026-10-29, same reasoning as NAS: a real devices.csv row (e.g.
+  # FAL,PBS,1,14) must override the generic "Standard PBS slot" placeholder
+  # with the real device's own Notes, not be silently dropped in favour of
+  # the synthesized entry -- confirmed missing live, FAL's real row wasn't
+  # rendering until this was added.
   for role, offset in OFFSETS_SINGLE.items():
     if role in FULL_RENDER_TYPES:
       continue
@@ -1203,7 +1208,12 @@ def validate_csv_structure(rows):
 # loop over ROLE_OFFSETS.items(), which NAS/RDR were never in; caught via --emit-devices-json
 # showing 1-2 entries instead of ~51 before this was fixed). BMC/WAP genuinely are ROLE_OFFSETS
 # roles, so DNS_MULTI_FIRST_INSTANCE_ONLY is the correct list for them.
-DNS_SINGLE_ROLES = ["RTR", "SBC", "NAS", "RDR"]
+DNS_SINGLE_ROLES = ["RTR", "SBC", "NAS", "RDR", "PBS"]
+# PBS added 2026-10-29 -- same shape as NAS/RDR above (an OFFSETS_SINGLE role,
+# registered in address_policy.csv as PBS,14,no), same reasoning: every real
+# site WILL eventually have one, first real box is EXAPBSFAL001. Robert's
+# explicit ask, estate-wide PBS rollout: "we'll have a bunch of DNS records,
+# maps and 'default at every site'."
 # SWI moved here 2026-07-30 (was DNS_MULTI_FIRST_INSTANCE_ONLY, first-instance-only, since
 # 2026-07-14) -- Robert's explicit call: treat SWI exactly like FWL, every site always gets DNS
 # records for all 3 standard slots regardless of how many switches are actually racked. Real

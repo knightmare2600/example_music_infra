@@ -18,6 +18,7 @@
 # Units deployed (source: ansible/playbooks/proxmox/files/):
 #   /etc/systemd/system/pve-monthly-hoover.{service,timer}
 #   /etc/systemd/system/pve-snapshot-check.{service,timer}
+#   /etc/systemd/system/pve-backup-check.{service,timer}
 #   /etc/systemd/system/proxmox-replica-nic-guard.{service,timer}
 #   /etc/systemd/system/proxmox-zfs-vm-audit.{service,timer}
 #   /etc/zabbix/zabbix_agentd.d/proxmox-nic-guard.conf
@@ -31,6 +32,9 @@
 # Tags: systemd_units
 # =============================================================================
 # Changelog:
+#   2026-10-29  Added pve-backup-check.service/.timer -- feeds the standalone
+#               "Proxmox Health Checkup" Zabbix template. Runs every 6 hours
+#               (OnCalendar=*-*-* 00/6:15:00), per the unit's own schedule.
 #   2026-07-06  Initial file — extracted from pve_onboard.yml as part of the
 #               numbered-stage split (see 00-preflight.yml). Gated behind
 #               pve_run_full_onboard so a refresh run against an
@@ -77,6 +81,8 @@
         - pve-monthly-hoover.timer
         - pve-snapshot-check.service
         - pve-snapshot-check.timer
+        - pve-backup-check.service
+        - pve-backup-check.timer
         - proxmox-replica-nic-guard.service
         - proxmox-replica-nic-guard.timer
         - proxmox-zfs-vm-audit.service
@@ -101,6 +107,7 @@
       loop:
         - pve-monthly-hoover.timer
         - pve-snapshot-check.timer
+        - pve-backup-check.timer
         - proxmox-replica-nic-guard.timer
         - proxmox-zfs-vm-audit.timer
       when: pve_run_full_onboard | default(true) | bool
