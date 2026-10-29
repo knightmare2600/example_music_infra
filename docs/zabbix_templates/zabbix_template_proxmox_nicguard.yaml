@@ -1,11 +1,11 @@
 zabbix_export:
   version: '7.0'
   template_groups:
-    - uuid: e5a1f0b2-c3d4-4e5f-a6b7-c8d9e0f1a2b3
+    - uuid: e5a1f0b2c3d44e5fa6b7c8d9e0f1a2b3
       name: Templates/Proxmox
 
   templates:
-    - uuid: f6b2a1c3-d4e5-4f60-b7c8-d9e0f1a2b3c4
+    - uuid: f6b2a1c3d4e54f60b7c8d9e0f1a2b3c4
       template: Proxmox Replica NIC Guard
       name: Proxmox Replica NIC Guard
       description: |
@@ -57,7 +57,7 @@ zabbix_export:
       items:
 
         # ── Master item ──────────────────────────────────────────────────────
-        - uuid: a1b2c3d4-e5f6-4a7b-8c9d-e0f1a2b3c4d5
+        - uuid: a1b2c3d4e5f64a7b8c9de0f1a2b3c4d5
           name: 'NIC Guard: JSON report (master)'
           type: ZABBIX_ACTIVE
           key: 'vfs.file.contents[/var/log/proxmox-replica-nic-guard.json]'
@@ -76,7 +76,7 @@ zabbix_export:
             - tag: item-type
               value: master
           triggers:
-            - uuid: a3b4c5d6-e7f8-4a9b-0c1d-e2f3a4b5c6d7
+            - uuid: a3b4c5d6e7f84a9b0c1de2f3a4b5c6d7
               expression: >-
                 nodata(/Proxmox Replica NIC Guard/vfs.file.contents[/var/log/proxmox-replica-nic-guard.json],5h)=1
               name: 'NIC Guard: no report received for >5 hours — guard may have stopped'
@@ -96,7 +96,7 @@ zabbix_export:
                   value: availability
 
         # ── NICs connected on stopped replicas (PRIMARY ALERT METRIC) ────────
-        - uuid: b2c3d4e5-f6a7-4b8c-9d0e-f1a2b3c4d5e6
+        - uuid: b2c3d4e5f6a74b8c9d0ef1a2b3c4d5e6
           name: 'NIC Guard: NICs connected on stopped replicas'
           type: DEPENDENT
           key: proxmox.nicguard.nics_connected_on_stopped
@@ -128,7 +128,7 @@ zabbix_export:
             - tag: scope
               value: network-safety
           triggers:
-            - uuid: c9d0e1f2-a3b4-4c5d-6e7f-a8b9c0d1e2f3
+            - uuid: c9d0e1f2a3b44c5d6e7fa8b9c0d1e2f3
               expression: 'last(/Proxmox Replica NIC Guard/proxmox.nicguard.nics_connected_on_stopped) > 0'
               name: 'Replica NIC(s) found connected on stopped VMs ({ITEM.LASTVALUE} NIC(s))'
               event_name: 'Proxmox replica NIC exposed on stopped VM — {ITEM.LASTVALUE} NIC(s) found connected'
@@ -150,7 +150,7 @@ zabbix_export:
                   value: network-safety
 
         # ── NICs that failed to disconnect ──────────────────────────────────
-        - uuid: d4e5f6a7-b8c9-4d0e-1f2a-b3c4d5e6f7a8
+        - uuid: d4e5f6a7b8c94d0e1f2ab3c4d5e6f7a8
           name: 'NIC Guard: NICs failed to disconnect'
           type: DEPENDENT
           key: proxmox.nicguard.nics_fix_failed
@@ -175,7 +175,7 @@ zabbix_export:
             - tag: scope
               value: network-safety
           triggers:
-            - uuid: e1f2a3b4-c5d6-4e7f-8a9b-c0d1e2f3a4b5
+            - uuid: e1f2a3b4c5d64e7f8a9bc0d1e2f3a4b5
               expression: 'last(/Proxmox Replica NIC Guard/proxmox.nicguard.nics_fix_failed) > 0'
               name: 'NIC Guard FAILED to disconnect {ITEM.LASTVALUE} replica NIC(s) — replicas at risk'
               priority: HIGH
@@ -192,7 +192,7 @@ zabbix_export:
                   value: network-safety
 
         # ── Script errors ────────────────────────────────────────────────────
-        - uuid: c3d4e5f6-a7b8-4c9d-0e1f-a2b3c4d5e6f7
+        - uuid: c3d4e5f6a7b84c9d0e1fa2b3c4d5e6f7
           name: 'NIC Guard: errors'
           type: DEPENDENT
           key: proxmox.nicguard.errors
@@ -214,7 +214,7 @@ zabbix_export:
             - tag: component
               value: proxmox-nic-guard
           triggers:
-            - uuid: d0e1f2a3-b4c5-4d6e-7f8a-b9c0d1e2f3a4
+            - uuid: d0e1f2a3b4c54d6e7f8ab9c0d1e2f3a4
               expression: 'last(/Proxmox Replica NIC Guard/proxmox.nicguard.errors) > 0'
               name: 'NIC Guard ran with {ITEM.LASTVALUE} error(s)'
               priority: AVERAGE
@@ -229,7 +229,7 @@ zabbix_export:
                   value: proxmox-nic-guard
 
         # ── Dry-run mode warning ──────────────────────────────────────────────
-        - uuid: b8c9d0e1-f2a3-4b4c-5d6e-f7a8b9c0d1e2
+        - uuid: b8c9d0e1f2a34b4c5d6ef7a8b9c0d1e2
           name: 'NIC Guard: dry-run mode active'
           type: DEPENDENT
           key: proxmox.nicguard.dry_run
@@ -251,7 +251,7 @@ zabbix_export:
             - tag: component
               value: proxmox-nic-guard
           triggers:
-            - uuid: f2a3b4c5-d6e7-4f8a-9b0c-d1e2f3a4b5c6
+            - uuid: f2a3b4c5d6e74f8a9b0cd1e2f3a4b5c6
               expression: 'last(/Proxmox Replica NIC Guard/proxmox.nicguard.dry_run) = 1'
               name: 'NIC Guard running in DRY-RUN mode — no NICs are being disconnected'
               priority: INFO
@@ -265,7 +265,7 @@ zabbix_export:
                   value: proxmox-nic-guard
 
         # ── Informational counters ────────────────────────────────────────────
-        - uuid: e5f6a7b8-c9d0-4e1f-2a3b-c4d5e6f7a8b9
+        - uuid: e5f6a7b8c9d04e1f2a3bc4d5e6f7a8b9
           name: 'NIC Guard: NICs disconnected this run'
           type: DEPENDENT
           key: proxmox.nicguard.nics_disconnected
@@ -287,7 +287,7 @@ zabbix_export:
             - tag: component
               value: proxmox-nic-guard
 
-        - uuid: f6a7b8c9-d0e1-4f2a-3b4c-d5e6f7a8b9c0
+        - uuid: f6a7b8c9d0e14f2a3b4cd5e6f7a8b9c0
           name: 'NIC Guard: replicated VM count'
           type: DEPENDENT
           key: proxmox.nicguard.replicated_vm_count
@@ -307,7 +307,7 @@ zabbix_export:
             - tag: component
               value: proxmox-nic-guard
 
-        - uuid: a7b8c9d0-e1f2-4a3b-4c5d-e6f7a8b9c0d1
+        - uuid: a7b8c9d0e1f24a3b4c5de6f7a8b9c0d1
           name: 'NIC Guard: VMs skipped (active task)'
           type: DEPENDENT
           key: proxmox.nicguard.vms_skipped_busy
@@ -327,7 +327,7 @@ zabbix_export:
             - tag: component
               value: proxmox-nic-guard
 
-        - uuid: a8b9c0d1-e2f3-4a4b-5c6d-e7f8a9b0c1d2
+        - uuid: a8b9c0d1e2f34a4b5c6de7f8a9b0c1d2
           name: 'NIC Guard: last run timestamp'
           type: DEPENDENT
           key: proxmox.nicguard.timestamp
