@@ -147,10 +147,21 @@
     - fw_is_black_site
     - fw_black_site_confirm.user_input | trim | upper != 'CONFIRM'
 
+# Tagged nftables too, 2026-10-29: unlike the generic fw_wg_role default
+# ("spoke", defaults/main.yml -- correct for every non-CLD site, confirmed
+# architecturally, every firewall peers only with CLD), CLD itself needs this
+# override and has no other source for it. This specific task needs no
+# interactive input at all (fw_is_black_site is already deterministic, see
+# 00_preflight_1_derive.yml, also tagged nftables) -- deliberately NOT also
+# tagging the black-site CONFIRM/ABORT pair above, which stays interactive-
+# only and is correctly skipped under a narrow nftables-only re-run: that
+# human safety check is for the original build, not a routine ruleset reload
+# of an already-confirmed site.
 - name: "[Ask] Force WG role to hub-regional for CLD"
   ansible.builtin.set_fact:
     fw_wg_role: "hub-regional"
   when: fw_is_black_site
+  tags: [nftables]
 
 # ── Hub bootstrap detection (2026-07-18) ─────────────────────────────────────
 # Mirrors windows_dc's dc_is_forest_root guard: is this the estate's designated
@@ -262,24 +273,39 @@
     - fw_wan_iface_override is not defined
     - fw_noninteractive | default(false) | bool
 
+# Real live bug, 2026-10-29: a narrow `--tags nftables` re-run (the playbook's own
+# header advertises this) crashed with "'fw_wan_iface' is undefined" -- this task is
+# the only place that sets it, and it only carried this file's own import-level tags
+# (preflight, ask, wan, wireguard), not nftables. Fixed by adding nftables below, same
+# as 00_preflight_1_derive.yml/00_preflight_2_interfaces.yml's own import tags (both
+# pure, non-interactive derivation -- safe to always pull in). The two prompt tasks
+# this logic can fall back to (fw_wan_override/fw_wan_manual, registered by tasks
+# further up this file) deliberately do NOT get the nftables tag -- they stay
+# interactive-only, so under a narrow nftables-only run they're genuinely never
+# registered at all (not even as a skipped stub, tag-excluded tasks aren't evaluated),
+# hence the "is defined" guards below instead of the bare ".user_input | default('')"
+# this previously relied on, which would have thrown the exact same class of error one
+# level deeper the moment this fix made it past the first one.
 - name: "[Ask] Set final WAN interface"
   ansible.builtin.set_fact:
     fw_wan_iface: >-
       {%- if fw_wan_iface_override is defined -%}
         {{ fw_wan_iface_override }}
       {%- elif fw_wan_detected -%}
-        {%- set override = fw_wan_override.user_input | default('') | trim -%}
-        {{ override if override != '' else fw_wan_iface_detected }}
+        {%- set override = (fw_wan_override.user_input | default('')) if fw_wan_override is defined else '' -%}
+        {{ (override | trim) if (override | trim) != '' else fw_wan_iface_detected }}
       {%- else -%}
-        {%- set manual = fw_wan_manual.user_input | default('') | trim -%}
-        {{ manual if manual != '' else (fw_available_ifaces[0] | default('ens33')) }}
+        {%- set manual = (fw_wan_manual.user_input | default('')) if fw_wan_manual is defined else '' -%}
+        {{ (manual | trim) if (manual | trim) != '' else (fw_available_ifaces[0] | default('ens33')) }}
       {%- endif -%}
+  tags: [nftables]
 
 # ── LAN interface (was 01_interfaces.yml) ────────────────────────────────────
 
 - name: "[Ask] Build LAN candidates"
   ansible.builtin.set_fact:
     fw_lan_candidates: "{{ fw_available_ifaces | reject('equalto', fw_wan_iface) | list }}"
+  tags: [nftables]
 
 - name: "[Ask] Show remaining interfaces for LAN"
   ansible.builtin.debug:
@@ -299,9 +325,10 @@
       {%- if fw_lan_iface_override is defined -%}
         {{ fw_lan_iface_override }}
       {%- else -%}
-        {%- set inp = fw_lan_prompt.user_input | default('') | trim -%}
-        {{ inp if inp != '' else (fw_lan_candidates[0] | default('ens34')) }}
+        {%- set inp = (fw_lan_prompt.user_input | default('')) if fw_lan_prompt is defined else '' -%}
+        {{ (inp | trim) if (inp | trim) != '' else (fw_lan_candidates[0] | default('ens34')) }}
       {%- endif -%}
+  tags: [nftables]
 
 - name: "[Ask] FAIL — LAN and WAN cannot be the same"
   ansible.builtin.fail:
