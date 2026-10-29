@@ -1,6 +1,11 @@
 # Procedure: PBS NFS Datastore on QNAP & PVE Node Storage
 
-Oct 28, 2026 · @Robert
+## Changelog
+
+| Date | Change |
+|---|---|
+| 2026-10-28 | Initial document — PBS NFS datastore on QNAP, connecting PVE nodes to PBS, local ZFS storage build on an ex-ESXi node (Robert) |
+| 2026-10-29 | Sanitized for this repo — real hostnames/IPs replaced with FAL's real identifiers from `devices.csv` (`EXAPBSFAL001`/`EXANASFAL001`/`EXAPVEFAL001`, `192.168.76.0/24`), PBS cert fingerprint randomized |
 
 ## Overview
 
