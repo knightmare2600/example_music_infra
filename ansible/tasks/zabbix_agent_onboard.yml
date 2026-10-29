@@ -586,6 +586,39 @@
       no_log: true
       when: zbx_host_check.json.result | length > 0
 
+    # 2026-10-29, real live finding: ansible.builtin.uri's status_code: 200 only
+    # validates the HTTP layer -- Zabbix's JSON-RPC API returns HTTP 200 even for an
+    # API-level error (bad token, validation failure), with the real failure sitting
+    # in the response body's "error" key instead. Neither host.create nor host.update
+    # above ever looked at that key, so a silent API-level failure printed the same
+    # cheerful "Registration summary" below as a genuine success, while the server
+    # never actually got the host/PSK -- confirmed live: EXAFWLABD001 never existed as
+    # a Zabbix host at all despite this file having run against it with no error
+    # reported anywhere. fail: here routes it into the existing rescue: block below,
+    # so it gets the same manual-fallback PSK printout a hard connection failure
+    # already gets -- no new UX, just making a real failure loud instead of silent.
+    # No no_log needed on these two -- a JSON-RPC error response never contains the
+    # "result"/PSK fields the other tasks' no_log: true is actually protecting.
+    - name: "[Zabbix] FAIL if host.create returned an API-level error"
+      ansible.builtin.fail:
+        msg: >-
+          host.create API error for {{ zbx_real_hostname }}:
+          {{ zbx_host_create.json.error.message }} -- {{ zbx_host_create.json.error.data | default('') }}
+      when:
+        - zbx_host_create is defined
+        - zbx_host_create.json is defined
+        - zbx_host_create.json.error is defined
+
+    - name: "[Zabbix] FAIL if host.update returned an API-level error"
+      ansible.builtin.fail:
+        msg: >-
+          host.update API error for {{ zbx_real_hostname }}:
+          {{ zbx_host_update.json.error.message }} -- {{ zbx_host_update.json.error.data | default('') }}
+      when:
+        - zbx_host_update is defined
+        - zbx_host_update.json is defined
+        - zbx_host_update.json.error is defined
+
     - name: "[Zabbix] Registration summary"
       ansible.builtin.debug:
         msg: >-

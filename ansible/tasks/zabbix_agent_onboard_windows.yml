@@ -508,6 +508,34 @@
     no_log: true
     when: zbx_host_check.json.result | length > 0
 
+  # 2026-10-29, same real finding as the Linux file's own matching fix: status_code:
+  # 200 only validates the HTTP layer -- a Zabbix JSON-RPC API-level error (bad token,
+  # validation failure) still returns HTTP 200, with the failure sitting in the
+  # response body's "error" key, which neither host.create nor host.update above ever
+  # checked. fail: here routes it into the existing rescue: block below, same
+  # manual-fallback PSK printout a hard connection failure already gets. No no_log
+  # needed -- an error response never contains the "result"/PSK fields the other
+  # tasks' no_log: true is protecting.
+  - name: "[Zabbix] FAIL if host.create returned an API-level error"
+    ansible.builtin.fail:
+      msg: >-
+        host.create API error for {{ zbx_win_hostname }}:
+        {{ zbx_host_create.json.error.message }} -- {{ zbx_host_create.json.error.data | default('') }}
+    when:
+      - zbx_host_create is defined
+      - zbx_host_create.json is defined
+      - zbx_host_create.json.error is defined
+
+  - name: "[Zabbix] FAIL if host.update returned an API-level error"
+    ansible.builtin.fail:
+      msg: >-
+        host.update API error for {{ zbx_win_hostname }}:
+        {{ zbx_host_update.json.error.message }} -- {{ zbx_host_update.json.error.data | default('') }}
+    when:
+      - zbx_host_update is defined
+      - zbx_host_update.json is defined
+      - zbx_host_update.json.error is defined
+
   - name: "[Zabbix] Registration summary"
     ansible.builtin.debug:
       msg: >-
