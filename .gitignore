@@ -297,3 +297,13 @@ legwork/
 ###############################################################################
 
 docs/zabbix_templates/ex[0-9]*.json
+
+###############################################################################
+# Robert's own real, production-tested reference material (scripts, procedures,
+# the Proxmox health Zabbix template, etc) dropped in at the repo root -- MUST NOT
+# be committed (Robert's explicit instruction, 2026-10-29). Real production
+# material from elsewhere, same category as the ex*.json files above, may contain
+# real usernames/hostnames/paths that must never reach git.
+###############################################################################
+
+/private/
