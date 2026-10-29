@@ -18,11 +18,6 @@
             "name": "Templates/Example Music"
           }
         ],
-        "templates": [
-          {
-            "name": "linuxtools_examplemusic"
-          }
-        ],
         "items": [
           {
             "uuid": "8dc08120b6df4efd9c98d543d9cc3918",
@@ -3268,6 +3263,31 @@
             ]
           },
           {
+            "uuid": "391c20fe5c2341fab2ebd975a750f48a",
+            "name": "nodeinfo.json contents, tacticalrmm extras (master)",
+            "type": "ZABBIX_ACTIVE",
+            "key": "vfs.file.contents[/etc/example-music/nodeinfo.json,UTF-8]",
+            "delay": "1h",
+            "history": "7d",
+            "trends": "0",
+            "value_type": "TEXT",
+            "description": "Raw nodeinfo.json content -- master item for this template's own 1 tacticalrmm-specific examplemusic.nodeinfo.* dependent item below (static_ip). Deliberately a SEPARATE item from linuxtools_examplemusic's own vfs.file.contents[/etc/example-music/nodeinfo.json] master (same file, read twice -- negligible cost, a local file read), NOT a cross-template DEPENDENT reference to it -- the original templates:[linuxtools_examplemusic] parent-link this template had is REMOVED, 2026-10-29 (Robert's sweep, fixing the same bug class as proxmox/cloudpanel/bind9): Zabbix refuses to link a template declaring another as its parent to any host that ALSO links that parent directly, which is every host here. Same fix as firewall_examplemusic/proxmox_examplemusic's own master item of this shape -- see feedback_zabbix_duplicate_item_keys_across_templates.md for the full finding. The UTF-8 encoding param exists purely to give this item a distinct key from linuxtools' own bare-key item. No staleness trigger of its own -- linuxtools' own master item's nodata() trigger already covers this same file going stale, one alert, not duplicated here.",
+            "tags": [
+              {
+                "tag": "component",
+                "value": "tacticalrmm"
+              },
+              {
+                "tag": "scope",
+                "value": "nodeinfo"
+              },
+              {
+                "tag": "item-type",
+                "value": "master"
+              }
+            ]
+          },
+          {
             "uuid": "84719f9135a84948b3aa3791d5b2dfa7",
             "name": "nodeinfo: static_ip (tacticalrmm-specific)",
             "type": "DEPENDENT",
@@ -3288,7 +3308,7 @@
               }
             ],
             "master_item": {
-              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json]"
+              "key": "vfs.file.contents[/etc/example-music/nodeinfo.json,UTF-8]"
             },
             "preprocessing": [
               {
