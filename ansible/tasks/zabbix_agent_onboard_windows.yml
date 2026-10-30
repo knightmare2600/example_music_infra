@@ -411,6 +411,13 @@
     become: false
     when: zbx_host_check.json.result | length == 0
 
+    # 2026-10-30, same real bug as INC-2026-10-30-WG-ALLOWEDIPS's session, found live on
+    # EXADNSVRK001 (Linux side, ansible/tasks/zabbix_agent_onboard.yml): a role-specific
+    # companion template can already have the base companion template linked as its own
+    # parent on the live server (template inheritance, not visible in the static JSON
+    # export) -- linking both directly to a host fails with "parent template ... would be
+    # linked twice". selectParentTemplates here so host.create below can detect and skip
+    # windows_tools_examplemusic whenever a role template already inherits it.
   - name: "[Zabbix] Get this host's role-specific companion template ID, if one exists"
     ansible.builtin.uri:
       url: "http://{{ site_services.zabbix.ip }}/api_jsonrpc.php"
@@ -424,6 +431,7 @@
         params:
           filter:
             host: ["{{ zbx_role_template_name }}"]
+          selectParentTemplates: ["templateid"]
         id: 1
       status_code: 200
     register: zbx_template_role_specific
@@ -432,6 +440,17 @@
     when:
       - zbx_host_check.json.result | length == 0
       - zbx_role_template_name != ''
+
+  - name: "[Zabbix] Set fact -- does the role-specific template already inherit windows_tools_examplemusic?"
+    set_fact:
+      zbx_role_template_already_has_windowstools: >-
+        {{
+          zbx_role_template_name != ''
+          and zbx_template_role_specific.json.result | default([]) | length > 0
+          and zbx_template_windowstools.json.result[0].templateid in
+              (zbx_template_role_specific.json.result[0].parentTemplates | default([]) | map(attribute='templateid') | list)
+        }}
+    when: zbx_host_check.json.result | length == 0
 
   - name: "[Zabbix] Register host via host.create (own agent interface + description)"
     ansible.builtin.uri:
@@ -454,10 +473,9 @@
             }}
           templates: >-
             {{
-              [
-                {'templateid': zbx_template_stock.json.result[0].templateid},
-                {'templateid': zbx_template_windowstools.json.result[0].templateid}
-              ]
+              [{'templateid': zbx_template_stock.json.result[0].templateid}]
+              + ([] if zbx_role_template_already_has_windowstools | default(false)
+                 else [{'templateid': zbx_template_windowstools.json.result[0].templateid}])
               + ([{'templateid': zbx_template_role_specific.json.result[0].templateid}]
                  if (zbx_role_template_name != '' and zbx_template_role_specific.json.result | length > 0)
                  else [])

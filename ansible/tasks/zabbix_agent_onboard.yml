@@ -486,6 +486,18 @@
       become: false
       when: zbx_host_check.json.result | length == 0
 
+    # 2026-10-30, real live bug found on EXADNSVRK001: bind9_examplemusic already has
+    # linuxtools_examplemusic linked as its own parent template on the real server (not
+    # visible in docs/zabbix_templates/zabbix_template_bind9.json's own export -- this is
+    # live server state, built up via template inheritance, not a flat template) --
+    # host.create failed outright: "Cannot link template bind9_examplemusic to host
+    # EXADNSVRK001, because its parent template linuxtools_examplemusic would be linked
+    # twice." Zabbix refuses linking a template to a host when one of the OTHER templates
+    # already being linked is also that template's own parent -- linking the child alone
+    # already brings the parent's items/triggers along. selectParentTemplates here so the
+    # host.create task below can detect this and skip adding linuxtools_examplemusic
+    # directly whenever the role-specific template already inherits it, rather than
+    # assuming every role template is flat.
     - name: "[Zabbix] Get this host's role-specific companion template ID, if one exists"
       ansible.builtin.uri:
         url: "http://{{ site_services.zabbix.ip }}/zabbix/api_jsonrpc.php"
@@ -499,6 +511,7 @@
           params:
             filter:
               host: ["{{ zbx_role_template_name }}"]
+            selectParentTemplates: ["templateid"]
           id: 1
         status_code: 200
       register: zbx_template_role_specific
@@ -507,6 +520,17 @@
       when:
         - zbx_host_check.json.result | length == 0
         - zbx_role_template_name != ''
+
+    - name: "[Zabbix] Set fact -- does the role-specific template already inherit linuxtools_examplemusic?"
+      set_fact:
+        zbx_role_template_already_has_linuxtools: >-
+          {{
+            zbx_role_template_name != ''
+            and zbx_template_role_specific.json.result | default([]) | length > 0
+            and zbx_template_linuxtools.json.result[0].templateid in
+                (zbx_template_role_specific.json.result[0].parentTemplates | default([]) | map(attribute='templateid') | list)
+          }}
+      when: zbx_host_check.json.result | length == 0
 
     - name: "[Zabbix] Register host via host.create (own agent interface + description)"
       ansible.builtin.uri:
@@ -529,10 +553,9 @@
               }}
             templates: >-
               {{
-                [
-                  {'templateid': zbx_template_stock.json.result[0].templateid},
-                  {'templateid': zbx_template_linuxtools.json.result[0].templateid}
-                ]
+                [{'templateid': zbx_template_stock.json.result[0].templateid}]
+                + ([] if zbx_role_template_already_has_linuxtools | default(false)
+                   else [{'templateid': zbx_template_linuxtools.json.result[0].templateid}])
                 + ([{'templateid': zbx_template_role_specific.json.result[0].templateid}]
                    if (zbx_role_template_name != '' and zbx_template_role_specific.json.result | length > 0)
                    else [])
