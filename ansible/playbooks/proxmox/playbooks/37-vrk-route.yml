@@ -60,6 +60,16 @@
 
   tasks:
 
+    # 2026-10-30: genuinely standalone-safe, unlike 35-pools.yml's own usage comment
+    # (same host_site dependency, same real live bug: 2026-10-08, "'host_site' is
+    # undefined" running --tags pools without 00-preflight.yml's facts in the same
+    # invocation -- see that file's own task comment). Included directly here rather
+    # than assumed, so this file's own "Usage: ansible-playbook ... 37-vrk-route.yml"
+    # comment is actually true, not just inherited optimism.
+    - name: Include hostname facts
+      include_tasks: ../../../tasks/hostname_facts.yml
+      tags: [vrk_route, always]
+
     - name: Skip — not a VRK-hosted node
       ansible.builtin.debug:
         msg: >-
