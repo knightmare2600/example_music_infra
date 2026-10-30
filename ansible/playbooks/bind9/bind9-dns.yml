@@ -508,10 +508,23 @@
       set_fact:
         _dns_own_site_code: "{{ this_hostname | upper | regex_search('^EXA[A-Z]{2,4}([A-Z]{3})[0-9]{3}$', '\\1') | first }}"
 
+    # 2026-10-30, real bug found live: this used to search `sites` -- the list already
+    # filtered to exclude BRD/VRK/N-A rows for the allow-recursion/routing fixes earlier
+    # the same day (INC-2026-10-30-WG-ALLOWEDIPS). VRK's own row is real and has real
+    # data (Street, PostalCode, OfficeName, etc. -- confirmed in benarbejde/sites.csv,
+    # "2 Rue Kellermann"/59100/"Planet Earth") -- it's excluded from `sites` because
+    # VRK isn't a normal spoke site to loop over for ACLs/topology, not because its own
+    # row is bad data. Searching `sites` for EXADNSVRK001's own row therefore always
+    # returned nothing, silently blanking nodeinfo_city/street_address/postal_code/etc.
+    # below on every single run, re-run or not -- nothing about those fields has
+    # anything to do with the ACL/routing exclusion this host's own row was never
+    # meant to be part of. Fixed by searching sites_raw.list (the genuinely raw CSV
+    # read, before any filtering) instead -- correct for every site, VRK included, and
+    # zero behaviour change for any non-VRK host (never excluded from `sites` anyway).
     - name: "[site] Look up this host's own site row"
       tags: always
       set_fact:
-        _dns_own_site_row: "{{ sites | selectattr('Site', 'equalto', _dns_own_site_code) | list | first | default({}) }}"
+        _dns_own_site_row: "{{ sites_raw.list | selectattr('Site', 'equalto', _dns_own_site_code) | list | first | default({}) }}"
 
     # -------------------------------------------------------------------------
     # Merged device list -- single source for both this play's cld_black_swan_hosts
