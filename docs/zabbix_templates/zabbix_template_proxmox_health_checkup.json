@@ -1086,6 +1086,24 @@
                         ]
                     },
                     {
+                        "uuid": "d64f1aae37e5477f8fe133d332ee9c7b",
+                        "name": "/usr/local/bin/qm_copy_spec.sh script checksum",
+                        "key": "vfs.file.cksum[/usr/local/bin/qm_copy_spec.sh]",
+                        "delay": "1h",
+                        "history": "1d",
+                        "trends": "0",
+                        "description": "/usr/local/bin/qm_copy_spec.sh clones an existing VM's config shape (disks/NICs) onto a new, already-created VMID -- new empty disk volumes of the same size/storage, MACs dropped so PVE generates new ones, no actual disk contents copied.",
+                        "triggers": [
+                            {
+                                "uuid": "4f894261cb0346c2aeefa5092e00640a",
+                                "expression": "last(/Proxmox Health Checkup/vfs.file.cksum[/usr/local/bin/qm_copy_spec.sh])<>{$QM_COPY_SPEC_CKSUM} and {$QM_COPY_SPEC_CKSUM}<>0",
+                                "name": "PVE script /usr/local/bin/qm_copy_spec.sh checksum mismatch on {HOST.NAME}",
+                                "priority": "INFO",
+                                "manual_close": "YES"
+                            }
+                        ]
+                    },
+                    {
                         "uuid": "93238f96c28f45188cbf13e3e99f8ed8",
                         "name": "PVE - Backup Check Report (master)",
                         "key": "vfs.file.contents[/tmp/pve-backup-check.json]",
@@ -1413,6 +1431,24 @@
                                 "uuid": "3770c27ed5d643cbaf5c1f844ed88390",
                                 "expression": "last(/Proxmox Health Checkup/vfs.file.exists[/usr/local/bin/qm_type.sh])=0",
                                 "name": "/usr/local/bin/qm_type.sh file not installed",
+                                "priority": "WARNING",
+                                "manual_close": "YES"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "e170b12683b0476f99f72a8ca2ba9d6a",
+                        "name": "/usr/local/bin/qm_copy_spec.sh script exists",
+                        "key": "vfs.file.exists[/usr/local/bin/qm_copy_spec.sh]",
+                        "delay": "1h",
+                        "history": "1d",
+                        "trends": "1d",
+                        "description": "1 = /usr/local/bin/qm_copy_spec.sh is installed, 0 = missing.",
+                        "triggers": [
+                            {
+                                "uuid": "f5cf6a6d39804d728f324b6e519c83f8",
+                                "expression": "last(/Proxmox Health Checkup/vfs.file.exists[/usr/local/bin/qm_copy_spec.sh])=0",
+                                "name": "/usr/local/bin/qm_copy_spec.sh file not installed",
                                 "priority": "WARNING",
                                 "manual_close": "YES"
                             }
@@ -1981,8 +2017,13 @@
                     },
                     {
                         "macro": "{$QM_TYPE_CKSUM}",
-                        "value": "66485853",
-                        "description": "echo \"QMTYPE:   $(cksum /usr/local/bin/qm_type.sh  | awk '{print $1}')\""
+                        "value": "1645603185",
+                        "description": "echo \"QMTYPE:   $(cksum /usr/local/bin/qm_type.sh  | awk '{print $1}')\" -- 2026-10-30: corrected to match the actual deployed file (88efee1); the value that was here (66485853) didn't match any real content checked against private/qm_type.sh"
+                    },
+                    {
+                        "macro": "{$QM_COPY_SPEC_CKSUM}",
+                        "value": "1049016697",
+                        "description": "echo \"QMCOPYSPEC:   $(cksum /usr/local/bin/qm_copy_spec.sh  | awk '{print $1}')\""
                     }
                 ],
                 "valuemaps": [
