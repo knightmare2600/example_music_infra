@@ -833,25 +833,28 @@
             // 2026-10-12, real bug found live on EXADNSFRD001: this only ever allowed the
             // shared provisioning network -- a DNS box's own local site subnet was never
             // included, so hosts on its own LAN (e.g. EXADCSFRD001, on FRD's 172.16.124.0/24)
-            // got REFUSED on recursive (external-domain) lookups. _dns_own_site_row is
-            // empty for EXADNSVRK001 itself (VRK is deliberately excluded from the sites
-            // list -- it IS the provisioning network, already covered by the entry above),
-            // so the extra line is only added when there's a real local subnet to add.
+            // got REFUSED on recursive (external-domain) lookups. The extra line is only
+            // added when this host actually has a real per-site subnet of its own to add.
+            //
+            // 2026-10-30 FOLLOW-UP, real bug found live on EXADNSVRK001: this branch used
+            // to key off `_dns_own_site_row.Subnet` being empty to detect "this is the
+            // estate-wide resolver, not a per-site box" -- that broke the moment
+            // _dns_own_site_row was fixed (same day) to search sites_raw.list instead of
+            // the VRK-excluded `sites`, since it now correctly finds VRK's OWN row
+            // (Subnet=192.168.139.0/24) for this exact host. The "has an own subnet"
+            // branch below started firing for EXADNSVRK001 too, adding only a duplicate
+            // of VRK's own range and skipping the per-site loop entirely -- confirmed
+            // live: `named-checkconf -p` showed allow-recursion with 192.168.139.0/24
+            // listed twice and nothing else, every other site REFUSED again. Checking
+            // _dns_own_site_code directly (hostname-derived, unambiguous) instead of the
+            // row's own emptiness -- the row being populated is correct and wanted now
+            // (nodeinfo needs it), it was never a reliable signal for "is this VRK" to
+            // begin with, just a coincidence that stopped holding once the other bug
+            // was fixed.
             allow-recursion { 192.168.139.0/24; localhost;
-            {% if _dns_own_site_row.Subnet | default('') != '' %}
+            {% if _dns_own_site_code != 'VRK' %}
               {{ _dns_own_site_row.Subnet }};
             {% else %}
-              // 2026-10-30, real bug found live on EXADNSVRK001: _dns_own_site_row is
-              // deliberately empty here (VRK excluded from the per-site `sites` list,
-              // see above), so this host -- the estate-wide resolver, not a per-site
-              // local DNS box -- never got anything beyond VRK's own provisioning
-              // range. Every other site's LAN subnet was silently REFUSED on
-              // recursive (external-domain) lookups, confirmed live: `host google.com
-              // 192.168.139.8` from EXAANSCLD001 (192.168.69.0/24) timed out with no
-              // reply ever leaving this box's interface. `sites` is already the
-              // authoritative, loaded-once list every other section of this play
-              // uses (BRD/VRK/N-A rows already excluded) -- loop over all of it
-              // rather than adding a second hand-rolled list.
             {% for s in sites %}
               {{ s.Subnet }};
             {% endfor %}
