@@ -17,6 +17,13 @@
 #   2026-07-18  fw_is_black_site now derives from ad_forest.json's cld_site field instead
 #               of the hardcoded literal 'CLD' -- matches windows_dc's dc_cld_site pattern
 #               (group_vars/windows_dc/vars.yml). Part of the WireGuard hub-bootstrap plan.
+#   2026-10-30  Added fw_cld_vrk_ip -- real bug found live, same root cause already fixed
+#               in bind9-dns.yml the same day: feedback_vrack_masquerade_broke_zabbix_allowlist's
+#               masquerade exclusion means every firewall's WAN interface now sees CLD LAN's
+#               real source IP (192.168.69.x) instead of CLD's masqueraded identity, but
+#               fw_wan_static_gw (the shared VRK gateway, 192.168.139.254) has no route back
+#               to it -- confirmed live: SSH from EXAANSCLD001 to EXAFWLABD001/EXAFWLFAL001's
+#               WAN addresses both timed out. See wan.nmconnection.j2 for the fix.
 # =============================================================================
 
 # ── Parse hostname ────────────────────────────────────────────────────────────
@@ -99,6 +106,12 @@
     fw_dhcp_start:     "192.168.{{ fw_site_octet }}.150"
     fw_dhcp_end:       "192.168.{{ fw_site_octet }}.250"
     fw_wg_tunnel_net:  "10.0.{{ fw_site_octet }}.0/24"
+    # 2026-10-30: CLD's own VRK-facing IP, derived the same way fw_wan_static_ip
+    # derives *this* firewall's -- reusing wg_site_octets (already loaded above)
+    # rather than hardcoding the literal 192.168.139.69. Needed so every other
+    # firewall can route a reply back to CLD's LAN (192.168.69.0/24) via CLD --
+    # see wan.nmconnection.j2's own comment for why this is now required.
+    fw_cld_vrk_ip:     "192.168.139.{{ wg_site_octets['CLD'] | default('') }}"
 
 # ── LAN IP — derived from instance number, not asked ─────────────────────────
 # Robert, 2026-07-17: the standard-slot convention is fixed, not an operator choice --
