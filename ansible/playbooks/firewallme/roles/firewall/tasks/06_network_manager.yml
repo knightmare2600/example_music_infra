@@ -114,6 +114,16 @@
 #               related gap: no live-address-mismatch strand-check for LAN, unlike WAN's above.
 #               Added the same detect-and-defer pattern, just protecting the site's downstream
 #               devices from a silently-repointed gateway instead of this session specifically.
+#   2026-10-30  BUG FIX, real live symptom: SSH from EXAANSCLD001 to EXAFWLABD001/
+#               EXAFWLFAL001's own WAN addresses both timed out, same root cause already
+#               found and fixed in bind9-dns.yml the same day (see that file's own
+#               2026-10-30 changelog entry). fw_wan_static_gw (every static-WAN firewall's
+#               shared VRK gateway, 192.168.139.254) has no route back to CLD's LAN -- this
+#               never mattered before feedback_vrack_masquerade_broke_zabbix_allowlist's
+#               masquerade exclusion, which stopped hiding every LAN->VRK packet behind
+#               CLD's own identity. wan.nmconnection.j2 now adds that route for every
+#               non-CLD firewall, next-hop fw_cld_vrk_ip (00_preflight_1_derive.yml,
+#               derived from wg_site_octets rather than hardcoded).
 # =============================================================================
 
 # ── Remove stale auto-created NM connections for our interfaces ───────────────
