@@ -299,6 +299,21 @@
 #               changelog for the full root-cause story), found via a repo-wide grep
 #               for the same hardcoded-full-word pattern across every nodeinfo_role:
 #               assignment.
+#   2026-10-30  BUG FIX, real live symptom on EXADNSVRK001 (the estate-wide resolver):
+#               named.conf.options' allow-recursion ACL only ever carried
+#               192.168.139.0/24 (VRK) plus localhost -- the 2026-10-12 fix above
+#               correctly added a DNS box's own LAN subnet for a *per-site* local DNS
+#               instance (_dns_own_site_row.Subnet), but EXADNSVRK001 has no "own
+#               site" (VRK is deliberately excluded from the `sites` list), so that
+#               branch never fired here and no other site's LAN was ever added
+#               either. Every site's hosts got silently REFUSED on recursive
+#               (external-domain) lookups through this server -- confirmed live via
+#               `host google.com 192.168.139.8` from EXAANSCLD001 (192.168.69.0/24)
+#               timing out with zero reply packets ever leaving EXADNSVRK001's
+#               interface (tcpdump on EXAFWLCLD001's ens18 during a live retry).
+#               Fixed by looping over the full `sites` list (already loaded once
+#               earlier in this same play, BRD/VRK/N-A rows already excluded) when
+#               _dns_own_site_row is empty, instead of adding nothing.
 # =============================================================================
 
 # 2026-10-11, Robert's ask: this file never imported the ssh_preflight_with_fallback.yml
@@ -770,6 +785,21 @@
             allow-recursion { 192.168.139.0/24; localhost;
             {% if _dns_own_site_row.Subnet | default('') != '' %}
               {{ _dns_own_site_row.Subnet }};
+            {% else %}
+              // 2026-10-30, real bug found live on EXADNSVRK001: _dns_own_site_row is
+              // deliberately empty here (VRK excluded from the per-site `sites` list,
+              // see above), so this host -- the estate-wide resolver, not a per-site
+              // local DNS box -- never got anything beyond VRK's own provisioning
+              // range. Every other site's LAN subnet was silently REFUSED on
+              // recursive (external-domain) lookups, confirmed live: `host google.com
+              // 192.168.139.8` from EXAANSCLD001 (192.168.69.0/24) timed out with no
+              // reply ever leaving this box's interface. `sites` is already the
+              // authoritative, loaded-once list every other section of this play
+              // uses (BRD/VRK/N-A rows already excluded) -- loop over all of it
+              // rather than adding a second hand-rolled list.
+            {% for s in sites %}
+              {{ s.Subnet }};
+            {% endfor %}
             {% endif %}
             };
 
