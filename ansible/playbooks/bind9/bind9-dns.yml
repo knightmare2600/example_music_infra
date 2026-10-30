@@ -314,6 +314,20 @@
 #               Fixed by looping over the full `sites` list (already loaded once
 #               earlier in this same play, BRD/VRK/N-A rows already excluded) when
 #               _dns_own_site_row is empty, instead of adding nothing.
+#   2026-10-30  FOLLOW-UP, same day, real bug found live: the routes added above
+#               (templates/prov-static.nmconnection.j2) all went via dns_vrk_relay_via
+#               (CLD's own WAN address) regardless of which site's subnet the route was
+#               actually for -- correct for CLD by coincidence, wrong for every other
+#               site. A query from, say, EXADCSFAL001 reaches EXADNSVRK001 directly
+#               (both FAL's firewall's WAN side and this host sit on the same flat VRK
+#               network) -- never via CLD at all. Routing the reply via CLD instead
+#               creates asymmetric routing that CLD's own forward chain (ct state
+#               established/related only, for ens18->wg0) correctly drops as an
+#               unrecognised new flow -- confirmed live, EXADCSFAL001 querying this host
+#               directly got no answer. Fixed by routing each site via ITS OWN
+#               firewall's WAN address instead -- every firewall's WAN side sits on the
+#               same flat VRK network as this host, so no site (CLD included) actually
+#               needs relaying through another firewall for this specific path.
 # =============================================================================
 
 # 2026-10-11, Robert's ask: this file never imported the ssh_preflight_with_fallback.yml
@@ -427,6 +441,17 @@
         # in that masquerade bug's own root-cause log). Only EXADNSVRK001 needs this --
         # a per-site DNS box's own dns_gateway is already that site's own firewall,
         # which already knows how to route everywhere via the existing WireGuard mesh.
+        #
+        # 2026-10-30 FOLLOW-UP, real bug found live: this value is now ONLY used as a
+        # gate ("is this the estate-wide resolver, does it need any of these routes at
+        # all") -- prov-static.nmconnection.j2 used to also use its VALUE as the next-hop
+        # for every site's route, which was wrong for every site except CLD itself (a
+        # query from, say, FAL goes directly to EXADNSVRK001 over the shared flat VRK
+        # network, never via CLD -- routing the reply via CLD instead creates asymmetric
+        # routing that CLD's own forward chain correctly drops as an unrecognised new
+        # flow). Confirmed live: EXADCSFAL001 querying EXADNSVRK001 directly got no
+        # answer. Each site's route now goes via THAT site's own firewall's WAN address
+        # instead -- see the template's own comment for the full mechanism.
         dns_vrk_relay_via: "{{ '192.168.139.69' if inventory_hostname == 'EXADNSVRK001' else '' }}"
 
     - name: Preflight -- refuse to guess a role-specific value that has no safe default
