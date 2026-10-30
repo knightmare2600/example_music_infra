@@ -16,9 +16,20 @@ dns-search={{ domain }};
 {% if dns_vrk_relay_via | default('') != '' %}
 {# EXADNSVRK001 only -- see bind9-dns.yml's dns_vrk_relay_via comment for why these
    are needed: the VRK default gateway above has no route back to any site's LAN,
-   and nothing masks that asymmetry for this host any more. #}
+   and nothing masks that asymmetry for this host any more.
+   2026-10-30, real bug found live: every route here used to go via dns_vrk_relay_via
+   (CLD's own WAN address) regardless of which site it was for -- correct for CLD by
+   coincidence (CLD's own WAN address IS "that site's own firewall"), wrong for every
+   other site. A query from, say, FAL goes DIRECTLY to this host (both FAL's firewall's
+   WAN side and this host sit on the same flat VRK network) -- never through CLD at
+   all. Routing the REPLY via CLD instead creates asymmetric routing: CLD never saw
+   the original query, so CLD's own forward chain (ct state established/related only,
+   for ens18->wg0) correctly drops the reply as an unrecognised new flow. Confirmed
+   live: EXADCSFAL001 querying this host directly got no answer at all. Fixed by
+   routing each site via ITS OWN firewall's WAN address (same flat VRK network, no
+   relay needed for any site, CLD included) rather than uniformly through CLD. #}
 {% for s in sites %}
-route{{ loop.index }}={{ s.Subnet }},{{ dns_vrk_relay_via }}
+route{{ loop.index }}={{ s.Subnet }},192.168.139.{{ s.Subnet.split('.')[2] }}
 {% endfor %}
 {% endif %}
 
