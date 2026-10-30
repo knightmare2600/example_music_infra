@@ -46,6 +46,10 @@
 #               path) -- same bug, same fix, same traffic pattern (a spoke's own WAN address
 #               replying through the tunnel, new as of feedback_vrack_masquerade_broke_zabbix_allowlist's
 #               masquerade exclusion).
+#   2026-10-30  FOLLOW-UP, same day: the "Live-add peer via wg set" task below had its own,
+#               separate inline copy of this list, missed in the first pass -- `wg set` REPLACES
+#               a peer's live AllowedIPs rather than merging, so it was silently undoing the
+#               blockinfile fix above on every re-run. Same fix applied to this copy too.
 #   2026-07-18  Added a wait_for reachability check against the spoke's port 22 before
 #               the SSH key-fetch tasks -- previously an unreachable spoke (not yet up,
 #               or mid-maintenance) hit a raw SSH failure via failed_when instead of a
@@ -373,7 +377,7 @@
       ansible.builtin.shell: |
         wg set wg0 peer {{ _spoke_pubkey }} \
           preshared-key /tmp/.wg-psk-{{ spoke_site }} \
-          allowed-ips {{ ([_spoke_tunnel_ip + '/32', _spoke_lan_subnet] + _spoke_extra_subnets) | join(',') }}
+          allowed-ips {{ ([_spoke_tunnel_ip + '/32', _spoke_lan_subnet, _spoke_ip + '/32'] + _spoke_extra_subnets) | join(',') }}
       when: _wg_conf_changed.changed
 
     - name: "[add-wg-spoke] Remove PSK tmpfile"

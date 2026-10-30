@@ -170,6 +170,13 @@
 # started existing today, as a direct consequence of feedback_vrack_masquerade_broke_zabbix_allowlist's
 # masquerade exclusion -- never anticipated when this AllowedIPs line was first written. Same gap
 # exists in playbooks/add-wg-spoke.yml's manual-fallback twin, fixed there too.
+# FOLLOW-UP, same day: the "Live-add peer via wg set" task below had its OWN, separate inline
+# copy of this same list, missed in the first sweep -- confirmed live on a genuine FAL re-run:
+# the blockinfile write above correctly wrote fw_wan_static_ip into wg0.conf on disk, but `wg
+# set` (which REPLACES the live daemon's AllowedIPs for a peer, not merges) pushed the OLD,
+# un-fixed list straight after, silently regressing the live state back to the original bug on
+# every re-registration -- even though the file on disk, and a `wg show` moments earlier that
+# morning (from the manual `wg set` hotfix), both looked correct. Fixed to match exactly.
 # BUG FIX (2026-07-24, found live on EXAFWLCLD001): all four tasks below already correctly
 # guard on `fw_wg_role == 'spoke'` in their `when:` -- but Ansible templates `delegate_to`
 # BEFORE evaluating `when:`, not after, so on a hub node (fw_wg_hub_ip is only ever set for a
@@ -215,7 +222,7 @@
   ansible.builtin.shell: |
     wg set wg0 peer {{ fw_wg_pubkey }} \
       preshared-key /tmp/.wg-psk-{{ fw_site_code }} \
-      allowed-ips {{ ([fw_wg_tunnel_ip + '/32', fw_subnet + '.0/24'] + (wg_site_extra_subnets[fw_site_code] | default([]))) | join(',') }}
+      allowed-ips {{ ([fw_wg_tunnel_ip + '/32', fw_subnet + '.0/24', fw_wan_static_ip + '/32'] + (wg_site_extra_subnets[fw_site_code] | default([]))) | join(',') }}
   delegate_to: "{{ fw_wg_hub_ip | default(inventory_hostname) }}"
   become: true
   changed_when: true
