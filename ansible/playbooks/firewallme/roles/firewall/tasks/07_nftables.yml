@@ -196,6 +196,21 @@
           iifname "{{ fw_wan_iface }}" tcp dport 10051 accept  comment "Zabbix proxy inbound (CLD)"
       {% endif %}
 
+          # 2026-10-30, real live bug, estate-wide: the Zabbix server's own passive-check
+          # poll to a firewall's agent arrives via fw_wan_iface direct (CLD's forward chain
+          # sends LAN->VRK traffic straight there, confirmed this same session), never via
+          # wg0 or the LAN interface -- neither of which this traffic ever actually uses.
+          # Every firewall except CLD had no rule at all permitting this, so the SYN was
+          # silently dropped by the default-reject policy, same shape as
+          # INC-2026-10-30-WG-ALLOWEDIPS but one layer further along (nftables input, not
+          # routing/AllowedIPs) -- confirmed live via conntrack on EXAFWLCLD001 showing a
+          # permanently SYN_SENT/UNREPLIED flow to EXAFWLFAL001:10050 throughout that
+          # incident, and visibly "unreachable" in the Zabbix web UI for both
+          # EXAFWLFAL001 and EXAPVEVRK001 once other fixes made it visible. Matches the
+          # LAN/wg0 rules' own pattern (no source restriction, same two ports) rather than
+          # inventing a new, narrower security posture unprompted.
+          iifname "{{ fw_wan_iface }}" tcp dport { 10050, 10051 } accept  comment "Zabbix agent via VRK relay"
+
           # ── WireGuard interface inbound ───────────────────────────────
       {% if fw_wg_role != 'none' %}
           # WireGuard tunnel — allow management protocols
