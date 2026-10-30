@@ -1328,7 +1328,9 @@ if [[ "$WG_ROLE" == "hub-primary" || "$WG_ROLE" == "hub-regional" ]]; then
     fetch_and_verify_hub_pubkey "FAL" "$FAL_IP"
     FAL_PUBKEY="$HUB_VERIFIED_PUBKEY"
 
-    WG_BACKUP_PEERS+=("${FAL_ENDPOINT}|${FAL_PUBKEY}|10.0.76.0/24,192.168.76.0/24|FAL-primary")
+    # 2026-10-30, same bug as INC-2026-10-30-WG-ALLOWEDIPS: FAL's own WAN address
+    # (FAL_IP, already resolved above) wasn't in its own AllowedIPs here either.
+    WG_BACKUP_PEERS+=("${FAL_ENDPOINT}|${FAL_PUBKEY}|10.0.76.0/24,192.168.76.0/24,${FAL_IP}/32|FAL-primary")
     echo
     info "You can also peer with other regional hubs (e.g. BRK↔ODE). Add them now or skip."
     while true; do
@@ -1342,7 +1344,10 @@ if [[ "$WG_ROLE" == "hub-primary" || "$WG_ROLE" == "hub-regional" ]]; then
       fetch_and_verify_hub_pubkey "$HP_CODE" "$HP_IP"
       HP_PUBKEY="$HUB_VERIFIED_PUBKEY"
       read -rp "  ${HUB_PEER_NAME} allowed subnets (comma-separated, e.g. 10.0.126.0/24,192.168.126.0/24): " HP_ALLOWED
-      WG_BACKUP_PEERS+=("${HP_ENDPOINT}|${HP_PUBKEY}|${HP_ALLOWED}|${HP_CODE}")
+      # 2026-10-30, same bug as INC-2026-10-30-WG-ALLOWEDIPS: appending this
+      # peer's own WAN address (HP_IP, already resolved above) automatically
+      # rather than relying on the operator to remember to type it too.
+      WG_BACKUP_PEERS+=("${HP_ENDPOINT}|${HP_PUBKEY}|${HP_ALLOWED},${HP_IP}/32|${HP_CODE}")
     done
   fi
 
@@ -1419,7 +1424,10 @@ elif [[ "$WG_ROLE" == "spoke" ]]; then
     BP_PUBKEY="$HUB_VERIFIED_PUBKEY"
 
     if [[ -v SITE_OCTET[$BP_CODE] ]]; then
-      BP_ALLOWED="10.0.${SITE_OCTET[$BP_CODE]}.0/24,192.168.${SITE_OCTET[$BP_CODE]}.0/24"
+      # 2026-10-30, same bug as INC-2026-10-30-WG-ALLOWEDIPS: BP_CODE's own
+      # WAN address (192.168.139.<octet>, same convention as fw_wan_static_ip
+      # on the Ansible side) was never included here either.
+      BP_ALLOWED="10.0.${SITE_OCTET[$BP_CODE]}.0/24,192.168.${SITE_OCTET[$BP_CODE]}.0/24,192.168.139.${SITE_OCTET[$BP_CODE]}/32"
       echo -e "  ${GREEN}→ Auto-derived allowed subnets: ${BP_ALLOWED}${NC}"
     else
       while true; do
@@ -1427,6 +1435,9 @@ elif [[ "$WG_ROLE" == "spoke" ]]; then
         [[ -n "$BP_ALLOWED" ]] && break
         warn "Cannot be blank."
       done
+      # BP_IP (this peer's own WAN address) is already known from its endpoint above --
+      # append it automatically rather than relying on the operator to remember it too.
+      BP_ALLOWED="${BP_ALLOWED},${BP_IP}/32"
     fi
     WG_BACKUP_PEERS+=("${BP_ENDPOINT}|${BP_PUBKEY}|${BP_ALLOWED}|${BP_CODE}")
   done
