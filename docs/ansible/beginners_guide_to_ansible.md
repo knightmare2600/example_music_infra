@@ -1061,6 +1061,46 @@ batch either way); `serial: 1` only changes what happens the moment more than on
 targeted in the same invocation, turning that from a silent correctness bug into a proper
 one-host-at-a-time pass.
 
+### Order of operations for a firewall that needs Zabbix fixed or added
+
+Three separate playbooks, each with its own job, and they only work in one order — confirmed
+live, 2026-10-30, while chasing `INC-2026-10-30-WG-ALLOWEDIPS`:
+
+```bash
+ansible-playbook -i configs/inventory playbooks/linux/tools.yml --limit <hostname> --ask-vault-pass
+ansible-playbook -i configs/inventory -e target=<hostname> playbooks/firewallme/playbooks/90-firewall.yml --ask-vault-pass --limit=<hostname>
+ansible-playbook -i configs/inventory playbooks/zabbix/zabbix_agent.yml --limit <hostname> --ask-vault-pass
+```
+
+Why this order, not some other one:
+
+- **`linux/tools.yml` is a one-time prerequisite, not a routine step.** It lays down
+  `/etc/example-music/sites.csv` and friends — the shared reference files `90-firewall.yml`
+  (and every other Linux module) assumes are already there. `90-firewall.yml` imports
+  `playbooks/check_linux_baseline.yml`, which hard-aborts the *entire run* (`any_errors_fatal:
+  true`) if that marker file is missing on the target. If a firewall was ever built or
+  provisioned at all, this has almost certainly already run against it — you'll see this task
+  reported as `skipped`, not `changed`, which just means the marker was already there. Only run
+  `tools.yml` again here if the firewall genuinely predates its own baseline (rare), or the
+  abort message tells you to.
+- **`firewallme/playbooks/90-firewall.yml` comes second because it's what makes the host
+  actually reachable and correctly routed**, not because Zabbix depends on it directly —
+  `zabbix_agent.yml` imports neither `check_linux_baseline.yml` nor the SSH-fallback preflight
+  at all, so nothing in it technically requires this step. What it does require is a
+  *connection*. On 2026-10-30, `EXAFWLABD001` and `EXAFWLFAL001` both failed Zabbix
+  registration for hours — not because of anything Zabbix-specific, but because neither was
+  genuinely reachable from the Ansible control node until `90-firewall.yml` carried a real fix
+  for the estate's WireGuard hub trust list and each spoke's own return route. Running
+  `zabbix_agent.yml` against a firewall that `90-firewall.yml` hasn't fixed yet just reproduces
+  the same `gather_facts` timeout, with no useful error pointing at the real cause.
+- **`zabbix/zabbix_agent.yml` always comes last, and never does anything firewall-specific.**
+  It installs/configures the agent package, files the PSK into KeePass, and registers (or
+  confirms registration) via the Zabbix API — the exact same playbook used for any ordinary
+  Linux host, not a firewall-only variant. Confirmed live: once routing was genuinely fixed,
+  both `EXAFWLABD001` (newly registered, clean) and `EXAFWLFAL001` (already registered by
+  hand the night before, PSK re-synced from disk) completed with `failed=0` and no API error —
+  the PSK itself was never the problem; the connection was.
+
 ### WireGuard duplicate peer cleanup — preview, then apply
 
 `dedupe-wg-peers.yml` always previews first and never writes until told to — worth seeing the
