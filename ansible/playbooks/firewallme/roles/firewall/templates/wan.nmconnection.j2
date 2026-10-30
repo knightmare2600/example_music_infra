@@ -13,6 +13,17 @@ autoconnect-retries=-1
 {% if fw_wan_mode == 'static' %}
 address1={{ fw_wan_static_ip }}/{{ fw_wan_static_prefix }},{{ fw_wan_static_gw }}
 method=manual
+{% if not fw_is_black_site %}
+{# 2026-10-30, real bug: fw_wan_static_gw (the shared VRK gateway) has no route
+   back to CLD's LAN -- this used to not matter because CLD's own WAN masquerade
+   hid every LAN->VRK packet behind CLD's own identity. Excluding 192.168.139.0/24
+   from that masquerade (feedback_vrack_masquerade_broke_zabbix_allowlist, needed
+   for Zabbix's IP allowlist) stopped hiding it for every other flow too --
+   confirmed live, SSH from EXAANSCLD001 to this host's own WAN address timed out
+   until this route existed. CLD itself (fw_is_black_site) doesn't need this --
+   it's already directly attached to its own LAN, not reaching it via VRK at all. #}
+route1=192.168.{{ wg_site_octets['CLD'] }}.0/24,{{ fw_cld_vrk_ip }}
+{% endif %}
 {% else %}
 method=auto
 {% endif %}
