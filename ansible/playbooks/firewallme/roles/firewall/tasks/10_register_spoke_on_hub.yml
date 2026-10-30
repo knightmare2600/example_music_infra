@@ -156,6 +156,20 @@
     - not fw_is_black_site
     - fw_hub_reachable.failed | default(true)
 
+# BUG FIX (2026-10-30, real live bug): AllowedIPs here is the hub's INBOUND source filter for
+# this peer, not just a route -- it only ever listed the spoke's tunnel IP and LAN subnet, never
+# its own WAN/VRK address (fw_wan_static_ip). Confirmed live on EXAFWLCLD001/EXAFWLFAL001: a SYN
+# from EXAANSCLD001 (192.168.69.9) to FAL's WAN address got a genuine SYN-ACK back from FAL (its
+# own conntrack showed SYN_RECV, and tcpdump on FAL's wg0 showed it leaving, correctly routed --
+# WireGuard's reverse-routing picked wg0 over the direct VRK L2 path because 192.168.69.0/24 is in
+# FAL's own AllowedIPs for the CLD peer), but it never arrived on CLD's wg0 at all -- `wg show wg0
+# allowed-ips` on CLD confirmed FAL's peer entry only had its tunnel IP + LAN subnet, so CLD
+# silently dropped the decrypted packet because its source (192.168.139.76, FAL's own WAN
+# identity replying to a relayed packet) matched nothing configured for that key. This traffic
+# pattern (a spoke's own WAN address replying through the tunnel, not just its LAN clients) only
+# started existing today, as a direct consequence of feedback_vrack_masquerade_broke_zabbix_allowlist's
+# masquerade exclusion -- never anticipated when this AllowedIPs line was first written. Same gap
+# exists in playbooks/add-wg-spoke.yml's manual-fallback twin, fixed there too.
 # BUG FIX (2026-07-24, found live on EXAFWLCLD001): all four tasks below already correctly
 # guard on `fw_wg_role == 'spoke'` in their `when:` -- but Ansible templates `delegate_to`
 # BEFORE evaluating `when:`, not after, so on a hub node (fw_wg_hub_ip is only ever set for a
@@ -175,7 +189,7 @@
       PublicKey    = {{ fw_wg_pubkey }}
       PresharedKey = {{ fw_wg_psk }}
       Endpoint     = {{ fw_wan_static_ip }}:{{ fw_wg_listen_port_resolved }}
-      AllowedIPs   = {{ ([fw_wg_tunnel_ip + '/32', fw_subnet + '.0/24'] + (wg_site_extra_subnets[fw_site_code] | default([]))) | join(', ') }}
+      AllowedIPs   = {{ ([fw_wg_tunnel_ip + '/32', fw_subnet + '.0/24', fw_wan_static_ip + '/32'] + (wg_site_extra_subnets[fw_site_code] | default([]))) | join(', ') }}
       PersistentKeepalive = 25
   delegate_to: "{{ fw_wg_hub_ip | default(inventory_hostname) }}"
   become: true
