@@ -21,6 +21,7 @@
 #   30-example-music       /etc/example-music/ — sites.csv, devices.csv, nodeinfo.json (always)
 #   35-pools                One Proxmox pool per site (always — run_once, cluster-wide)
 #   36-vmbr1                Ensure vmbr1 VLAN-aware bridge exists (always — never applied live)
+#   37-vrk-route            VRK-hosted nodes only: static route back to CLD's LAN (always — applied live)
 #   40-scripts              Maintenance scripts + apt config + NIC guard creds (always)
 #   45-virt-tools           V2V/VirtIO/proxmoxbmc/BIOS ROMs (always — file placement only)
 #   46-proxmorph            proxmorph UI themes + sensor monitoring (always)
@@ -47,9 +48,15 @@
 # need 00-preflight.yml's facts — run those together, or via site.yml,
 # rather than standalone.)
 #
-# Tags: preflight, packages, ansible_access, example_music, pools, vmbr1, scripts, virt_tools, proxmorph, systemd_units
+# Tags: preflight, packages, ansible_access, example_music, pools, vmbr1, vrk_route, scripts, virt_tools, proxmorph, systemd_units
 # =============================================================================
 # Changelog:
+#   2026-10-30  Added 37-vrk-route.yml — INC-2026-10-30-WG-ALLOWEDIPS. VRK-hosted PVE
+#               nodes (EXAPVEVRK001) had no route back to CLD's LAN other than the VRK
+#               gateway, the same gap already fixed on EXADNSVRK001 and every spoke
+#               firewall the same day. A standalone systemd oneshot unit rather than a
+#               post-up line in /etc/network/interfaces, since vmbr0's own stanza stays
+#               deliberately out of scope (see 36-vmbr1.yml's header).
 #   2026-07-19  Added 35-pools.yml (one Proxmox pool per sites.csv site code, ported
 #               from manage-pool.py's manual-invocation logic) and 36-vmbr1.yml
 #               (idempotent vmbr1 VLAN-aware bridge, ported from
@@ -104,6 +111,9 @@
 
 - import_playbook: playbooks/36-vmbr1.yml
   tags: vmbr1
+
+- import_playbook: playbooks/37-vrk-route.yml
+  tags: vrk_route
 
 - import_playbook: playbooks/40-scripts.yml
   tags: scripts

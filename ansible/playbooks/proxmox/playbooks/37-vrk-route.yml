@@ -1,0 +1,109 @@
+---
+# =============================================================================
+# playbooks/37-vrk-route.yml
+# Example Music Limited — Proxmox VE node: static route back to CLD's LAN
+# =============================================================================
+# A VRK-hosted PVE node (host_site == 'VRK', e.g. EXAPVEVRK001) sits directly
+# on the shared provisioning network (192.168.139.0/24) via vmbr0, with no
+# route back to CLD's LAN (192.168.69.0/24) other than the VRK gateway
+# (192.168.139.254) -- which has no reason to know that subnet. This never
+# mattered until feedback_vrack_masquerade_broke_zabbix_allowlist's masquerade
+# exclusion on EXAFWLCLD001 stopped hiding every LAN->VRK packet behind CLD's
+# own identity (see docs/INCIDENT-LOG.md's INC-2026-10-30-WG-ALLOWEDIPS for the
+# full chain) -- the exact same gap already found and fixed on EXADNSVRK001
+# (ansible/playbooks/bind9/bind9-dns.yml) and every spoke firewall
+# (firewallme/roles/firewall/tasks/06_network_manager.yml). Confirmed live,
+# same day: `ip route get 192.168.69.9` on EXAPVEVRK001 resolved via the
+# default gateway, exactly the same symptom.
+#
+# vmbr0 is DELIBERATELY OUT OF SCOPE for this (and every other) Proxmox
+# playbook -- see 36-vmbr1.yml's own header for the full reasoning (it's the
+# node's own management bridge; templating it risks the very SSH connection
+# Ansible is running this play over). A route is conventionally written as a
+# post-up directive inside vmbr0's own /etc/network/interfaces stanza, which
+# would mean touching that stanza regardless of how carefully it's marked --
+# so this uses a small, standalone systemd oneshot unit instead. It never
+# touches /etc/network/interfaces or vmbr0's own config at all; it only ever
+# adds one additional, more specific route to the kernel's routing table,
+# fully reversible by disabling/stopping the unit.
+#
+# Unlike 36-vmbr1.yml's own apply step (ifreload -a, deliberately never run
+# automatically, since reloading the whole interfaces file re-touches every
+# interface including vmbr0 and risks a broader flap), this unit is started
+# immediately as well as enabled. `ip route replace` for a destination with
+# no existing working route cannot disrupt an already-established connection
+# -- there is no working path to this destination to disrupt in the first
+# place, confirmed live before this file was written -- so the caution that
+# correctly keeps 36-vmbr1.yml's reload manual does not apply the same way
+# here. Robert's explicit ask: be very careful, but this specific action is
+# narrow enough to apply live.
+#
+# Always runs -- writing/enabling/starting this unit is safe regardless of
+# onboarding state (same reasoning 36-vmbr1.yml's own "Always runs" uses for
+# its own safe, non-vmbr0-touching work); not gated behind
+# pve_run_full_onboard, which exists for 50-systemd-units.yml's genuinely
+# more invasive actions (daemon-reload for the maintenance timers,
+# zabbix-agent restart), not this.
+#
+# Usage:
+#   ansible-playbook -i configs/inventory playbooks/proxmox/playbooks/37-vrk-route.yml
+#
+# Tags: vrk_route
+# =============================================================================
+# Changelog:
+#   2026-10-30  Initial file. INC-2026-10-30-WG-ALLOWEDIPS.
+# =============================================================================
+
+- name: Proxmox VE — VRK-hosted node static route back to CLD's LAN
+  hosts: "{{ target | default('pvenodes') }}"
+  become: true
+
+  tasks:
+
+    - name: Skip — not a VRK-hosted node
+      ansible.builtin.debug:
+        msg: >-
+          {{ inventory_hostname }} (site={{ host_site }}) is not on the VRK provisioning
+          network directly — this route is only needed for VRK-hosted nodes. Skipping.
+      when: host_site | upper != 'VRK'
+      tags: vrk_route
+
+    - name: Deploy exa-vrk-route systemd unit (CLD LAN route back via the VRK gateway)
+      ansible.builtin.copy:
+        src: ../files/exa-vrk-route.service
+        dest: /etc/systemd/system/exa-vrk-route.service
+        owner: root
+        group: root
+        mode: '0644'
+      register: _vrk_route_unit
+      when: host_site | upper == 'VRK'
+      tags: vrk_route
+
+    - name: Reload systemd daemon (unit file changed)
+      ansible.builtin.systemd:
+        daemon_reload: true
+      when:
+        - host_site | upper == 'VRK'
+        - _vrk_route_unit.changed
+      tags: vrk_route
+
+    - name: Enable and start exa-vrk-route (idempotent -- ip route replace, safe to re-run)
+      ansible.builtin.systemd:
+        name: exa-vrk-route.service
+        enabled: true
+        state: started
+      when: host_site | upper == 'VRK'
+      tags: vrk_route
+
+    - name: Confirm the route is actually live
+      ansible.builtin.command: ip route get 192.168.69.9
+      register: _vrk_route_check
+      changed_when: false
+      when: host_site | upper == 'VRK'
+      tags: vrk_route
+
+    - name: Show the live route
+      ansible.builtin.debug:
+        msg: "{{ _vrk_route_check.stdout_lines }}"
+      when: host_site | upper == 'VRK'
+      tags: vrk_route
