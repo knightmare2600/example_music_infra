@@ -411,6 +411,23 @@
         dns_secondary_ip: "{{ dns_secondary_ip | default('') }}"
         dns_master_ip: "{{ dns_master_ip | default('') }}"
         dns_gateway: "{{ dns_gateway | default('192.168.139.254' if inventory_hostname == 'EXADNSVRK001' else '') }}"
+        # 2026-10-30, real bug: EXADNSVRK001's only route back to any site's LAN (incl.
+        # CLD's own 192.168.69.0/24) was via dns_gateway above -- the VRK gateway, which
+        # has no reason to know those subnets. This never mattered before
+        # feedback_vrack_masquerade_broke_zabbix_allowlist's fix (07_nftables.yml,
+        # oifname wan ip daddr != 192.168.139.0/24 masquerade): every LAN->VRK packet
+        # used to arrive at EXADNSVRK001 already masqueraded behind CLD's own
+        # 192.168.139.69, so replies always went straight back to CLD on the same flat
+        # L2 segment -- no route ever needed. Excluding 192.168.139.0/24 from
+        # masquerade (needed so Zabbix's agent-side IP allowlist could see the real
+        # source) stopped hiding the asymmetry for every OTHER flow too -- confirmed
+        # live: `host google.com 192.168.139.8` and `ssh 192.168.139.8` both from
+        # EXAANSCLD001 time out with zero reply ever leaving EXADNSVRK001's interface.
+        # 192.168.139.69 is CLD's own firewall's VRK-facing IP (same address identified
+        # in that masquerade bug's own root-cause log). Only EXADNSVRK001 needs this --
+        # a per-site DNS box's own dns_gateway is already that site's own firewall,
+        # which already knows how to route everywhere via the existing WireGuard mesh.
+        dns_vrk_relay_via: "{{ '192.168.139.69' if inventory_hostname == 'EXADNSVRK001' else '' }}"
 
     - name: Preflight -- refuse to guess a role-specific value that has no safe default
       tags: always
