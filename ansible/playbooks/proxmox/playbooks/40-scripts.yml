@@ -11,6 +11,8 @@
 # Files deployed (source: ansible/playbooks/proxmox/files/):
 #   /usr/local/bin/enable_vm_trim_discard.sh          -- TRIM/discard helper
 #   /usr/local/bin/add_missing_disk_serials.sh        -- disk serial= retrofit helper
+#   /usr/local/bin/qm_type.sh                         -- types a literal string into a VM via qm sendkey
+#   /usr/local/bin/qm_copy_spec.sh                    -- clones a VM's config shape (disks/NICs) onto a new VMID, no disk contents
 #   /usr/local/bin/pve-monthly-hoover.sh              -- monthly cleanup script
 #   /usr/local/bin/pve-snapshot-check.py              -- snapshot audit script
 #   /usr/local/bin/pve-backup-check.py                -- backup status check (Proxmox Health Checkup template)
@@ -57,6 +59,13 @@
 # Tags: scripts
 # =============================================================================
 # Changelog:
+#   2026-10-30  Added qm_type.sh and qm_copy_spec.sh to the deploy loop -- Robert's ask.
+#               Both already existed, unchanged, sitting only in private/ (never actually
+#               deployed anywhere, despite qm_type.sh being referenced as if it already
+#               were -- checked directly, confirmed it wasn't, before deploying both the
+#               same way rather than assuming one already had an established pattern to
+#               copy). File placement only, same as every other script in this loop --
+#               neither is wired into a systemd unit or executed automatically.
 #   2026-10-29  Added pve-backup-check.py to the deploy loop -- feeds the standalone
 #               "Proxmox Health Checkup" Zabbix template (docs/zabbix_templates/
 #               zabbix_template_proxmox_health_checkup.json), not zabbix_template_proxmox.json.
@@ -139,6 +148,8 @@
       loop:
         - enable_vm_trim_discard.sh
         - add_missing_disk_serials.sh
+        - qm_type.sh
+        - qm_copy_spec.sh
         - pve-monthly-hoover.sh
         - pve-snapshot-check.py
         - pve-backup-check.py
