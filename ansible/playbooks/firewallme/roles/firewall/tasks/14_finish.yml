@@ -200,7 +200,11 @@
       - "{{ _c.G }}╚══════════════════════════════════════════════════════════════╝{{ _c.NC }}"
       - ""
       - "{{ _c.Y }}[!]{{ _c.NC }} If WG role is spoke, register this node as a peer on {{ _c.W }}{{ fw_wg_hub_site | default('the hub') }}{{ _c.NC }}:"
-      - "{{ _c.G }}    wg set wg0 peer {{ fw_wg_pubkey_final.content | b64decode | trim if (fw_wg_pubkey_final.content is defined) else '<pubkey>' }} allowed-ips {{ fw_wg_tunnel_ip | default('10.0.x.y') }}/32,{{ fw_subnet }}.0/24{{ _c.NC }}"
+      # 2026-10-30: kept in step with the real fix (INC-2026-10-30-WG-ALLOWEDIPS,
+      # roles/firewall/tasks/10_register_spoke_on_hub.yml) -- fw_wan_static_ip is
+      # always derived early in 00_preflight_1_derive.yml regardless of WAN mode,
+      # so it's always safe to use here.
+      - "{{ _c.G }}    wg set wg0 peer {{ fw_wg_pubkey_final.content | b64decode | trim if (fw_wg_pubkey_final.content is defined) else '<pubkey>' }} allowed-ips {{ fw_wg_tunnel_ip | default('10.0.x.y') }}/32,{{ fw_subnet }}.0/24,{{ fw_wan_static_ip }}/32{{ _c.NC }}"
       - ""
 
 

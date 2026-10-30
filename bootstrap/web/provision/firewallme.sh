@@ -2010,15 +2010,28 @@ EOF
         SP_KEEPALIVE=""
       fi
 
+      # 2026-10-30, same bug as INC-2026-10-30-WG-ALLOWEDIPS (Ansible side,
+      # roles/firewall/tasks/10_register_spoke_on_hub.yml): AllowedIPs is this
+      # hub's INBOUND source filter for the spoke, not just a route -- it never
+      # included the spoke's own WAN/VRK address, only its tunnel IP and LAN
+      # subnet, so a reply the spoke's own WAN address sends back through the
+      # tunnel (rather than one of its LAN devices) would be silently dropped
+      # here too. Derived from SP_LAN's own third octet rather than a second
+      # lookup -- that value is already confirmed, known-site default or typed
+      # in by hand either way, and the WAN convention (192.168.139.<octet>) is
+      # always the same octet as the site's own LAN subnet.
+      SP_WAN_OCTET="$(cut -d. -f3 <<< "${SP_LAN}")"
+      SP_WAN="192.168.139.${SP_WAN_OCTET}/32"
+
       cat >> /etc/wireguard/wg0.conf <<EOF
 
 # ${SP_NAME}
 [Peer]
 PublicKey = ${SP_PUBKEY}
-AllowedIPs = ${SP_TUNNEL_ALLOWED}, ${SP_LAN}
+AllowedIPs = ${SP_TUNNEL_ALLOWED}, ${SP_LAN}, ${SP_WAN}
 ${SP_KEEPALIVE}
 EOF
-      success "Added peer ${SP_NAME}: tunnel ${SP_TUNNEL_ALLOWED}, LAN ${SP_LAN}"
+      success "Added peer ${SP_NAME}: tunnel ${SP_TUNNEL_ALLOWED}, LAN ${SP_LAN}, WAN ${SP_WAN}"
       (( SPOKE_TUNNEL_OCTET++ )) || true
     done
 
@@ -2546,7 +2559,12 @@ if [[ "$WG_ROLE" != "none" ]]; then
     echo -e "${GREEN}[Peer]${NC}"
     echo -e "${GREEN}PublicKey = ${THIS_PUBKEY}${NC}"
     echo -e "${GREEN}Endpoint = ${WAN_IP_CURRENT}:51820${NC}"
-    echo -e "${GREEN}AllowedIPs = ${WG_TUNNEL_NET}, ${SUBNET}.0/24${NC}"
+    # 2026-10-30, same bug as INC-2026-10-30-WG-ALLOWEDIPS: this is the hub's
+    # inbound source filter for THIS spoke, not just a route -- missing this
+    # spoke's own WAN address (already known, used in Endpoint above) would
+    # silently drop any reply this spoke's own WAN address sends back through
+    # the tunnel rather than one of its LAN devices.
+    echo -e "${GREEN}AllowedIPs = ${WG_TUNNEL_NET}, ${SUBNET}.0/24, ${WAN_IP_CURRENT}/32${NC}"
     echo -e "${CYAN}  (Hub's wg0.conf needs ONLY this spoke's subnets in its peer block)${NC}"
     echo -e "${CYAN}  (The spoke's wg0.conf carries the full topology-aware AllowedIPs)${NC}"
     echo -e "${GREEN}PersistentKeepalive = 25${NC}"
