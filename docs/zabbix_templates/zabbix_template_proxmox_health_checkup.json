@@ -1491,16 +1491,16 @@
                     {
                         "uuid": "336076bea76442629c0384c85eb94b7b",
                         "name": "/etc/apt/apt.conf.d/50unattended-upgrades Mail Address",
-                        "key": "vfs.file.regmatch[/etc/apt/apt.conf.d/50unattended-upgrades,^Unattended-Upgrade::Mail \"backup\\.logs@example.com\";]",
+                        "key": "vfs.file.regmatch[/etc/apt/apt.conf.d/50unattended-upgrades,^Unattended-Upgrade::Mail \"{$UNATTENDED_UPGRADES_MAIL}\";]",
                         "delay": "1h",
                         "history": "1d",
                         "trends": "0",
-                        "description": "/etc/apt/apt.conf.d/50unattended-upgrades needs the line set to:\n\nUnattended-Upgrade::Mail \"backup\\.logs@example.com\";\n\nsed -i 's|^//Unattended-Upgrade::Mail \"\";|Unattended-Upgrade::Mail \"backup.logs@example.com\";|' /etc/apt/apt.conf.d/50unattended-upgrades",
+                        "description": "/etc/apt/apt.conf.d/50unattended-upgrades needs the line set to:\n\nUnattended-Upgrade::Mail \"{$UNATTENDED_UPGRADES_MAIL}\";\n\nsed -i 's|^//Unattended-Upgrade::Mail \"\";|Unattended-Upgrade::Mail \"{$UNATTENDED_UPGRADES_MAIL}\";|' /etc/apt/apt.conf.d/50unattended-upgrades\n\n2026-10-30: this check (and the Ansible task that should write the line, ansible/playbooks/linux/tools.yml) previously had the address hardcoded as a literal value instead of a macro -- see {$UNATTENDED_UPGRADES_MAIL}'s own description for why this is currently a placeholder, not a real mailbox.",
                         "triggers": [
                             {
                                 "uuid": "effe3d49eb7a44ee8fd61d98d2910c08",
-                                "expression": "last(/Proxmox Health Checkup/vfs.file.regmatch[/etc/apt/apt.conf.d/50unattended-upgrades,^Unattended-Upgrade::Mail \"backup\\.logs@example.com\";])=0",
-                                "name": "Unattended-upgrades mail address not set to backup.logs@example.com",
+                                "expression": "last(/Proxmox Health Checkup/vfs.file.regmatch[/etc/apt/apt.conf.d/50unattended-upgrades,^Unattended-Upgrade::Mail \"{$UNATTENDED_UPGRADES_MAIL}\";])=0",
+                                "name": "Unattended-upgrades mail address not set to {$UNATTENDED_UPGRADES_MAIL}",
                                 "priority": "WARNING"
                             }
                         ]
@@ -2024,6 +2024,11 @@
                         "macro": "{$QM_COPY_SPEC_CKSUM}",
                         "value": "1049016697",
                         "description": "echo \"QMCOPYSPEC:   $(cksum /usr/local/bin/qm_copy_spec.sh  | awk '{print $1}')\""
+                    },
+                    {
+                        "macro": "{$UNATTENDED_UPGRADES_MAIL}",
+                        "value": "backup.logs@example.com",
+                        "description": "2026-10-30: was hardcoded directly into the Mail/MailReport item keys and trigger text -- Robert's explicit call: this is a PLACEHOLDER value, not a real mailbox, kept as one deliberately for now. Replace this macro's value with the real address when decided; nothing else in this template needs editing. ansible/playbooks/linux/tools.yml's own 50unattended-upgrades task uses the same literal placeholder -- update both when the real address is set, there's no automatic link between the two systems."
                     }
                 ],
                 "valuemaps": [

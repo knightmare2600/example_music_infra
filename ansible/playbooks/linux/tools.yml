@@ -4,6 +4,13 @@
 #   ansible-playbook playbooks/linux/tools.yml -i configs/inventory
 #
 # Changelog:
+#   2026-10-30  Real gap found live, Robert's ask: added Unattended-Upgrade::Mail/
+#               MailReport to the 50unattended-upgrades loop below -- the Proxmox Health
+#               Checkup Zabbix template already had items checking for both lines, but
+#               nothing anywhere in this repo's automation ever actually wrote them, so
+#               those checks could never pass on any host. Mail address is a deliberate
+#               placeholder (Robert's explicit call) -- see tools_unattended_upgrades_mail
+#               and the template's own {$UNATTENDED_UPGRADES_MAIL} macro.
 #   2026-10-25  Real live bug, Robert, EXAANSCLD001: ansible_dir/inventory/ssh_key were
 #               entirely missing from the control node's own nodeinfo.json -- NOT a
 #               preservation bug (tasks/nodeinfo.yml's own 2026-10-17 extras-preservation
@@ -475,6 +482,14 @@
     # editing it here means a future package upgrade may prompt to keep vs.
     # replace it (standard Debian conffile behaviour, not a bug in this task).
     # -------------------------------------------------------------------------
+    # 2026-10-30, real gap found live, Robert's ask: the Proxmox Health Checkup Zabbix
+    # template (docs/zabbix_templates/zabbix_template_proxmox_health_checkup.json)
+    # already had two items checking for Unattended-Upgrade::Mail/MailReport in this
+    # exact file -- but nothing here ever actually wrote either line, so those checks
+    # could never pass on any host. tools_unattended_upgrades_mail is a deliberate
+    # placeholder (Robert's explicit call, same session) -- update it here AND the
+    # template's own {$UNATTENDED_UPGRADES_MAIL} macro when the real address is
+    # decided; there's no automatic link between the two systems.
     - name: Configure unattended-upgrades (50unattended-upgrades)
       ansible.builtin.lineinfile:
         path:   /etc/apt/apt.conf.d/50unattended-upgrades
@@ -484,6 +499,8 @@
       when:
         - not (tools_nas_mode | default(false))
         - "'unattended-upgrades' in ansible_facts.packages"
+      vars:
+        tools_unattended_upgrades_mail: "backup.logs@example.com"
       loop:
         - regexp: '^//?\s*Unattended-Upgrade::AutoFixInterruptedDpkg\s+".*'
           line:   'Unattended-Upgrade::AutoFixInterruptedDpkg "true";'
@@ -495,6 +512,10 @@
           line:   'Unattended-Upgrade::Automatic-Reboot "false";'
         - regexp: '^//?\s*Unattended-Upgrade::Automatic-Reboot-Time\s+".*'
           line:   'Unattended-Upgrade::Automatic-Reboot-Time "02:00";'
+        - regexp: '^//?\s*Unattended-Upgrade::Mail\s+".*'
+          line:   'Unattended-Upgrade::Mail "{{ tools_unattended_upgrades_mail }}";'
+        - regexp: '^//?\s*Unattended-Upgrade::MailReport\s+".*'
+          line:   'Unattended-Upgrade::MailReport "on-change";'
       loop_control:
         label: "{{ item.line }}"
 
