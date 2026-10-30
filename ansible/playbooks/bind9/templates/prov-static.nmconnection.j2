@@ -13,6 +13,14 @@ address1={{ dns_ip }}/24,{{ dns_gateway }}
 method=manual
 dns=127.0.0.1;
 dns-search={{ domain }};
+{% if dns_vrk_relay_via | default('') != '' %}
+{# EXADNSVRK001 only -- see bind9-dns.yml's dns_vrk_relay_via comment for why these
+   are needed: the VRK default gateway above has no route back to any site's LAN,
+   and nothing masks that asymmetry for this host any more. #}
+{% for s in sites %}
+route{{ loop.index }}={{ s.Subnet }},{{ dns_vrk_relay_via }}
+{% endfor %}
+{% endif %}
 
 [ipv6]
 addr-gen-mode=default
