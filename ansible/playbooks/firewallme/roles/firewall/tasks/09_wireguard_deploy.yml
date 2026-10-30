@@ -168,7 +168,12 @@
       - "Public key for {{ inventory_hostname }}: {{ fw_wg_pubkey }}"
       - ""
       - "Register this as a peer on {{ fw_wg_hub_site | default('the hub') }}"
-      - "  wg set wg0 peer {{ fw_wg_pubkey }} allowed-ips {{ fw_wg_tunnel_ip }}/32,{{ fw_subnet }}.0/24"
+      # 2026-10-30: kept in step with the real fix in 10_register_spoke_on_hub.yml/
+      # add-wg-spoke.yml (INC-2026-10-30-WG-ALLOWEDIPS) -- this is manual fallback
+      # guidance only (automatic registration handles it correctly already), but a
+      # stale example here would walk an operator straight back into the same bug
+      # if they ever had to use it by hand.
+      - "  wg set wg0 peer {{ fw_wg_pubkey }} allowed-ips {{ fw_wg_tunnel_ip }}/32,{{ fw_subnet }}.0/24,{{ fw_wan_static_ip }}/32"
   when: fw_wg_role != 'none' and not fw_is_black_site
 
 # ── Generate preshared key ────────────────────────────────────────────────────
