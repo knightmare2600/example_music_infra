@@ -10,6 +10,14 @@ This runbook covers building a small FAT32 raw disk image containing unpacked Vi
 
 ---
 
+## Changelog
+
+| Date | Change |
+|---|---|
+| 2026-06-21 | Initial document — VirtIO driver disk build runbook |
+
+---
+
 ## Background
 
 Windows VMs on Proxmox use paravirtualised VirtIO devices for disk and network. WinPE has no inbox drivers for these, so before it can see the SCSI disk or the NIC it needs the drivers loaded at runtime using `drvload.exe`.

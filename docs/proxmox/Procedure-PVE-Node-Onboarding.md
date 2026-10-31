@@ -6,6 +6,14 @@
 
 ---
 
+## Changelog
+
+| Date | Change |
+|---|---|
+| 2026-06-21 | Initial document — PVE node onboarding procedure (`site.yml` ten-stage table) |
+
+---
+
 ## Overview
 
 New PVE nodes arrive in a known state from our PXE/iPXE first-boot installer: Debian Trixie, `ansible` user created, SSH accessible as root. This procedure verifies that state and completes Ansible management setup using `site.yml`.
