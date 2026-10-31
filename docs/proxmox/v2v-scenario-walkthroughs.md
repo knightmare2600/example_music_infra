@@ -16,6 +16,14 @@
 
 ---
 
+## Changelog
+
+| Date | Change |
+|---|---|
+| 2026-03-04 | Initial document (v0.9, draft) — V2V migration scenario walkthroughs, Debian Trixie firewall VM + Windows Server 2022 |
+
+---
+
 ## Table of Contents
 
 1. [Introduction](#introduction)

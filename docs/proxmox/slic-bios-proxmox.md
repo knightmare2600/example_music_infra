@@ -12,6 +12,14 @@
 
 ---
 
+## Changelog
+
+| Date | Change |
+|---|---|
+| 2026-03-05 | Initial document — SLIC/MSDM BIOS extraction and Proxmox VM import procedure |
+
+---
+
 ## Table of Contents
 
 1. [Background](#background)

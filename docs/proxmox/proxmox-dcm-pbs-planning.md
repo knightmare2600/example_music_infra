@@ -28,6 +28,16 @@
 
 ---
 
+## Changelog
+
+| Date | Change |
+|---|---|
+| 2026-10-25 | Last updated — TrueNAS NAS/SAN storage section (`.19` slot, `.15` PRV retirement) |
+| 2026-07-19 | Reworked — CLD is the estate's sole WireGuard hub; one centralised DCM instance at CLD managing every site, PBS fully decentralised to one local instance per site |
+| March 2026 | Initial document — Proxmox Datacenter Manager & Backup Server planning (original three-regional-hub architecture) |
+
+---
+
 ## Table of Contents
 
 1. [What is Proxmox Datacenter Manager](#what-is-proxmox-datacenter-manager)
