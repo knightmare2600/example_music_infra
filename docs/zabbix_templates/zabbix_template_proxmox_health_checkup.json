@@ -1989,7 +1989,7 @@
                     },
                     {
                         "macro": "{$PVE_BACKUP_SCRIPT_CKSUM}",
-                        "value": "365623513"
+                        "value": "1165971125"
                     },
                     {
                         "macro": "{$PVE_HOOVER_SCRIPT_CKSUM}",
