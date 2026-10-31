@@ -15,6 +15,15 @@
 
 ---
 
+## Changelog
+
+| Date | Change |
+|---|---|
+| 2026-07-19 | Reworked — CLD is now the estate's sole WireGuard hub; architecture changed to centralised management at CLD (`EXADCMCLD001`) plus fully decentralised backup at every site, replacing the original three-regional-hub (FAL/ODE/BRK) model |
+| March 2026 | Initial document — Proxmox Enterprise Support, Datacenter Manager & Backup Server proposal |
+
+---
+
 ## Table of Contents
 
 1. [Executive Summary](#executive-summary)

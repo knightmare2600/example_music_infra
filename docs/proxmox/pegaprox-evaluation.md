@@ -12,6 +12,14 @@
 
 ---
 
+## Changelog
+
+| Date | Change |
+|---|---|
+| 2026-03-04 | Initial document — PegaProx evaluation and decision record; PDM adopted instead |
+
+---
+
 ## Table of Contents
 
 1. [What is PegaProx](#what-is-pegaprox)

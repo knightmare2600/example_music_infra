@@ -10,31 +10,15 @@
 > status on a successful end-to-end test boot, never actually got that test for the approaches
 > described here — `select-pve-answer.sh` remains genuinely untested to this day.
 
-Version history:
-- v1.0 — 2026-07-18 — initial draft, written up from the live working session that superseded `claude_prompts.md`
-- v1.1 — 2026-07-18 — BMC virtual media confirmed as the sole delivery method going forward (not the
-  full-network `initrd`-loaded `.iso` path); `:proxmox-ve` menu entry rewritten accordingly; dropped
-  the plan to host all four `.iso`s on HTTP
-- v1.2 — 2026-07-18 — macOS POST shim confirmed not required (all four `.iso`s point at Edinburgh's
-  `:8001` regardless of site); file/menu deployment mechanism is a git commit + pull on both sites,
-  not `scp`; Windows POST shim is now the only genuine blocker left before a test boot
-- v1.3 — 2026-07-18 — Windows POST shim deployed and confirmed working live (`Start-ProxmoxAnswerShim.ps1`
-  v1.0.1, both GET and POST against a real `VRK-answer.toml` returned 200 with correct content).
-  **The BMC-mounted-ISO test boot itself then failed outright** — blank cursor, no sign of the
-  mounted ISO being picked up by the installer's init script the way the network-loaded companion
-  ISO was during earlier (non-BMC) testing. Section 2's inherited assumption ("the installer's init
-  script treats a real mounted block device and an iPXE-loaded in-memory file interchangeably")
-  did not hold up on the one real test that mattered. **This whole approach — `prepare-iso --pxe`,
-  four site/mode ISOs, BMC virtual media as the payload-delivery mechanism — is abandoned, not just
-  paused.** Given how rarely a PVE node actually gets built, and that an operator is physically at
-  the console for BMC virtual media anyway, the effort of debugging *why* the BMC path doesn't work
-  isn't worth it against a simpler alternative: script the plain manual-wget flow this document's own
-  section 3/`docs/bootstrap/bootstrapping.md` §6.3 already documents as the fallback, with a real
-  script (`bootstrap/web/proxmox/select-pve-answer.sh`) doing the site/disk-count detection and
-  fetch instead of a human guessing the right filename by hand. See section 9 below for that script.
-  `Start-ProxmoxAnswerShim.ps1`/`bootstrap/serve.py` are unaffected by this — the plain manual-wget
-  path this new script drives is a GET, not a POST, so neither shim is actually needed for Proxmox
-  at all any more; they remain independently useful, just not on this critical path.
+## Changelog
+
+| Date | Change |
+|---|---|
+| 2026-08-20 | Superseded as the current path — neither approach this document describes (BMC-ISO delivery, or its replacement `select-pve-answer.sh`) is what the estate actually uses now; `klargoring` (a real PXE boot of Robert's own live-installer distro) tested end-to-end on `EXAPVEVRK002` and worked correctly. See `NET-PVE-KLARGORING-001-klargoring-pve-install.md` for the current procedure. Kept for the record, not current guidance |
+| 2026-07-18 (v1.3) | Windows POST shim deployed and confirmed working live (`Start-ProxmoxAnswerShim.ps1` v1.0.1, both GET and POST against a real `VRK-answer.toml` returned 200 with correct content). **The BMC-mounted-ISO test boot itself then failed outright** — blank cursor, no sign of the mounted ISO being picked up by the installer's init script the way the network-loaded companion ISO was during earlier (non-BMC) testing. Section 2's inherited assumption ("the installer's init script treats a real mounted block device and an iPXE-loaded in-memory file interchangeably") did not hold up on the one real test that mattered. **This whole approach — `prepare-iso --pxe`, four site/mode ISOs, BMC virtual media as the payload-delivery mechanism — is abandoned, not just paused.** Given how rarely a PVE node actually gets built, and that an operator is physically at the console for BMC virtual media anyway, the effort of debugging *why* the BMC path doesn't work isn't worth it against a simpler alternative: script the plain manual-wget flow this document's own section 3/`docs/bootstrap/bootstrapping.md` §6.3 already documents as the fallback, with a real script (`bootstrap/web/proxmox/select-pve-answer.sh`) doing the site/disk-count detection and fetch instead of a human guessing the right filename by hand. See section 9 below for that script. `Start-ProxmoxAnswerShim.ps1`/`bootstrap/serve.py` are unaffected by this — the plain manual-wget path this new script drives is a GET, not a POST, so neither shim is actually needed for Proxmox at all any more; they remain independently useful, just not on this critical path |
+| 2026-07-18 (v1.2) | macOS POST shim confirmed not required (all four `.iso`s point at Edinburgh's `:8001` regardless of site); file/menu deployment mechanism is a git commit + pull on both sites, not `scp`; Windows POST shim is now the only genuine blocker left before a test boot |
+| 2026-07-18 (v1.1) | BMC virtual media confirmed as the sole delivery method going forward (not the full-network `initrd`-loaded `.iso` path); `:proxmox-ve` menu entry rewritten accordingly; dropped the plan to host all four `.iso`s on HTTP |
+| 2026-07-18 (v1.0) | Initial draft, written up from the live working session that superseded `claude_prompts.md` |
 
 This is **not** the polished procedure document — that's still gated on a successful end-to-end
 test boot (see "Still open" below), matching the original plan's own rule. This is the honest
