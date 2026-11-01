@@ -17,6 +17,20 @@
 #
 # Version history:
 #
+#   v2.24  Added :pfsense -- pfSense CE 2.7.2, staged for HTTP boot via the new
+#          bootstrap/web/pfsense/build-pfsense-httpboot.sh (Robert, 2026-11-01). UEFI only --
+#          FreeBSD's HTTP-boot loader chainload (`chain .../boot/loader.efi`) has no BIOS
+#          equivalent, so a BIOS client gets a stub message instead (:pfsense-bios-msg),
+#          same pattern as :proxmox-ve's own "not available this way" stub. x86_64 only --
+#          pfSense CE ships no arm64 build, guarded the same way as :3cx-install/:hdt
+#          (iseq ${arch} arm64 && goto noarch-msg). The script's own output
+#          (bootstrap/web/pfsense/2.7.2-CE/) is gitignored -- real pfSense binaries,
+#          publicly downloadable, ~1GB, not committed; only the staging script itself is
+#          tracked. UNTESTED -- no live chainload attempted yet, see the script's own header
+#          for what the previous iteration's writer flagged as unverified (installer .profile
+#          hook location, member names inside the ISO, whether the loader itself needs iPXE
+#          to have booted in true UEFI mode specifically).
+#
 #   v2.23  :klargoring gains the degraded (single-disk) build, matching :saekkevogn (v2.19) and
 #          :pakhus (v2.20) (Robert, 2026-11-01). A PXE boot on a one-disk VM fetched
 #          VRK-answer.toml and failed with "/dev/sdb does not exist". Both :klargoring kernel
@@ -531,6 +545,9 @@ item klargoring    Projekt klargoring  (custom live Proxmox VE installer, amd64/
 item saekkevogn    Projekt Saekkevogn  (custom live Proxmox Backup Server installer, amd64/arm64 auto-detected -- UNTESTED)
 item pakhus        Projekt Pakhus      (custom live Proxmox Datacenter Manager installer, amd64/arm64 auto-detected -- UNTESTED)
 item --gap --
+item --gap --         -- Firewalls --
+item pfsense       pfSense CE 2.7.2    (amd64 only, UEFI only, custom HTTP boot -- UNTESTED)
+item --gap --
 item --gap --         -- Utilities --
 item gparted          GParted Live
 item winpe-x64        WinPE deployment environment  (x86_64)
@@ -861,6 +878,40 @@ boot
 kernel ${boot-url}/proxmox/pakhus/arm64/vmlinuz-arm64 toml_url=${boot-url}/proxmox/${site-prefix}-pdm-answer.toml toml_url_degraded=${boot-url}/proxmox/${site-prefix}-pdm-degraded.toml confirm-wipe no-reboot
 initrd ${boot-url}/proxmox/pakhus/arm64/installer-initrd-arm64.img
 boot
+
+# ===========================================================================
+# PFSENSE
+# pfSense CE 2.7.2, staged for HTTP boot by bootstrap/web/pfsense/build-pfsense-httpboot.sh
+# (run once, manually, against the real vendor ISO -- not something this repo's own
+# automation builds). The script produces a FreeBSD loader tree under
+# ${boot-url}/pfsense/2.7.2-CE/boot/ (loose loader.efi/kernel/modules/root.img) plus the
+# installer payload under .../dist/ (base.txz/MANIFEST), gitignored -- real pfSense
+# binaries, ~1GB, publicly downloadable from pfSense's own CDN, not committed.
+#
+# UEFI only: FreeBSD's HTTP-boot loader is reached by chainloading boot/loader.efi
+# directly -- there is no BIOS equivalent, so a BIOS client (${buildarch} i386) gets a
+# stub message instead, same pattern as :proxmox-ve's own "not available this way" stub.
+# amd64 only -- pfSense CE ships no arm64 build, guarded the same way as
+# :3cx-install/:hdt (iseq ${arch} arm64 && goto noarch-msg).
+#
+# UNTESTED -- no live chainload attempted yet. See the build script's own header for what
+# remains unverified (installer .profile hook location, exact ISO member names, whether
+# the FreeBSD loader needs iPXE to have booted in genuine UEFI mode specifically).
+# ===========================================================================
+:pfsense
+iseq ${arch} arm64 && goto noarch-msg ||
+iseq ${buildarch} i386 && goto pfsense-bios-msg ||
+chain ${boot-url}/pfsense/2.7.2-CE/boot/loader.efi || goto pfsense-failed-msg
+
+:pfsense-bios-msg
+echo pfSense HTTP boot is UEFI only -- no BIOS loader equivalent exists for this path
+prompt Press any key to return to menu...
+goto main
+
+:pfsense-failed-msg
+echo pfSense chainload failed -- has build-pfsense-httpboot.sh been run against this server yet?
+prompt Press any key to return to menu...
+goto main
 
 # ===========================================================================
 # GPARTED
