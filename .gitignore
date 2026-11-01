@@ -153,6 +153,9 @@ scratchpad*
 bootstrap/web/spejder/**
 bootstrap/web/proxmox/klargoring/**
 bootstrap/web/gparted/**
+# build-pfsense-httpboot.sh's own output -- real pfSense base.txz/root.img/kernel binaries,
+# ~1GB+, publicly downloadable from pfSense's own CDN. Script itself IS tracked (outside this path).
+bootstrap/web/pfsense/2.7.2-CE/**
 bootstrap/web/debian/bookworm/x86_64/linux
 bootstrap/web/debian/bookworm/x86_64/initrd.gz
 bootstrap/web/debian/bookworm/arm64/linux
