@@ -8,20 +8,24 @@
 # Added after INC-2026-08-21-CTRLALTDEL — see docs/INCIDENT-LOG.md for the
 # full incident this closes.
 #
-# Two separate protections, both genuinely needed — confirmed against
-# systemd's own documented behaviour, not assumed one would cover the other:
+# One protection, plus a deliberate non-protection, confirmed against
+# systemd's own documented behaviour rather than assumed:
 #
 #   1. Mask ctrl-alt-del.target — stops systemd starting reboot.target
 #      (what ctrl-alt-del.target is aliased to) on a Ctrl+Alt+Del keypress.
-#   2. CtrlAltDelBurstAction=none in system.conf.d — systemd's OWN escape
-#      hatch for exactly the gap masking the target alone leaves open: 7
-#      presses within 2 seconds bypasses the target mechanism entirely and
-#      forces an immediate, ungraceful reboot by design, specifically so an
-#      admin can still force a reboot even if ctrl-alt-del.target is masked
-#      or broken. A masked target does NOT stop this burst path. Someone
-#      repeatedly pressing Ctrl+Alt+Del because the first press "didn't do
-#      anything" is exactly the scenario this burst protection exists for —
-#      and exactly the scenario that needs disabling here too.
+#      This is what actually closes INC-2026-08-21-CTRLALTDEL — that was a
+#      single accidental press, not a burst.
+#   2. CtrlAltDelBurstAction is deliberately left at systemd's own default
+#      (reboot-force, confirmed via `man systemd-system.conf` on this box) —
+#      pinned explicitly below rather than just leaving the drop-in file
+#      absent, so it stays correct if upstream's default ever changes. A
+#      masked target does NOT stop this burst path: 7 presses within 2
+#      seconds bypasses the target mechanism entirely by design, specifically
+#      so an admin can still force a reboot even if ctrl-alt-del.target is
+#      masked or broken. Robert's call, 2026-11-01: anyone deliberately
+#      mashing the burst combination is already on console — console access
+#      is the trust boundary here, not this setting — so the panic-reboot
+#      escape hatch stays available rather than disabled.
 #
 # Deliberately does NOT touch legitimate remote reboot/shutdown paths.
 # Proxmox's own `qm reboot`/`qm shutdown` via qemu-guest-agent is a
@@ -48,6 +52,12 @@
 # Tags: firewall, console_hardening
 # =============================================================================
 # Changelog:
+#   2026-11-01  Robert's call: CtrlAltDelBurstAction changed from `none` back to systemd's
+#               own default (`reboot-force`, confirmed via `man systemd-system.conf`) --
+#               someone burst-pressing Ctrl+Alt+Del 7x/2s is already on console, which is
+#               trust enough to allow the panic-reboot escape hatch. ctrl-alt-del.target
+#               stays masked -- that's what actually closes INC-2026-08-21-CTRLALTDEL (a
+#               single press), unaffected by this change.
 #   2026-10-23  Corrected this file's own header claim that molly-guard already covered
 #               the SSH-issued reboot/shutdown case for firewalls via common_packages --
 #               wrong, firewalls never consume that var; molly-guard is now added to
@@ -82,12 +92,12 @@
     mode: '0755'
   tags: [firewall, console_hardening]
 
-- name: "[Console] Disable Ctrl+Alt+Del burst (panic) reboot"
+- name: "[Console] Pin Ctrl+Alt+Del burst (panic) reboot at systemd's own default"
   ansible.builtin.copy:
     dest: /etc/systemd/system.conf.d/10-disable-ctrl-alt-del.conf
     content: |
       [Manager]
-      CtrlAltDelBurstAction=none
+      CtrlAltDelBurstAction=reboot-force
     owner: root
     group: root
     mode: '0644'
