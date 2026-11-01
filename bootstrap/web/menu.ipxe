@@ -17,6 +17,20 @@
 #
 # Version history:
 #
+#   v2.25  :pfsense switched from chain to sanboot (Robert, 2026-11-01), after live testing
+#          found chain gives loader.efi no filesystem of its own, so it can never find
+#          /boot/lua/loader.lua ("Failed to find bootable partition", confirmed live).
+#          sanboot-ing the full vendor ISO directly was also tried and rejected live: the
+#          kernel's cd9660 auto-mount only engages for a device BIOS/the kernel sees as
+#          CD-ROM type, and iPXE's SAN layer presents an HTTP-backed image as a plain disk
+#          regardless of --drive range (confirmed via lsdev -v: disk0, not cd0, even at
+#          --drive 0xe0). build-pfsense-httpboot.sh v0.2.0 now builds a small boot.iso (the
+#          boot/ tree only, dist/ excluded) that sanboot gives loader.efi a real filesystem to
+#          read its own /boot/* from -- root still ends up on /dev/md0 via rootimg_load, which
+#          never goes through BIOS/EDD device typing at all. Still UEFI only, still untested
+#          end to end (this fixes the earlier failure mode, not yet confirmed to reach a
+#          working install).
+#
 #   v2.24  Added :pfsense -- pfSense CE 2.7.2, staged for HTTP boot via the new
 #          bootstrap/web/pfsense/build-pfsense-httpboot.sh (Robert, 2026-11-01). UEFI only --
 #          FreeBSD's HTTP-boot loader chainload (`chain .../boot/loader.efi`) has no BIOS
@@ -883,25 +897,36 @@ boot
 # PFSENSE
 # pfSense CE 2.7.2, staged for HTTP boot by bootstrap/web/pfsense/build-pfsense-httpboot.sh
 # (run once, manually, against the real vendor ISO -- not something this repo's own
-# automation builds). The script produces a FreeBSD loader tree under
-# ${boot-url}/pfsense/2.7.2-CE/boot/ (loose loader.efi/kernel/modules/root.img) plus the
-# installer payload under .../dist/ (base.txz/MANIFEST), gitignored -- real pfSense
-# binaries, ~1GB, publicly downloadable from pfSense's own CDN, not committed.
+# automation builds). The script produces boot.iso under ${boot-url}/pfsense/2.7.2-CE/
+# (loader.efi, lua/, kernel/, root.img -- no installer payload) plus the loose boot/ tree
+# it was built from (kept for reference) and the installer payload under .../dist/
+# (base.txz/MANIFEST), gitignored -- real pfSense binaries, ~1GB, publicly downloadable
+# from pfSense's own CDN, not committed.
 #
-# UEFI only: FreeBSD's HTTP-boot loader is reached by chainloading boot/loader.efi
-# directly -- there is no BIOS equivalent, so a BIOS client (${buildarch} i386) gets a
-# stub message instead, same pattern as :proxmox-ve's own "not available this way" stub.
-# amd64 only -- pfSense CE ships no arm64 build, guarded the same way as
-# :3cx-install/:hdt (iseq ${arch} arm64 && goto noarch-msg).
+# sanboot, not chain: chaining loader.efi as a single bare HTTP file gives it no
+# filesystem of its own to find /boot/lua/loader.lua on (confirmed live, "Failed to find
+# bootable partition"). sanboot-ing the full vendor ISO directly was also tried and
+# rejected live -- the kernel's own cd9660 auto-mount only engages for a device BIOS/the
+# kernel sees as CD-ROM type, and iPXE's SAN layer presents an HTTP-backed image as a
+# plain disk regardless of --drive range chosen. boot.iso is a small image containing
+# just the boot/ tree (no dist/), so sanboot-ing it gives loader.efi a real filesystem to
+# read its own files from; root itself still comes from root.img via rootimg_load/
+# /dev/md0, which never goes through BIOS/EDD device typing at all.
 #
-# UNTESTED -- no live chainload attempted yet. See the build script's own header for what
-# remains unverified (installer .profile hook location, exact ISO member names, whether
-# the FreeBSD loader needs iPXE to have booted in genuine UEFI mode specifically).
+# UEFI only: there is no BIOS equivalent for this exact chain, so a BIOS client
+# (${buildarch} i386) gets a stub message instead, same pattern as :proxmox-ve's own
+# "not available this way" stub. amd64 only -- pfSense CE ships no arm64 build, guarded
+# the same way as :3cx-install/:hdt (iseq ${arch} arm64 && goto noarch-msg).
+#
+# UNTESTED end to end -- this fixes the two failure modes found during live testing
+# (chain's missing filesystem, then the full-ISO sanboot's CD-vs-disk device typing), not
+# yet confirmed to reach a working install. See the build script's own header for what
+# else remains unverified (installer .profile hook location, exact ISO member names).
 # ===========================================================================
 :pfsense
 iseq ${arch} arm64 && goto noarch-msg ||
 iseq ${buildarch} i386 && goto pfsense-bios-msg ||
-chain ${boot-url}/pfsense/2.7.2-CE/boot/loader.efi || goto pfsense-failed-msg
+sanboot --no-describe ${boot-url}/pfsense/2.7.2-CE/boot.iso || goto pfsense-failed-msg
 
 :pfsense-bios-msg
 echo pfSense HTTP boot is UEFI only -- no BIOS loader equivalent exists for this path
@@ -909,7 +934,7 @@ prompt Press any key to return to menu...
 goto main
 
 :pfsense-failed-msg
-echo pfSense chainload failed -- has build-pfsense-httpboot.sh been run against this server yet?
+echo pfSense sanboot failed -- has build-pfsense-httpboot.sh been run against this server yet?
 prompt Press any key to return to menu...
 goto main
 

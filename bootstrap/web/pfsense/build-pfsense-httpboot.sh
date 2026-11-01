@@ -6,6 +6,21 @@
 #
 # Version history (append only, never delete entries):
 #   0.1.0  2026-11-01  First draft. UEFI leg only. Untested.
+#   0.2.0  2026-11-01  Build a small bootable boot.iso (the boot/ tree only, dist/ excluded)
+#                       and sanboot that, instead of chain-ing loader.efi as a single bare
+#                       HTTP file. Live-tested reasoning: chain gives loader.efi no filesystem
+#                       of its own, so it can never find /boot/lua/loader.lua -- confirmed live,
+#                       "Failed to find bootable partition". sanboot-ing the full vendor ISO
+#                       directly was also tried and rejected: the kernel's cd9660 auto-mount
+#                       (the real ISO's own loader.conf expects /dev/iso9660/PFSENSE) only
+#                       engages for a device BIOS/the kernel sees as CD-ROM type, and iPXE's
+#                       SAN layer presents an HTTP-backed image as a plain disk regardless of
+#                       --drive range chosen (confirmed live: lsdev -v showed disk0, not cd0,
+#                       even at --drive 0xe0, the conventional first-CD-ROM BIOS drive number).
+#                       root.img via rootimg_load/md_image sidesteps this entirely -- md(4)
+#                       never goes through BIOS/EDD device typing at all. UEFI leg only, still
+#                       untested end to end (this fixes the earlier failure mode, not yet
+#                       confirmed to reach a working install).
 #
 # Usage (run as root so ownership and setuid bits survive extraction):
 #   build-pfsense-httpboot.sh <pfSense-CE-2.7.2-RELEASE-amd64.iso> <web-root> <http-base-url>
@@ -14,7 +29,9 @@
 #   build-pfsense-httpboot.sh pfSense-CE-2.7.2-RELEASE-amd64.iso /srv/web http://web.example
 #
 # Result:
-#   <web-root>/pfsense/2.7.2-CE/boot/    loader.efi, loader.conf, loader.conf.local, lua/, kernel/, root.img
+#   <web-root>/pfsense/2.7.2-CE/boot.iso  sanboot this -- loader.efi, lua/, kernel/, root.img,
+#                                         no dist/ (installer payload stays HTTP-fetched)
+#   <web-root>/pfsense/2.7.2-CE/boot/    same content, unpacked (kept for reference/manual poking)
 #   <web-root>/pfsense/2.7.2-CE/dist/    base.txz, MANIFEST
 
 set -euo pipefail
@@ -27,8 +44,9 @@ BASEURL="${3:?${USAGE}}"
 NAME="pfsense/2.7.2-CE"
 OUT="${WEBROOT}/${NAME}"
 STAGE="$(mktemp -d)"
+BOOTISO_STAGE="$(mktemp -d)"
 
-trap 'rm -rf -- "${STAGE:?}"' EXIT
+trap 'rm -rf -- "${STAGE:?}" "${BOOTISO_STAGE:?}"' EXIT
 
 log() {
   printf '%s\n' "$*"
@@ -97,8 +115,14 @@ done
 log "building the root image (cd9660, label PFSENSE, Rock Ridge)"
 xorriso -as mkisofs -R -V PFSENSE -o "${OUT}/boot/root.img" "${STAGE}"
 
+log "building the sanboot image (boot/ tree only, dist/ excluded -- this way loader.efi finds"
+log "its own /boot/* on the device it was booted from, unlike chaining a single bare HTTP file)"
+xorriso -as mkisofs -R -V PFSENSE-BOOT -o "${BOOTISO_STAGE}/boot.iso" \
+  -e boot/loader.efi -no-emul-boot -m dist "${OUT}"
+mv "${BOOTISO_STAGE}/boot.iso" "${OUT}/boot.iso"
+
 chmod -R a+rX "${OUT}"
 
 log "done. sizes:"
-du -h "${OUT}/boot/root.img" "${OUT}/boot/kernel/kernel" "${OUT}/dist/base.txz"
-log "test from the iPXE shell (UEFI):  chain ${BASEURL}/${NAME}/boot/loader.efi"
+du -h "${OUT}/boot.iso" "${OUT}/boot/root.img" "${OUT}/boot/kernel/kernel" "${OUT}/dist/base.txz"
+log "test from the iPXE shell:  sanboot --no-describe ${BASEURL}/${NAME}/boot.iso"
