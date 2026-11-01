@@ -17,6 +17,16 @@
 #
 # Version history:
 #
+#   v2.23  :klargoring gains the degraded (single-disk) build, matching :saekkevogn (v2.19) and
+#          :pakhus (v2.20) (Robert, 2026-11-01). A PXE boot on a one-disk VM fetched
+#          VRK-answer.toml and failed with "/dev/sdb does not exist". Both :klargoring kernel
+#          lines now also pass toml_url_degraded=${boot-url}/proxmox/${site-prefix}-degraded.toml
+#          -- the existing PVE degraded files, unchanged and already in check_ssh_keys.py. The
+#          installer (klargoring commit "Add the degraded (single-disk) build") counts whole
+#          disks the same way select-pve-answer.sh does and fetches that file when fewer than
+#          2 exist. Older installers ignore the argument, so one-disk boots keep failing until
+#          a klargoring release containing that commit is on this server. UNTESTED so far.
+#
 #   v2.22  Hypervisors section spruced up, Robert's ask: all 4 item lines (proxmox-ve/
 #          klargoring/saekkevogn/pakhus) now share one consistent format and column
 #          alignment (opening parenthesis at the same column on every line, computed, not
@@ -787,12 +797,12 @@ goto main
 iseq ${arch} arm64 && goto klargoring-arm64 || goto klargoring-amd64
 
 :klargoring-amd64
-kernel ${boot-url}/proxmox/klargoring/amd64/vmlinuz toml_url=${boot-url}/proxmox/${site-prefix}-answer.toml confirm-wipe no-reboot
+kernel ${boot-url}/proxmox/klargoring/amd64/vmlinuz toml_url=${boot-url}/proxmox/${site-prefix}-answer.toml toml_url_degraded=${boot-url}/proxmox/${site-prefix}-degraded.toml confirm-wipe no-reboot
 initrd ${boot-url}/proxmox/klargoring/amd64/installer-initrd.img
 boot
 
 :klargoring-arm64
-kernel ${boot-url}/proxmox/klargoring/arm64/vmlinuz-arm64 toml_url=${boot-url}/proxmox/${site-prefix}-answer.toml confirm-wipe no-reboot
+kernel ${boot-url}/proxmox/klargoring/arm64/vmlinuz-arm64 toml_url=${boot-url}/proxmox/${site-prefix}-answer.toml toml_url_degraded=${boot-url}/proxmox/${site-prefix}-degraded.toml confirm-wipe no-reboot
 initrd ${boot-url}/proxmox/klargoring/arm64/installer-initrd-arm64.img
 boot
 
