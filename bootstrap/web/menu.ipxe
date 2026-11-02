@@ -17,6 +17,23 @@
 #
 # Version history:
 #
+#   v2.26  Added :graensevagt (Robert's idea, 2026-11-02), a new, separate approach to the
+#          pfSense deployment problem :pfsense (v2.25 below) never fully solved -- rather
+#          than keep fighting FreeBSD's own BTX/El-Torito/GPT boot structure by hand, run
+#          the real installer once offline via QEMU, capture the resulting disk, and ship
+#          THAT instead of sanboot-ing the installer every time. graensevagt itself is a
+#          separate repo (github.com/knightmare2600/graensevagt, not yet pushed) -- a
+#          minimal busybox-based initramfs whose own init fetches a prebuilt disk image
+#          over HTTP and writes it straight to the target's local disk, then reboots.
+#          Confirmed working end to end against a real small test image (DHCP, disk
+#          auto-detect, streamed fetch+write, checksum verify, clean reboot all proven live
+#          under QEMU) -- NOT yet tested against the real ~485MB pfSense golden image, and
+#          NOT yet tested on real/VMware hardware, only this sandbox's own QEMU. The
+#          ${graensevagt-image-url} placeholder below needs replacing with wherever Robert
+#          actually serves the golden image from -- not committed here, see
+#          project_pfsense_httpboot_sanboot_2026_11_01 for why (pfSense-derived binary,
+#          same handling as the vendor ISO itself). :pfsense (v2.25) is left as-is, not
+#          deleted -- real code, real history, just superseded by this approach.
 #   v2.25  :pfsense switched from chain to sanboot (Robert, 2026-11-01), after live testing
 #          found chain gives loader.efi no filesystem of its own, so it can never find
 #          /boot/lua/loader.lua ("Failed to find bootable partition", confirmed live).
@@ -526,6 +543,7 @@ item --gap --
 item --gap --         -- Default Selection --
 item localboot        Boot local disk  (default, 30s timeout)
 item spejder          Spejder Hardware Provisioning Runtime (Console and Serial ttyS0/COM1)
+item graensevagt      Graensevagt: write pfSense golden image to local disk (DESTROYS the disk -- see v2.26)
 item --gap --
 item --gap --         -- Debian (Trixie) --
 item debian-auto      Debian Trixie  Auto install
@@ -922,6 +940,11 @@ boot
 # (chain's missing filesystem, then the full-ISO sanboot's CD-vs-disk device typing), not
 # yet confirmed to reach a working install. See the build script's own header for what
 # else remains unverified (installer .profile hook location, exact ISO member names).
+#
+# SUPERSEDED, v2.26 (Robert's call, 2026-11-02): rather than keep fighting this chain's
+# own boot-structure fragility, :graensevagt below takes a different approach entirely --
+# a real installer run once offline, the resulting disk shipped and written directly.
+# Left here as-is, not deleted -- real code and real history, not replaced in place.
 # ===========================================================================
 :pfsense
 iseq ${arch} arm64 && goto noarch-msg ||
@@ -937,6 +960,42 @@ goto main
 echo pfSense sanboot failed -- has build-pfsense-httpboot.sh been run against this server yet?
 prompt Press any key to return to menu...
 goto main
+
+# ===========================================================================
+# GRAENSEVAGT
+# ===========================================================================
+# Robert's idea (2026-11-02): rather than keep fighting pfSense's own installer boot
+# structure by hand (see :pfsense above, superseded not deleted), run the real installer
+# once offline via QEMU, capture the resulting disk, and ship THAT. graensevagt itself is
+# a minimal busybox-based initramfs (separate repo, github.com/knightmare2600/graensevagt,
+# not yet pushed) whose own init fetches a prebuilt disk image over HTTP and writes it
+# straight to the target's local disk -- no installer, no partitioning logic, no FreeBSD
+# boot structure to get right at all, since the disk it writes was already built correctly
+# by the real installer the one time it mattered.
+#
+# DESTROYS the target disk entirely, no confirmation prompt here beyond the menu item's
+# own label -- graensevagt's own init has its own 10-second abort window built in
+# (Ctrl-C/power off during the countdown) before it actually starts writing, which is the
+# real safety net, not anything at the iPXE layer.
+#
+# graensevagt_image= below is a PLACEHOLDER -- the real ~485MB pfSense golden image is
+# deliberately not served from this repo's own asset pipeline (pfSense-derived binary,
+# same handling as the vendor ISO itself, see project_pfsense_httpboot_sanboot_2026_11_01
+# for why). Replace the URL with wherever Robert actually serves it from before using this
+# entry for real.
+#
+# Confirmed working end to end against a real small test image under this sandbox's own
+# QEMU (DHCP with a real applied lease, disk auto-detect, streamed fetch+write with
+# checksum verification, clean reboot) -- NOT yet tested against the real golden image or
+# on real/VMware hardware.
+#
+# UEFI only for now, same reasoning as :pfsense -- amd64 only, no arm64 build of
+# graensevagt exists yet either.
+:graensevagt
+iseq ${arch} arm64 && goto noarch-msg ||
+kernel ${boot-url}/graensevagt/${arch}/linux-${arch} console=ttyS0,115200 console=tty0 graensevagt_image=http://REPLACE-ME-WITH-REAL-URL/pfsense-2.7.2-graensevagt-golden.img.gz graensevagt_disk=auto
+initrd ${boot-url}/graensevagt/${arch}/initramfs-${arch}.cpio.gz
+boot
 
 # ===========================================================================
 # GPARTED
