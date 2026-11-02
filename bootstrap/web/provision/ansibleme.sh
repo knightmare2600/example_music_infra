@@ -569,6 +569,16 @@
 #                     into its own zsh self-heal line, firewallme.sh gets the same two
 #                     via separate dpkg -s checks; this script had neither. Bundled both
 #                     into the existing command -v zsh line to match bindme.sh's style.
+# v1.42.0 2026-11-02  BUG FIX, Robert's ask: gitleaks and snmpget/snmpset (the snmp
+#                     package) were never in this script's own self-heal list at all,
+#                     despite at_have_ryggen_fri/check_required_tools.py's REQUIRED_TOOLS
+#                     already expecting both on the control node -- confirmed missing by
+#                     hand-installing both on the real EXAANSCLD001 and this harness's own
+#                     sandbox the same day. Added the matching command -v guards. No
+#                     equivalent Ansible-side playbook built for this -- an Ansible
+#                     playbook that bootstraps the box Ansible itself runs from is a
+#                     chicken-and-egg problem by construction, which is exactly why this
+#                     break-glass script exists in the first place.
 #
 # ==============================================================================
 
@@ -826,6 +836,11 @@ command -v gpg          &>/dev/null || BOOTSTRAP_PKGS+=(gpg)
 command -v arping       &>/dev/null || BOOTSTRAP_PKGS+=(arping)
 command -v nmcli        &>/dev/null || BOOTSTRAP_PKGS+=(network-manager)
 command -v locate       &>/dev/null || BOOTSTRAP_PKGS+=(plocate)
+# gitleaks (secret-scanning the repo itself) and snmpget/snmpset (the snmp package --
+# at_have_ryggen_fri/check_required_tools.py's REQUIRED_TOOLS already expects both on
+# the control node; this script never actually installed them, 2026-11-02 finding).
+command -v gitleaks     &>/dev/null || BOOTSTRAP_PKGS+=(gitleaks)
+command -v snmpget      &>/dev/null || BOOTSTRAP_PKGS+=(snmp)
 # Python libs for Proxmox API and virt tools
 dpkg -s python3-proxmoxer  &>/dev/null || BOOTSTRAP_PKGS+=(python3-proxmoxer)
 dpkg -s python3-requests    &>/dev/null || BOOTSTRAP_PKGS+=(python3-requests)
