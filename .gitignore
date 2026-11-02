@@ -156,6 +156,15 @@ bootstrap/web/gparted/**
 # build-pfsense-httpboot.sh's own output -- real pfSense base.txz/root.img/kernel binaries,
 # ~1GB+, publicly downloadable from pfSense's own CDN. Script itself IS tracked (outside this path).
 bootstrap/web/pfsense/2.7.2-CE/**
+# graensevagt (github.com/knightmare2600/graensevagt) -- kernel-amd64/initramfs-amd64.cpio.gz
+# are that repo's own release assets, re-fetched not committed, same "real upstream home of
+# their own" reasoning as spejder/klargoring/gparted above. The golden image
+# (pfsense-*-graensevagt-golden.img.gz) is pfSense-derived, same handling as
+# bootstrap/web/pfsense/2.7.2-CE/** above -- real pfSense disk content, not committed. Found
+# 2026-11-02: kernel-amd64 wasn't actually caught by any existing pattern here (only
+# initramfs-amd64.cpio.gz incidentally matched **/initramfs* above) -- a real gap, not a
+# deliberate choice, fixed by this directory-wildcard entry.
+bootstrap/web/graensevagt/**
 bootstrap/web/debian/bookworm/x86_64/linux
 bootstrap/web/debian/bookworm/x86_64/initrd.gz
 bootstrap/web/debian/bookworm/arm64/linux

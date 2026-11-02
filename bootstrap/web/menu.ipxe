@@ -17,6 +17,27 @@
 #
 # Version history:
 #
+#   v2.27  CORRECTION to v2.26, same day (Robert: "you already wrote a lot of the stuff you
+#          need to make the graensevagt correctly... including the boot-url thing"). Two real
+#          bugs, not cosmetic: (1) graensevagt_image= was a hardcoded external
+#          http://REPLACE-ME-WITH-REAL-URL/ placeholder, reasoned (wrongly) as needing
+#          different handling because it's a pfSense-derived binary -- but :pfsense
+#          immediately above already serves its own ~1GB gitignored, pfSense-derived boot.iso
+#          straight off ${boot-url}, mirrored to both sites same as everything else. Now
+#          ${boot-url}/graensevagt/pfsense-2.7.2-graensevagt-golden.img.gz, same pattern,
+#          bootstrap/web/graensevagt/** added to .gitignore. (2) kernel/initrd paths were
+#          ${arch}-templated (linux-${arch}, initramfs-${arch}.cpio.gz) despite graensevagt
+#          being amd64-only -- implied a nonexistent arm64 variant, same mistake v2.11 already
+#          fixed for klargoring/saekkevogn/pakhus (literal per-arch paths, no indirection,
+#          when arch support is asymmetric or single). Now literal: kernel-amd64,
+#          initramfs-amd64.cpio.gz, matching the real github.com/knightmare2600/graensevagt
+#          release assets and Robert's own already-corrected local copy of this file. Local
+#          sandbox copies renamed/flattened to match (bootstrap/web/graensevagt/kernel-amd64,
+#          .../initramfs-amd64.cpio.gz -- no amd64/ subdirectory, matching :pfsense's own
+#          no-subdirectory layout since there's no arch to disambiguate). Still unresolved:
+#          the actual golden image file isn't yet copied into bootstrap/web/graensevagt/ on
+#          either site -- it currently only exists in the separate graensevagt repo
+#          (~/graensevagt/pfsense-2.7.2-graensevagt-golden.img.gz).
 #   v2.26  Added :graensevagt (Robert's idea, 2026-11-02), a new, separate approach to the
 #          pfSense deployment problem :pfsense (v2.25 below) never fully solved -- rather
 #          than keep fighting FreeBSD's own BTX/El-Torito/GPT boot structure by hand, run
@@ -978,11 +999,26 @@ goto main
 # (Ctrl-C/power off during the countdown) before it actually starts writing, which is the
 # real safety net, not anything at the iPXE layer.
 #
-# graensevagt_image= below is a PLACEHOLDER -- the real ~485MB pfSense golden image is
-# deliberately not served from this repo's own asset pipeline (pfSense-derived binary,
-# same handling as the vendor ISO itself, see project_pfsense_httpboot_sanboot_2026_11_01
-# for why). Replace the URL with wherever Robert actually serves it from before using this
-# entry for real.
+# graensevagt_image= uses ${boot-url} -- CORRECTED v2.27 (Robert, 2026-11-02): v2.26 pointed
+# it at a hardcoded external REPLACE-ME placeholder on the reasoning that a pfSense-derived
+# binary shouldn't go through this repo's own asset pipeline. That reasoning doesn't hold up
+# against :pfsense immediately above, which already serves its own ~1GB gitignored,
+# pfSense-derived boot.iso straight off ${boot-url} (mirrored to both Edinburgh and
+# Fredericia same as everything else) -- there was never a reason for graensevagt's golden
+# image to be hosted any differently. It now resolves to
+# ${boot-url}/graensevagt/pfsense-2.7.2-graensevagt-golden.img.gz, gitignored the same way as
+# :pfsense's own boot.iso (bootstrap/web/graensevagt/** added to .gitignore). Robert still
+# needs to place the actual ~485MB file there on whichever server(s) this entry will be
+# booted against -- it currently lives in the separate graensevagt repo
+# (~/graensevagt/pfsense-2.7.2-graensevagt-golden.img.gz), not yet copied into
+# bootstrap/web/graensevagt/ on either site.
+#
+# kernel/initrd paths are now fully literal (kernel-amd64 / initramfs-amd64.cpio.gz), not
+# ${arch}-templated -- CORRECTED v2.27, same reasoning v2.11 already established for
+# klargoring/saekkevogn/pakhus: graensevagt is amd64-only (no arm64 build exists), so a
+# ${arch} path implies an arm64 variant that was never going to resolve. These filenames
+# match the real github.com/knightmare2600/graensevagt release assets (confirmed against
+# its own README) and Robert's own locally-corrected copy of this file.
 #
 # Confirmed working end to end against a real small test image under this sandbox's own
 # QEMU (DHCP with a real applied lease, disk auto-detect, streamed fetch+write with
@@ -993,8 +1029,8 @@ goto main
 # graensevagt exists yet either.
 :graensevagt
 iseq ${arch} arm64 && goto noarch-msg ||
-kernel ${boot-url}/graensevagt/${arch}/linux-${arch} console=ttyS0,115200 console=tty0 graensevagt_image=http://REPLACE-ME-WITH-REAL-URL/pfsense-2.7.2-graensevagt-golden.img.gz graensevagt_disk=auto
-initrd ${boot-url}/graensevagt/${arch}/initramfs-${arch}.cpio.gz
+kernel ${boot-url}/graensevagt/kernel-amd64 console=ttyS0,115200 console=tty0 graensevagt_image=${boot-url}/graensevagt/pfsense-2.7.2-graensevagt-golden.img.gz graensevagt_disk=auto
+initrd ${boot-url}/graensevagt/initramfs-amd64.cpio.gz
 boot
 
 # ===========================================================================
