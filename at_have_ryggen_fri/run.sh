@@ -463,12 +463,29 @@
 #      explicitly when anything was demurred; "Ryggen er fri" alone only
 #      ever means a genuinely clean run.
 #
-# Nothing here touches a real host or needs a vault password. Two exceptions
-# to "network access beyond localhost": check 13 (check_mermaid.py) needs to
-# reach kroki.io to render-test every mermaid diagram, and check 37
+#  48. check_domain_consistency.py -- confirms ad_computers.json/
+#      ad_users.json/ad_groups.json/extracted_credentials.json and every
+#      enumerated PXE/install-time artifact agree with ad_forest.json's
+#      current domain_fqdn.
+#  49. check_asset_manifest_freshness.py -- benarbejde/asset_manifest.json's
+#      assets[] github_release entries (klargoring/saekkevogn/pakhus/
+#      Spejder/wimboot/ipxe-arm64-sb.iso) checked against the real upstream
+#      release: every listed asset_name still exists under its tag (hard
+#      fail if not), and a literally-pinned tag (not "latest") is flagged if
+#      it's behind the real latest release (informational, --strict
+#      promotes). Closes backlog item 2 -- klargoring's own 2026-08-06
+#      changelog entry records upstream silently renaming 'vmlinuz' to
+#      'vmlinuz-amd64'/'vmlinuz-arm64' with nothing catching it until a live
+#      fetch failed; this is the check that would have caught it.
+#
+# Nothing here touches a real host or needs a vault password. Three
+# exceptions to "network access beyond localhost": check 13 (check_mermaid.py)
+# needs to reach kroki.io to render-test every mermaid diagram, check 37
 # (check_workstation_tool_versions.py) needs the GitHub API to check
-# workstation_tools[] pins against real upstream releases -- see their own
-# headers for why a local guess isn't good enough. Both are network-optional
+# workstation_tools[] pins against real upstream releases, and check 49
+# (check_asset_manifest_freshness.py) needs the GitHub API for the same
+# reason against assets[]'s github_release entries -- see their own headers
+# for why a local guess isn't good enough. All three are network-optional
 # (unreachable = informational skip, not a hard failure). Everything else is
 # still safe to run any time, by anyone, on any clone, no network required.
 #
@@ -860,6 +877,22 @@
 #               header for why a naive version of that would likely alarm
 #               on legitimate Linux-infrastructure gaps on its very first
 #               run, which is a bad way to introduce a hard-stop mechanism.
+#   2026-11-02  Added check_asset_manifest_freshness.py (section 49) --
+#               closes backlog item 2 (PLAN-harness-and-bootstrap-backlog-
+#               2026-08-06.md). The fyrtaarn half of that backlog item
+#               turned out to already be done (workstation_tools[] +
+#               check_workstation_tool_versions.py, both 2026-08-08, two
+#               days after the backlog doc was written) -- this new check is
+#               the other half, generalising the same freshness pattern to
+#               assets[]'s github_release entries (klargoring/saekkevogn/
+#               pakhus/Spejder/wimboot/ipxe-arm64-sb.iso), which nothing
+#               previously checked at all. NOTE: sections 44-48
+#               (check_new_site_boilerplate.py, check_jinja_test_names.py,
+#               check_vault_placeholders.py, check_nodeinfo_coverage.py,
+#               check_domain_consistency.py) never got a matching dated
+#               entry here when they were added -- a pre-existing gap in
+#               this changelog, not touched in this pass; flagged, not
+#               backfilled.
 # ==============================================================================
 set -uo pipefail
 
@@ -1840,6 +1873,22 @@ else
   echo "$out"
   fail "Domain inconsistency found -- see above. A repo-wide audit (2026-10-18) found most of the repo already derives the AD domain correctly from ad_forest.json; this check covers the genuinely static data/artifact files that can't be Jinja-templated, where drift would otherwise go unnoticed."
   FAILED_CHECKS+=("check_domain_consistency.py")
+fi
+
+# ------------------------------------------------------------------------------
+# 49. Asset manifest freshness (github_release entries) — check_asset_manifest_freshness.py
+# ------------------------------------------------------------------------------
+section "49. Asset manifest freshness — check_asset_manifest_freshness.py"
+
+amf_args=()
+$STRICT && amf_args+=("--strict")
+if out=$(python3 "${HERE}/check_asset_manifest_freshness.py" "${amf_args[@]}"); then
+  echo "$out"
+  success "assets[] github_release entries' asset_name values exist in their real upstream releases (stale-pin findings are informational unless --strict)."
+else
+  echo "$out"
+  fail "An assets[] github_release entry's asset_name no longer exists in the real upstream release -- see above."
+  FAILED_CHECKS+=("check_asset_manifest_freshness.py")
 fi
 
 # ------------------------------------------------------------------------------

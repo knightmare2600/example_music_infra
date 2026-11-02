@@ -62,30 +62,31 @@ host-local-tool framing) that:
 
 ## 2. Spin-off repo release tracking (klargoring, fyrtaarn, Spejder, ...)
 
-**Two different problems, don't conflate**:
-- **klargoring**: already correctly wired (asset_manifest.json + menu.ipxe),
-  this session's own work — the pattern to copy for a NEW check that keeps
-  it that way going forward: compare `asset_manifest.json`'s recorded `tag`
-  (currently `"latest"` for all github_release entries, not pinned) against
-  each repo's actual latest release via the GitHub API, flag drift.
-- **fyrtaarn**: never wired in at all — Type-1-gap, needs the SAME kind of
-  integration work klargoring got (decide what it's for in this repo's own
-  workflow — a downloadable tool in `bootstrap/`? An `asset_manifest.json`
-  entry? Something a provision script fetches?) before a freshness check
-  even makes sense. This needs Robert's own design input on WHERE fyrtaarn
-  fits into this repo's actual usage (it's used narratively in
-  `docs/INCIDENT-LOG.md` already, by a technician, standalone — is it meant
-  to be a fetchable binary this repo ships, or just referenced/documented as
-  an external tool technicians bring themselves?).
+**RESOLVED 2026-11-02.** Both halves, in the end — but not the way this
+entry originally framed them:
 
-**Design for the freshness-checking half** (once fyrtaarn's integration is
-decided): a new check that, for every `github_release`-sourced
-`asset_manifest.json` entry, queries `api.github.com/repos/<repo>/releases/
-latest` (read-only, same "check kroki.io" exception `check_mermaid.py`
-already has for going outside localhost) and compares against what's
-actually committed/fetched — informational, since a bare clone won't have
-fetched anything at all, `--strict` for "you're about to deploy, is this
-current."
+- **fyrtaarn**: this entry was already stale by the time anyone next read
+  it. `benarbejde/asset_manifest.json` gained a `workstation_tools[]`
+  category on 2026-08-08 (two days after this doc was written), with
+  fyrtaarn as its first entry — Robert's own ask, live: "use that inside of
+  those deployment scripts we wrote, and also have the harness check for new
+  versions, verify checksums, all the usual spangly stuff." That same day's
+  `check_workstation_tool_versions.py` (harness check 37) does exactly that:
+  pinned-tag-exists + pinned-tag-vs-latest, against the real GitHub API. No
+  further work needed here — this bullet's "never wired in at all" was
+  simply out of date.
+- **klargoring/saekkevogn/pakhus/Spejder freshness-checking**: this was the
+  genuinely open half. New check `check_asset_manifest_freshness.py`
+  (harness check 49, added 2026-11-02) covers every `assets[]` entry with
+  `source_type: github_release` — not just klargoring — checking the
+  manifest's `asset_name` against the real upstream release for its `tag`
+  (`"latest"` resolves to `/releases/latest`; a literal tag, e.g. wimboot's
+  `v2.9.0`, resolves to `/releases/tags/<tag>`). Hard fail if the asset no
+  longer exists upstream (the exact klargoring `vmlinuz` → `vmlinuz-amd64`
+  rename incident this manifest's own 2026-08-06 changelog entry already
+  documented); informational (`--strict` promotes) if a literally-pinned tag
+  has fallen behind the real latest release. Verified live against the real
+  GitHub API before committing — clean run, no findings.
 
 ## 3. Debian netboot images -- functional regression, not a dead link
 
@@ -140,9 +141,15 @@ Also fixed the same day: renamed the default vault filename from
 is "playing with fire" on Unix/macOS) — code + docs updated, no live file
 touched.
 
-## Explicitly not started
+## Status as of 2026-11-02
 
-None of the above is built. This document exists so today's frustration
-translates into a concrete, ordered list rather than getting lost — pick up
-tomorrow, one item at a time, same "plan first, then build phase by phase"
-pacing as everything else this week.
+Items 2 and 4 are RESOLVED (see above). Item 1's "Problem A" (control-node
+tool checks) is BUILT; its "Problem B" (validating each provisioning
+script's own self-heal tool list) is still open. Item 3 remains open,
+blocked on Robert's input (where the mini.iso files he sourced by hand live,
+and whether to restructure `menu.ipxe`'s Debian boot path around them).
+
+This document exists so the original frustration translates into a
+concrete, ordered list rather than getting lost — pick up one item at a
+time, same "plan first, then build phase by phase" pacing as everything
+else.
