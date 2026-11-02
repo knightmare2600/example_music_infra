@@ -562,6 +562,13 @@
 #                     right after this script's own existing DNS_IP lookup (same
 #                     resolved begyndelse.json path, no second file search needed), and
 #                     both hardcodes now use it.
+# v1.41.0 2026-11-02  BUG FIX, found by at_have_ryggen_fri/check_provision_self_heal.py
+#                     (new harness check 50, cross-script drift): the zsh self-heal here
+#                     only ever installed bare zsh, never zsh-autosuggestions/
+#                     zsh-syntax-highlighting -- bindme.sh bundles both plugin packages
+#                     into its own zsh self-heal line, firewallme.sh gets the same two
+#                     via separate dpkg -s checks; this script had neither. Bundled both
+#                     into the existing command -v zsh line to match bindme.sh's style.
 #
 # ==============================================================================
 
@@ -813,7 +820,7 @@ command -v vim          &>/dev/null || BOOTSTRAP_PKGS+=(vim)
 command -v tmux         &>/dev/null || BOOTSTRAP_PKGS+=(tmux)
 command -v tree         &>/dev/null || BOOTSTRAP_PKGS+=(tree)
 command -v grc          &>/dev/null || BOOTSTRAP_PKGS+=(grc)
-command -v zsh          &>/dev/null || BOOTSTRAP_PKGS+=(zsh)
+command -v zsh          &>/dev/null || BOOTSTRAP_PKGS+=(zsh zsh-autosuggestions zsh-syntax-highlighting)
 command -v yamllint     &>/dev/null || BOOTSTRAP_PKGS+=(yamllint)
 command -v gpg          &>/dev/null || BOOTSTRAP_PKGS+=(gpg)
 command -v arping       &>/dev/null || BOOTSTRAP_PKGS+=(arping)
