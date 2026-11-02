@@ -93,8 +93,18 @@ Usage:
   .\bootstrap\Setup-Workstation.ps1                # deps + assets
   .\bootstrap\Setup-Workstation.ps1 -DepsOnly       # skip asset fetch
   .\bootstrap\Setup-Workstation.ps1 -AssetsOnly     # skip dependency install
-  .\bootstrap\Setup-Workstation.ps1 -Refresh        # force re-fetch every asset/archive,
-                                                     # even if its dest file(s) already exist
+  .\bootstrap\Setup-Workstation.ps1 -Refresh        # BLINDLY re-fetch and overwrite every
+                                                     # asset/archive, even ones that already
+                                                     # match upstream's own checksum -- this
+                                                     # bypasses the checksum-match skip check
+                                                     # entirely, it does not just mean "check
+                                                     # harder". Without -Refresh, every run
+                                                     # already re-verifies against upstream
+                                                     # fresh and only re-downloads what's
+                                                     # actually different -- that's the normal,
+                                                     # cheap-by-default path; -Refresh is the
+                                                     # rarely-needed "trust nothing, redo it
+                                                     # all regardless of match" escape hatch.
 
 Chocolatey package installs need an elevated (Administrator) PowerShell --
 this script checks for elevation and exits with a clear message if it
@@ -102,6 +112,19 @@ isn't, rather than failing partway through with a confusing permissions
 error.
 ==============================================================================
 Changelog:
+  2026-11-02  Robert ran -Refresh live, saw everything blindly redownload, and reasonably
+              assumed it was a bug -- the 2026-10-25 entry below documents this flag's own
+              intended behaviour correctly in THIS file, but benarbejde/asset_manifest.json's
+              shared _readme (the more likely place to check first) was never updated to
+              match and still described the OLD pure-existence-check behaviour. Fixed that
+              doc, made the Usage block above explicit that -Refresh bypasses the checksum
+              check rather than just "checking harder", and added a startup warning here (and
+              in both sibling scripts) printed whenever -Refresh is active, so this doesn't
+              have to be learned from source a second time. Also: Invoke-ArchiveFetch now
+              compares each extracted member against its existing dest file and skips the
+              overwrite if they already match, even under -Refresh -- the archive itself
+              still can't avoid being re-fetched (no cheap pre-check possible, see the
+              2026-10-25 entry below), but the pointless final overwrite now can be.
   2026-10-25  Robert's ask: -Refresh used to mean "always re-fetch, blindly, no matter
               what" for Invoke-GithubReleaseFetch/Invoke-UrlWithChecksumFileFetch (job 3,
               the bootstrap/web/ asset population) -- wasteful for anything large, and
@@ -209,6 +232,16 @@ $ProgressPreference = 'SilentlyContinue'  # see header -- defensive, belt-and-br
 $DoDeps = -not $AssetsOnly
 $DoAssets = -not $DepsOnly
 $ForceRefresh = $Refresh.IsPresent
+
+if ($ForceRefresh) {
+    # Write-Warn2 isn't defined yet at this point in the script (function definitions
+    # sit lower down) -- Write-Host directly rather than reorder definitions for a
+    # one-off startup notice.
+    Write-Host "[!] -Refresh is active: every asset/archive will be BLINDLY re-fetched and" -ForegroundColor Yellow
+    Write-Host "[!] overwritten, even ones that already match upstream's own checksum. This" -ForegroundColor Yellow
+    Write-Host "[!] bypasses the checksum-match skip check entirely -- a normal run (no -Refresh)" -ForegroundColor Yellow
+    Write-Host "[!] already re-verifies against upstream fresh and skips anything unchanged." -ForegroundColor Yellow
+}
 
 # -- Paths ---------------------------------------------------------------------
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -782,6 +815,16 @@ function Invoke-ArchiveFetch {
         # Unix-built zip's own internal paths) -- Join-Path handles this
         # fine on Windows, but normalise explicitly for clarity.
         $srcInArchive = Join-Path $extractDir ($m.archive_path -replace '/', '\')
+        # The archive itself always has to be re-fetched under -Refresh (no persisted
+        # hash to check against before downloading, see this file's own 2026-10-25
+        # changelog entry) -- but once it's extracted, comparing the member we already
+        # have against what's already at dest costs almost nothing and avoids a
+        # pointless overwrite when the content genuinely hasn't changed. Robert's ask,
+        # 2026-11-02.
+        if ($ForceRefresh -and (Test-Path $fullDest) -and ((Get-Sha256 -Path $srcInArchive) -eq (Get-Sha256 -Path $fullDest))) {
+            Write-Ok "  $($m.dest) unchanged -- skipping overwrite."
+            continue
+        }
         Copy-Item -Path $srcInArchive -Destination $fullDest -Force
         Write-Ok "  $($m.dest) (from $archiveFilename)"
     }

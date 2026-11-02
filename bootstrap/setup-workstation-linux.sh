@@ -40,8 +40,20 @@
 #   ./bootstrap/setup-workstation-linux.sh              # deps + assets
 #   ./bootstrap/setup-workstation-linux.sh --deps-only   # skip asset fetch
 #   ./bootstrap/setup-workstation-linux.sh --assets-only # skip dependency install
-#   ./bootstrap/setup-workstation-linux.sh --refresh     # force re-fetch every asset/archive,
-#                                                         # even if its dest file(s) already exist
+#   ./bootstrap/setup-workstation-linux.sh --refresh     # BLINDLY re-fetch and overwrite
+#                                                         # every asset/archive, even ones that
+#                                                         # already match upstream's own
+#                                                         # checksum -- this bypasses the
+#                                                         # checksum-match skip check entirely,
+#                                                         # it does not just mean "check
+#                                                         # harder". Without --refresh, every
+#                                                         # run already re-verifies against
+#                                                         # upstream fresh and only re-downloads
+#                                                         # what's actually different -- that's
+#                                                         # the normal, cheap-by-default path;
+#                                                         # --refresh is the rarely-needed
+#                                                         # "trust nothing, redo it all
+#                                                         # regardless of match" escape hatch.
 #
 # Requires: bash, sudo (for apt), curl, jq, unzip, 7z (p7zip/7zip package,
 # needed for archives[] entries that are .iso rather than .zip -- currently
@@ -51,6 +63,19 @@
 # of these).
 # ==============================================================================
 # Changelog:
+#   2026-11-02  Robert ran --refresh live (via the sibling PS1 script), saw everything
+#               blindly redownload, and reasonably assumed it was a bug -- the 2026-10-25
+#               entry below documents this flag's own intended behaviour correctly in each
+#               script's own comments, but benarbejde/asset_manifest.json's shared _readme
+#               (the more likely place to check first) was never updated to match and still
+#               described the OLD pure-existence-check behaviour. Fixed that doc, made the
+#               Usage block above explicit that --refresh bypasses the checksum check rather
+#               than just "checking harder", and added a startup warning here (and in both
+#               sibling scripts) printed whenever --refresh is active. Also: fetch_archive
+#               now compares each extracted member against its existing dest file and skips
+#               the overwrite if they already match, even under --refresh -- the archive
+#               itself still can't avoid being re-fetched (no cheap pre-check possible, see
+#               the 2026-10-25 entry below), but the pointless final overwrite now can be.
 #   2026-10-25  Robert's ask: --refresh used to mean "always re-fetch, blindly, no matter
 #               what" for fetch_github_release/fetch_url_with_checksum_file (job 3, the
 #               bootstrap/web/ asset population) -- wasteful for anything large, and
@@ -239,6 +264,13 @@ msg_info()  { printf "${CY}[*]${NC} %s\n" "$*"; }
 msg_ok()    { printf "${GN}[+]${NC} %s\n" "$*"; }
 msg_warn()  { printf "${YW}[!]${NC} %s\n" "$*"; }
 msg_error() { printf "${RD}[x]${NC} %s\n" "$*"; }
+
+if [[ "$FORCE_REFRESH" == "true" ]]; then
+  msg_warn "--refresh is active: every asset/archive will be BLINDLY re-fetched and"
+  msg_warn "overwritten, even ones that already match upstream's own checksum. This"
+  msg_warn "bypasses the checksum-match skip check entirely -- a normal run (no --refresh)"
+  msg_warn "already re-verifies against upstream fresh and skips anything unchanged."
+fi
 
 # ==============================================================================
 # 1. Dependency install
@@ -645,6 +677,17 @@ fetch_archive() {
     dest="${pair#*|}"
     local full_dest="${WEB_DIR}/${dest}"
     [[ "$FORCE_REFRESH" == "false" && -f "$full_dest" ]] && continue
+    # The archive itself always has to be re-fetched under --refresh (no persisted hash
+    # to check against before downloading, see this file's own 2026-10-25 changelog
+    # entry) -- but once it's extracted, comparing the member we already have against
+    # what's already at dest costs almost nothing and avoids a pointless overwrite when
+    # the content genuinely hasn't changed. Robert's ask, 2026-11-02.
+    if [[ "$FORCE_REFRESH" == "true" && -f "$full_dest" ]]; then
+      if [[ "$(sha256sum "${extract_dir}/${archive_path}" | cut -d' ' -f1)" == "$(sha256sum "$full_dest" | cut -d' ' -f1)" ]]; then
+        msg_ok "  ${dest} unchanged -- skipping overwrite."
+        continue
+      fi
+    fi
     mkdir -p "$(dirname "$full_dest")"
     cp "${extract_dir}/${archive_path}" "$full_dest"
     msg_ok "  ${dest} (from ${archive_filename})"
