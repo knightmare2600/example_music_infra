@@ -312,6 +312,13 @@ docs/zabbix_templates/ex[0-9]*.json
 /private/
 
 ###############################################################################
+# Working backlog -- Robert's explicit instruction, 2026-11-02: backlog
+# tracking stays between him and Claude, never committed to the shared repo.
+###############################################################################
+
+/BACKLOG.md
+
+###############################################################################
 # Local-only gitleaks custom rules -- same pattern as the KeePassXC master
 # password above: a real identifying value (e.g. Robert's real email domain)
 # needs to sit in a rule's own regex pattern for gitleaks to detect future
