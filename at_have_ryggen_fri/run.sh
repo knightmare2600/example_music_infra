@@ -477,17 +477,52 @@
 #      changelog entry records upstream silently renaming 'vmlinuz' to
 #      'vmlinuz-amd64'/'vmlinuz-arm64' with nothing catching it until a live
 #      fetch failed; this is the check that would have caught it.
+#  50. check_provision_self_heal.py -- closes backlog item 1's "Problem B"
+#      (check 36/check_required_tools.py only ever covered "Problem A",
+#      control-node tools -- this is the OTHER half: the self-heal pattern
+#      bootstrap/web/provision/*.sh already uses for the TARGET box each
+#      one builds). Three checks, Robert's own three-way scoping answer
+#      (2026-11-02): (1) every package name any self-heal line queues
+#      actually exists in Debian's archive right now (hard fail -- checked
+#      live against the public madison API), (2) a tool a script invokes
+#      itself but never self-heals, where some OTHER script already proved
+#      that same tool needs self-healing (informational -- static
+#      heuristic, human triage). Found live while scoping this check:
+#      firewallme.sh's ip_in_use() calls arping (gated, so it never
+#      crashes -- just silently falls back to ping-only IP-collision
+#      detection) but never adds arping anywhere, unlike every other
+#      script that uses it; tacticalrmmme.sh calls nmcli with no self-heal
+#      at all -- the finding here with real-world bite, since
+#      NetworkManager isn't guaranteed present the way iproute2/
+#      openssh-client/python3 usually are on a stock Debian box. Both
+#      fixed the same day. A third initial finding -- rudderme.sh
+#      "invoking gpg/lsb_release without self-healing" -- turned out to be
+#      a false positive in this check itself, not a real gap: rudderme.sh
+#      already self-heals both, via `dpkg -s gnupg`/`dpkg -s lsb-release`
+#      (the package names, not the gpg/lsb_release binary names those
+#      packages provide), which this check's used-but-unchecked logic
+#      didn't originally know how to map. Fixed the check (an explicit
+#      KNOWN_PACKAGE_PROVIDES exception for gnupg->gpg, generic
+#      dash/underscore normalisation for lsb-release->lsb_release) rather
+#      than touching rudderme.sh, which was never broken. (3) the same
+#      tool/package self-healed with a different package set in two
+#      different scripts (e.g. one
+#      script's zsh self-heal also pulls in zsh-autosuggestions/
+#      zsh-syntax-highlighting, another's doesn't) -- not necessarily a
+#      bug, but previously invisible anywhere.
 #
-# Nothing here touches a real host or needs a vault password. Three
+# Nothing here touches a real host or needs a vault password. Four
 # exceptions to "network access beyond localhost": check 13 (check_mermaid.py)
-# needs to reach kroki.io to render-test every mermaid diagram, check 37
-# (check_workstation_tool_versions.py) needs the GitHub API to check
-# workstation_tools[] pins against real upstream releases, and check 49
-# (check_asset_manifest_freshness.py) needs the GitHub API for the same
-# reason against assets[]'s github_release entries -- see their own headers
-# for why a local guess isn't good enough. All three are network-optional
-# (unreachable = informational skip, not a hard failure). Everything else is
-# still safe to run any time, by anyone, on any clone, no network required.
+# needs to reach kroki.io to render-test every mermaid diagram; check 37
+# (check_workstation_tool_versions.py) and check 49
+# (check_asset_manifest_freshness.py) need the GitHub API, for
+# workstation_tools[] pins and assets[]'s github_release entries
+# respectively; check 50 (check_provision_self_heal.py) needs the public
+# Debian madison API to confirm self-healed package names still exist --
+# see their own headers for why a local guess isn't good enough. All four
+# are network-optional (unreachable = informational skip, not a hard
+# failure). Everything else is still safe to run any time, by anyone, on
+# any clone, no network required.
 #
 # Usage:
 #   ./run.sh
@@ -893,6 +928,29 @@
 #               entry here when they were added -- a pre-existing gap in
 #               this changelog, not touched in this pass; flagged, not
 #               backfilled.
+#   2026-11-02  Added check_provision_self_heal.py (section 50) -- closes
+#               backlog item 1's "Problem B" (check 36 only ever covered
+#               "Problem A", control-node tools; this is the self-heal
+#               pattern bootstrap/web/provision/*.sh itself already uses
+#               for the target box each one builds). Found live while
+#               scoping this check, before any code was written, both
+#               confirmed genuine by hand and fixed the same day:
+#               firewallme.sh called arping but never self-healed it
+#               anywhere (every other script that uses arping does);
+#               tacticalrmmme.sh called nmcli with no self-heal at all. A
+#               third initial read -- rudderme.sh "using gpg/lsb_release
+#               without self-healing" -- turned out to be a false positive
+#               in the check itself (rudderme.sh already self-heals both
+#               via dpkg -s gnupg/dpkg -s lsb-release, package names the
+#               check didn't yet know map to those binaries) -- fixed the
+#               check instead of touching a script that was never broken.
+#               Same pass also bundled zsh-autosuggestions/
+#               zsh-syntax-highlighting into ansibleme.sh's zsh self-heal
+#               (bindme.sh already had both, firewallme.sh gets them via
+#               separate dpkg -s lines -- ansibleme.sh had neither). See
+#               the check's own header for the full writeup and scoping
+#               (Robert's own three-way answer: package-name existence,
+#               used-but-unchecked tools, cross-script consistency).
 # ==============================================================================
 set -uo pipefail
 
@@ -1889,6 +1947,22 @@ else
   echo "$out"
   fail "An assets[] github_release entry's asset_name no longer exists in the real upstream release -- see above."
   FAILED_CHECKS+=("check_asset_manifest_freshness.py")
+fi
+
+# ------------------------------------------------------------------------------
+# 50. Provision script self-heal (bootstrap/web/provision/*.sh) — check_provision_self_heal.py
+# ------------------------------------------------------------------------------
+section "50. Provision script self-heal — check_provision_self_heal.py"
+
+psh_args=()
+$STRICT && psh_args+=("--strict")
+if out=$(python3 "${HERE}/check_provision_self_heal.py" "${psh_args[@]}"); then
+  echo "$out"
+  success "Every provision script self-heal package name exists upstream (used-but-unchecked/cross-script-drift findings are informational unless --strict)."
+else
+  echo "$out"
+  fail "A provision script self-heal line queues a package that doesn't exist in Debian's archive -- see above."
+  FAILED_CHECKS+=("check_provision_self_heal.py")
 fi
 
 # ------------------------------------------------------------------------------

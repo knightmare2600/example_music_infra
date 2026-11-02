@@ -61,6 +61,15 @@
 #                     domain_fqdn (benarbejde/ad_forest.json, single source of truth).
 #                     Added the same 3-location search + defensive jq install those
 #                     scripts already use.
+# v1.0.4  2026-11-02  BUG FIX, found by at_have_ryggen_fri/check_provision_self_heal.py
+#                     (new harness check 50): nmcli was never in MISSING_PKGS at all --
+#                     every other provision script that calls nmcli self-heals it first.
+#                     This file's own wait_for_wan()-less static-IP check (see v1.0.1/
+#                     v1.0.2 above) calls `nmcli -g NAME connection show` directly, which
+#                     would fail outright on a box without NetworkManager already present
+#                     -- unlike arping/gpg/lsb_release elsewhere, nmcli/NetworkManager is
+#                     NOT guaranteed present on a stock Debian box, so this one had real
+#                     bite, not just a quiet degradation.
 # -------------------------------------------------------------------------------------------------
 
 set -euo pipefail
@@ -249,6 +258,7 @@ cd "${WORKDIR}"
 MISSING_PKGS=()
 command -v curl    &>/dev/null || MISSING_PKGS+=(curl)
 command -v python3 &>/dev/null || MISSING_PKGS+=(python3)
+command -v nmcli   &>/dev/null || MISSING_PKGS+=(network-manager)
 if [[ ${#MISSING_PKGS[@]} -gt 0 ]]; then
   info "Installing: ${MISSING_PKGS[*]}"
   apt-get update -qq 2>&1 | grep -E "^(Err|W:|E:)" || true

@@ -207,6 +207,12 @@ export DEBCONF_NONINTERACTIVE_SEEN=true
 #              the fix applied the same day to the Ansible role's own equivalent
 #              (roles/firewall/tasks/14_finish.yml), which already used "N/A" for this
 #              exact value in its own terminal summary line -- just not in nodeinfo.json.
+#  2026-11-02  BUG FIX, found by at_have_ryggen_fri/check_provision_self_heal.py (new
+#              harness check 50): arping was never added to BOOTSTRAP_PKGS here at all,
+#              unlike every other provision script that uses it. ip_in_use()'s
+#              IP-collision check is gated behind `if command -v arping`, so this never
+#              crashed -- it silently fell back to ping-only collision detection on every
+#              firewall this script has ever built or re-run.
 #
 # -------------------------------------------------------------------------------------------------
 # Colour helpers
@@ -609,6 +615,7 @@ command -v dnsmasq     &>/dev/null || BOOTSTRAP_PKGS+=(dnsmasq)
 command -v curl        &>/dev/null || BOOTSTRAP_PKGS+=(curl)
 command -v wget        &>/dev/null || BOOTSTRAP_PKGS+=(wget)
 command -v wg          &>/dev/null || BOOTSTRAP_PKGS+=(wireguard)
+command -v arping      &>/dev/null || BOOTSTRAP_PKGS+=(arping)
 command -v grc         &>/dev/null || BOOTSTRAP_PKGS+=(grc)
 command -v gpm         &>/dev/null || BOOTSTRAP_PKGS+=(gpm)
 command -v nmap        &>/dev/null || BOOTSTRAP_PKGS+=(nmap)

@@ -18,14 +18,36 @@ them into one check.
 scoping answer, live: check for `keepassxc-cli`/`keepassxc-full` on
 Debian, `keepassxc` on macOS/Windows; concern this primarily with
 "Problem A" (control-node tools) over "Problem B" (validating each
-provisioning script's own self-heal list) -- Problem B not started, still
-open. Seeded with `keepassxc-cli` only (the confirmed real gap); `bc` was
-reconsidered and correctly excluded -- it's a `bootstrap/web/provision/`
-target-host tool that already self-heals via its own `command -v bc ||
-BOOTSTRAP_PKGS+=(bc)` pattern, not a control-node requirement at all (see
-that check's own header for the full scoping reasoning). Hand-maintained
-`REQUIRED_TOOLS` dict, not auto-derived from scanning `subprocess.run()`
-call sites -- considered and rejected, see the check's own header.
+provisioning script's own self-heal list). Seeded with `keepassxc-cli`
+only (the confirmed real gap); `bc` was reconsidered and correctly
+excluded -- it's a `bootstrap/web/provision/` target-host tool that
+already self-heals via its own `command -v bc || BOOTSTRAP_PKGS+=(bc)`
+pattern, not a control-node requirement at all (see that check's own
+header for the full scoping reasoning). Hand-maintained `REQUIRED_TOOLS`
+dict, not auto-derived from scanning `subprocess.run()` call sites --
+considered and rejected, see the check's own header.
+
+**Problem B RESOLVED 2026-11-02** -- new check `check_provision_self_heal.py`
+(harness check 50). Robert's own three-way scoping answer when asked what
+"validate the self-heal list" should actually mean: (1) package-name
+existence (hard fail, checked live against Debian's madison API), (2) a
+tool a script invokes but never self-heals where another script already
+proved it needs healing (informational), (3) the same tool self-healed
+with a different package set across scripts (informational). All three
+verified against the real committed files by hand before any code was
+written. Two real, live bugs, both fixed the same day: `firewallme.sh`
+called `arping` but never self-healed it (silently degraded IP-collision
+detection to ping-only); `tacticalrmmme.sh` called `nmcli` with no
+self-heal at all. A third initial read -- `rudderme.sh` "using
+`gpg`/`lsb_release` without self-healing" -- turned out to be a false
+positive in the check itself: both are already self-healed there via
+`dpkg -s gnupg`/`dpkg -s lsb-release` (the package names, not the binary
+names those packages provide), which the check's own logic didn't
+originally know how to map -- fixed the check, not a script that was
+never broken. Same pass also bundled `zsh-autosuggestions`/
+`zsh-syntax-highlighting` into `ansibleme.sh`'s zsh self-heal, the one
+script of the three that install zsh with neither plugin. See the check's
+own header for the full writeup.
 
 
 **Precedent already exists, just never generalised**: `check_gitleaks.py`
@@ -143,11 +165,9 @@ touched.
 
 ## Status as of 2026-11-02
 
-Items 2 and 4 are RESOLVED (see above). Item 1's "Problem A" (control-node
-tool checks) is BUILT; its "Problem B" (validating each provisioning
-script's own self-heal tool list) is still open. Item 3 remains open,
-blocked on Robert's input (where the mini.iso files he sourced by hand live,
-and whether to restructure `menu.ipxe`'s Debian boot path around them).
+Items 1, 2, and 4 are RESOLVED (see above). Item 3 remains open, blocked on
+Robert's input (where the mini.iso files he sourced by hand live, and
+whether to restructure `menu.ipxe`'s Debian boot path around them).
 
 This document exists so the original frustration translates into a
 concrete, ordered list rather than getting lost — pick up one item at a
