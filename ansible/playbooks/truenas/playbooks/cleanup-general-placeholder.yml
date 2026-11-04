@@ -1,0 +1,110 @@
+---
+# =============================================================================
+# cleanup-general-placeholder.yml
+# Example Music Limited — one-off removal of the old "general" placeholder dataset
+# =============================================================================
+# EXANASFAL001 was built before the real per-site storage layout (NFS datastore under
+# PBSBackups/pbs-datastore) existed -- 20-storage.yml's own 2026-10-24 changelog entry
+# deliberately left the box's pre-existing "PBSBackups/general" placeholder dataset
+# alone rather than touch it unasked. Robert, 2026-11-04: "remove it."
+#
+# Standalone, NOT imported by site.yml -- this is a one-time cleanup action, not part
+# of the idempotent bootstrap/convergence chain, same pattern as windows_bootstrap's
+# own 10-rename.yml (real, kept, just not auto-chained).
+#
+# Uses the same arensb.truenas.filesystem module 20-storage.yml already uses to CREATE
+# datasets (state: present) -- its state: absent branch already does exactly the
+# right thing (queries first, no-ops if already gone, deletes via the real
+# pool.dataset.delete middleware call if found) -- not hand-rolled here. Before
+# deleting, queries the dataset's own real current state via the same
+# GET /api/v2.0/pool/dataset?name=... convention this playbook family already uses
+# for pools (20-storage.yml's own "0 | Check whether the pool already exists" task)
+# and prints it, then refuses to proceed if it finds any child datasets -- the
+# module's own delete call passes {"recursive": true}, which would silently take any
+# nested datasets with it; a bare, truly-unused placeholder should have none, and if
+# it does, that's exactly the kind of surprise worth stopping for rather than guessing.
+#
+# Usage:
+#   ansible-playbook -i configs/inventory --limit EXANASFAL001 \
+#     playbooks/truenas/playbooks/cleanup-general-placeholder.yml -k
+#   (same truenas_admin + password auth as 10-access.yml/20-storage.yml's first run)
+#
+# Version history:
+#   0.1.0   2026-11-04   Initial file. Robert's explicit ask, scoped to EXANASFAL001's
+#                         own pre-existing "general" dataset specifically -- not a
+#                         generic "remove any placeholder" tool.
+# =============================================================================
+
+- name: Remove the old PBSBackups/general placeholder dataset
+  hosts: "{{ target_hosts | default(target | default('truenas_servers')) }}"
+  gather_facts: false
+  vars:
+    nas_placeholder_pool: "PBSBackups"
+    nas_placeholder_dataset: "general"
+    nas_placeholder_full_name: "{{ nas_placeholder_pool }}/{{ nas_placeholder_dataset }}"
+
+  tasks:
+    - name: "0 | Query the placeholder dataset's current real state"
+      ansible.builtin.uri:
+        url: "https://{{ truenas_target_ip | default(ansible_host) }}/api/v2.0/pool/dataset?name={{ nas_placeholder_full_name }}"
+        method: GET
+        user: "{{ truenas_rest_bootstrap_user | default(ansible_user) }}"
+        password: "{{ truenas_rest_bootstrap_password | default(ansible_password) }}"
+        force_basic_auth: true
+        validate_certs: "{{ truenas_rest_validate_certs | default(false) }}"
+        status_code: 200
+      register: _nas_placeholder_lookup
+      delegate_to: localhost
+      vars:
+        ansible_connection: local
+
+    - name: "0 | Report — already absent, nothing to do"
+      ansible.builtin.debug:
+        msg: "'{{ nas_placeholder_full_name }}' doesn't exist — already removed, nothing to do."
+      when: _nas_placeholder_lookup.json | length == 0
+
+    - name: "0 | Show the real current state before touching anything"
+      ansible.builtin.debug:
+        msg: >-
+          '{{ nas_placeholder_full_name }}' — used: {{ _nas_placeholder_lookup.json[0].used.parsed | default('?') }},
+          children: {{ _nas_placeholder_lookup.json[0].children | default([]) | length }}
+      when: _nas_placeholder_lookup.json | length > 0
+
+    - name: "0 | Refuse to proceed if it has any child datasets — delete is recursive"
+      ansible.builtin.assert:
+        that:
+          - (_nas_placeholder_lookup.json[0].children | default([])) | length == 0
+        fail_msg: >-
+          '{{ nas_placeholder_full_name }}' has {{ _nas_placeholder_lookup.json[0].children | length }}
+          child dataset(s) — this isn't the bare empty placeholder expected. Stopping without
+          deleting anything; check what's actually in there before re-running.
+      when: _nas_placeholder_lookup.json | length > 0
+
+    - name: "1 | Delete the placeholder dataset"
+      arensb.truenas.filesystem:
+        name: "{{ nas_placeholder_full_name }}"
+        state: absent
+      when: _nas_placeholder_lookup.json | length > 0
+
+    - name: "2 | Confirm it's actually gone"
+      ansible.builtin.uri:
+        url: "https://{{ truenas_target_ip | default(ansible_host) }}/api/v2.0/pool/dataset?name={{ nas_placeholder_full_name }}"
+        method: GET
+        user: "{{ truenas_rest_bootstrap_user | default(ansible_user) }}"
+        password: "{{ truenas_rest_bootstrap_password | default(ansible_password) }}"
+        force_basic_auth: true
+        validate_certs: "{{ truenas_rest_validate_certs | default(false) }}"
+        status_code: 200
+      register: _nas_placeholder_recheck
+      delegate_to: localhost
+      vars:
+        ansible_connection: local
+      when: _nas_placeholder_lookup.json | length > 0
+
+    - name: "2 | Assert it's really gone, not just a successful-sounding API response"
+      ansible.builtin.assert:
+        that:
+          - _nas_placeholder_recheck.json | length == 0
+        fail_msg: "Delete call reported success but '{{ nas_placeholder_full_name }}' still shows up in a fresh query."
+        success_msg: "Confirmed: '{{ nas_placeholder_full_name }}' no longer exists."
+      when: _nas_placeholder_lookup.json | length > 0
