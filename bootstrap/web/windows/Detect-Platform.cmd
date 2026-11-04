@@ -5,6 +5,27 @@
 ::
 :: Version History
 :: ---------------
+:: 1.2.1   2026-11-04   REAL BUG, found live -- first-ever real run of :KVM's arm64 branch
+::                      against a genuine ARM64 Windows VM (previously only reasoned about,
+::                      no real ARM64 box existed to test on). Crashed instantly with
+::                      "installer was unexpected at this time." the moment :MSI was called
+::                      with a friendly name containing literal parentheses (e.g. "VirtIO
+::                      guest tools (native arm64)") from inside :KVM's own parenthesized
+::                      if-blocks. Root cause, confirmed via an isolated repro before fixing:
+::                      plain %M_NAME%/%M_MSI%/%M_LOG% expansion happens at PARSE time,
+::                      before a parenthesized if/else block runs -- substituting a value
+::                      that itself contains "(" / ")" corrupts that block's own
+::                      paren-matching. Fixed by switching every reference inside :MSI to
+::                      delayed expansion (!VAR!), which resolves after parsing and is
+::                      immune -- EnableDelayedExpansion was already set globally, no other
+::                      change needed. Re-tested live after the fix: the full arm64 KVM flow
+::                      now runs correctly end to end (native arm64 VirtIO tried, failed --
+::                      expected, test VM has no real virtio hardware -- fell back to amd64
+::                      correctly; native arm64 QEMU guest agent tried and succeeded on its
+::                      own). The platform-detection logic itself was never in question here
+::                      (Robert's own framing: "it's not the logic we're checking, it's the
+::                      flow") -- confirmed on a real VMware ARM64 VM via a scratch-only
+::                      override that forces PLATFORM=kvm, never committed.
 :: 1.0.0   2026-06-28   Initial release
 :: 1.1.0   2026-08-15   Robert: Proxmox now supports arm64 hosts (PVE 9.2+), so arm64 KVM guests
 ::                      are a real combination. virtio-win/qemu-ga don't publish native arm64
@@ -66,7 +87,7 @@
 setlocal EnableDelayedExpansion
 
 set "SCRIPT_NAME=Detect-Platform.cmd"
-set "SCRIPT_VERSION=1.2.0"
+set "SCRIPT_VERSION=1.2.1"
 set "DRIVER_DIR=C:\ProgramData\ExampleMusic\Drivers"
 set "LOG_DIR=C:\ProgramData\ExampleMusic\Logs"
 set "LOGFILE=%LOG_DIR%\Detect-Platform.log"
@@ -216,17 +237,31 @@ exit /b 0
 :: Usage: call :MSI "<msi_path>" "<log_path>" "<friendly_name>"
 :: ------------------------------------------------------------------------------
 :MSI
+:: BUG FIX (2026-11-04): found live, first real run of :KVM's arm64 branch ever
+:: (previously only reasoned about -- no real arm64 KVM/Proxmox box existed to run
+:: it on). Crashed with "installer was unexpected at this time." the moment this
+:: subroutine was called with a friendly name containing literal parentheses
+:: (e.g. "VirtIO guest tools (native arm64)") from inside :KVM's own parenthesized
+:: if-blocks. Root cause, confirmed via an isolated repro before touching this file:
+:: plain %M_NAME%/%M_MSI%/%M_LOG% expansion happens at PARSE time, before a
+:: parenthesized if/else block executes -- substituting a value that itself
+:: contains "(" / ")" corrupts that block's own paren-matching. Delayed expansion
+:: (!VAR!) resolves after parsing, so it's immune. Switched every reference in this
+:: subroutine to delayed expansion for consistency (EnableDelayedExpansion is
+:: already set globally at the top of this script), not just the two blocks that
+:: actually crashed -- same "(name)" pattern could just as easily be added to a
+:: future friendly-name string outside a block that happens to not crash today.
 set "M_MSI=%~1"
 set "M_LOG=%~2"
 set "M_NAME=%~3"
-if not exist "%M_MSI%" (
-    call :LOG "ERROR: %M_NAME% installer not found: %M_MSI%"
-    echo  [ERROR] %M_NAME% installer not found: %M_MSI%
+if not exist "!M_MSI!" (
+    call :LOG "ERROR: !M_NAME! installer not found: !M_MSI!"
+    echo  [ERROR] !M_NAME! installer not found: !M_MSI!
     exit /b 1
 )
-call :LOG "Installing %M_NAME%: %M_MSI%"
-echo   Installing %M_NAME%...
-msiexec /i "%M_MSI%" /qn /norestart /l*v "%M_LOG%"
+call :LOG "Installing !M_NAME!: !M_MSI!"
+echo   Installing !M_NAME!...
+msiexec /i "!M_MSI!" /qn /norestart /l*v "!M_LOG!"
 :: BUG FIX (2026-08-15): this always fell through to "exit /b 0" regardless of
 :: msiexec's actual result -- the error was logged but never signalled to the
 :: caller, so nothing that ever checked this subroutine's return code could
@@ -237,12 +272,12 @@ msiexec /i "%M_MSI%" /qn /norestart /l*v "%M_LOG%"
 :: (success, reboot required) -- treated as a failure here like any other
 :: non-zero code, same as this subroutine always has; not special-cased.
 if errorlevel 1 (
-    call :LOG "ERROR: %M_NAME% installation failed. Exit code: %ERRORLEVEL%"
-    echo  [ERROR] %M_NAME% installation failed.
+    call :LOG "ERROR: !M_NAME! installation failed. Exit code: %ERRORLEVEL%"
+    echo  [ERROR] !M_NAME! installation failed.
     exit /b 1
 ) else (
-    call :LOG "%M_NAME% installed successfully."
-    echo   %M_NAME% installed.
+    call :LOG "!M_NAME! installed successfully."
+    echo   !M_NAME! installed.
     exit /b 0
 )
 
