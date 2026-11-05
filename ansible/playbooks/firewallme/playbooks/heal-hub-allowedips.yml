@@ -67,6 +67,14 @@
         example_music_gate_files: [sites.csv]
         example_music_gate_repo_root: "{{ playbook_dir }}/../../../.."
 
+  vars:
+    # Matches roles/firewall/defaults/main.yml's own default -- this standalone play has
+    # no roles: to inherit that default from, so it's restated here identically, same fix
+    # already applied in add-wg-spoke.yml (2026-07-16) for the exact same reason -- missed
+    # it the first time round rather than checking that file's own changelog first. Override
+    # with -e sites_csv_path=/path/to/sites.csv, same as every other consumer in the repo.
+    sites_csv_path: "/etc/example-music/sites.csv"
+
   tasks:
     - name: "[heal-hub-allowedips] Confirm wg0.conf exists on this host"
       ansible.builtin.stat:
