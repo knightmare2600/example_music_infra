@@ -1414,6 +1414,57 @@ $ host exapvevrk001 192.168.139.8
 exapvevrk001.jukebox.internal has address 192.168.139.5
 ```
 
+### PVE scripts + systemd units only, no access/network/cluster changes — `--tags scripts,systemd_units`
+
+`proxmox/site.yml` splits its stages with one tag per numbered file (see the file's own
+header: `preflight, packages, ansible_access, example_music, pools, vmbr1, vrk_route,
+scripts, virt_tools, proxmorph, systemd_units`) — so a request to only refresh the
+maintenance/backup/snapshot scripts (`40-scripts.yml`) and their systemd units
+(`50-systemd-units.yml`) on an already-onboarded node, with nothing touching packages,
+access, pools, bridges, routes, or Proxmox's own UI theming, is a plain `--tags` scope:
+
+```bash
+ansible-playbook -i configs/inventory playbooks/proxmox/site.yml \
+  -e target=<hostname> \
+  -e pve_force_full_onboard=true \
+  --tags scripts,systemd_units
+```
+
+`-e pve_force_full_onboard=true` matters here even though it looks like it shouldn't be
+needed for a narrow run: `50-systemd-units.yml`'s real deployment tasks (unit file copy,
+`daemon-reload`, timer enable+start, the Zabbix NIC-guard drop-in + agent restart) are all
+gated behind `pve_run_full_onboard`, a fact only `00-preflight.yml`'s onboarded-check task
+sets — and that task is tagged `preflight` only, not `preflight, always`, so this
+`--tags` filter skips it entirely. Every gated task's own `when:` falls back to
+`pve_run_full_onboard | default(true) | bool`, so the deployment would actually still
+happen even without the flag — but that's an undefined-variable default quietly doing the
+work, not something to rely on deliberately. Passing the flag explicitly keeps the run
+auditable, matching this repo's established `bootstrap_force`/`pve_force_full_onboard`/
+`ssh_key_preflight_skip` convention of a real flag over an implicit side-effect.
+
+`40-scripts.yml` carries no such gate at all (site.yml's own header lists it as
+"always") — it runs in full under this `--tags` scope regardless of the flag.
+
+One real, expected effect of including `systemd_units`: the Zabbix NIC-guard drop-in
+deploy task notifies a handler that restarts `zabbix-agent` — a brief blip, not something
+this scoping introduces that a full run wouldn't also do.
+
+This presumes `<hostname>` is already a real `pvenodes` inventory member (a normal
+already-onboarded node) — the one `preflight`-only task this skips also does the
+`add_host`-into-`pvenodes` registration a from-scratch bare-IP run needs for
+`group_vars/pvenodes/` to resolve at all. Not relevant for an already-inventoried host,
+but worth checking first if the target is a genuinely fresh, not-yet-inventoried box.
+
+Worth a `--check --diff` first to see what it would touch before committing:
+
+```bash
+ansible-playbook -i configs/inventory playbooks/proxmox/site.yml \
+  -e target=<hostname> \
+  -e pve_force_full_onboard=true \
+  --tags scripts,systemd_units \
+  --check --diff
+```
+
 ---
 
 ## Targeted Runs — Reapplying One Specific Fix Without a Full Rebuild
@@ -2520,6 +2571,7 @@ command on one line before trusting it.
 | 2026-11-05 | Updated the "Quick reference" block above to match `ansibleme.sh` v1.43.1 -- Robert pasted the exact banner he wanted (reordered, wider 16-char label column, "Onboard Win" spelled out as "Onboard Windows"). Three paths in his paste didn't match the real repo (`proxmox/pve_onboard.yml` doesn't exist -- real file is `proxmox/site.yml`; `playbooks/90-firewall.yml` and `playbooks/zabbix_agent.yml` were both missing their own subdirectory) -- confirmed via `find` against the real checkout before applying, not copied blind; see `ansibleme.sh`'s own v1.43.1 changelog entry for the full detail. |
 | 2026-11-05 | Added "Hub AllowedIPs self-heal -- preview, then apply", right after "WireGuard duplicate peer cleanup" -- `heal-hub-allowedips.yml`'s real preview/apply/`CONFIRM` sequence against `EXAFWLCLD001`, with real captured output. First live run found the gap was estate-wide (8 spokes still missing their own WAN address, not just the one that surfaced it), confirming `INC-2026-10-30-WG-ALLOWEDIPS` was never fully rolled out past the two spokes originally tested. Also documents a real bug that first run hit (`'sites_csv_path' is undefined` -- a role-only default this standalone play didn't inherit, same issue `add-wg-spoke.yml` already solved back on 2026-07-16, missed the first time round). Robert's explicit call: keep this as its own standalone playbook rather than folding it into an existing one for now, but make sure it's documented here. |
 | 2026-11-05 | Added "Spoke unreachable, AllowedIPs already correct -- check for the missing CLD-LAN route", right after the AllowedIPs self-heal section -- a second, distinct cause of the same "unreachable from `EXAANSCLD001`" symptom, hit live on FAL/MCR/LND after AllowedIPs and the PresharedKey were both already confirmed correct. Root cause is asymmetric routing (the shared VRK gateway, `192.168.139.254`, has no route back to CLD's own LAN, `192.168.69.0/24`), already fixed in `wan.nmconnection.j2` on 2026-10-30 via `fw_cld_vrk_ip` but, same bug class as the AllowedIPs gap, never rolled out to every already-built spoke. Documents the manual `nmcli` hotfix (the same "path of last resort" pattern as `INC-2026-10-30-WG-ALLOWEDIPS`'s own hotfix commands) plus a `qm guest exec` form for reaching a box via its own Proxmox host's QEMU guest agent when no other out-of-band path is convenient -- including the two real gotchas (`qm guest exec` is async and needs a follow-up `exec-status` call; it runs as root by default, so `sudo` is dropped). |
+| 2026-11-05 | Added "PVE scripts + systemd units only, no access/network/cluster changes -- `--tags scripts,systemd_units`", right after "Full BIND9 rebuild" -- Robert's ask, a scoped `proxmox/site.yml` run touching only `40-scripts.yml`/`50-systemd-units.yml`. Documents why `-e pve_force_full_onboard=true` is passed explicitly even though an undefined-variable `default(true)` fallback would quietly do the same thing once `--tags` skips `00-preflight.yml`'s onboarded-check task -- an implicit side-effect isn't the same as a deliberate, auditable flag, matching this repo's existing `pve_force_full_onboard`/`bootstrap_force` convention. Also flags the one real live effect (`zabbix-agent` restart via the NIC-guard drop-in's handler) and the presumption that the target is already a real `pvenodes` inventory member. |
 
 ---
 
