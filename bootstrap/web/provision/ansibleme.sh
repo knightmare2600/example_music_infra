@@ -595,6 +595,23 @@
 #                     Same four commands also added to docs/ansible/
 #                     beginners_guide_to_ansible.md's existing "Order of operations"
 #                     section, which already had 3 of the 4 nearly verbatim.
+# v1.43.1 2026-11-05  Robert pasted the exact banner he wanted (reordered: PVE/FWL/
+#                     Windows/Linux/Zabbix/Ping/Templates; wider 16-char label column;
+#                     "Onboard Win" spelled out as "Onboard Windows"). Applied the
+#                     reorder/restyle, but verified every path in his paste against the
+#                     real repo first rather than copying it blind -- found 3 that don't
+#                     exist: `proxmox/pve_onboard.yml` (real file is `proxmox/site.yml`,
+#                     confirmed -- no pve_onboard.yml anywhere in this repo),
+#                     `playbooks/90-firewall.yml` (missing its own `firewallme/
+#                     playbooks/` subdirectory), `playbooks/zabbix_agent.yml` (missing
+#                     its own `zabbix/` subdirectory) -- all 3 confirmed via `find`
+#                     against the real checkout, not assumed. Kept his exact literal-vs-
+#                     bare-relative-path styling per entry (Onboard PVE/Ping all/
+#                     Templates use a fully-qualified path via `-i`/the bare command
+#                     itself; the other four stay bare `playbooks/...`, correct only when
+#                     run from the `ansible/` root, matching this repo's own established
+#                     "run from the ansible/ root for all commands" convention) -- only
+#                     the subdirectories themselves were wrong, not the styling choice.
 #
 # ==============================================================================
 
@@ -2396,13 +2413,13 @@ echo -e "
     \${CY}Disk /\${NC}   : \${GR}\${DISK}\${NC}
 
   \${WH}── Quick reference ───────────────────────────────────────────\${NC}
-    \${CY}Onboard PVE :\${NC} ansible-playbook ${PLAYBOOKS_DIR}/proxmox/site.yml --user=root -k
-    \${CY}Ping all    :\${NC} ansible all -m ping
-    \${CY}Templates   :\${NC} ansible-playbook ${PLAYBOOKS_DIR}/proxmox/cloud_templates.yml
-    \${CY}Linux tools :\${NC} ansible-playbook ${PLAYBOOKS_DIR}/linux/tools.yml --limit <hostname> --ask-vault-pass
-    \${CY}Zabbix agent:\${NC} ansible-playbook ${PLAYBOOKS_DIR}/zabbix/zabbix_agent.yml --limit <hostname> --ask-vault-pass
-    \${CY}Onboard Win :\${NC} ansible-playbook ${PLAYBOOKS_DIR}/windows_bootstrap/site.yml -e target=<hostname> --limit <hostname> --ask-vault-pass
-    \${CY}Onboard FWL :\${NC} ansible-playbook -e target=<hostname> ${PLAYBOOKS_DIR}/firewallme/playbooks/90-firewall.yml --ask-vault-pass --limit=<hostname>
+    \${CY}Onboard PVE     :\${NC} ansible-playbook playbooks/proxmox/site.yml -i ${CONFIGS_DIR}/inventory --user=root -k
+    \${CY}Onboard FWL     :\${NC} ansible-playbook playbooks/firewallme/playbooks/90-firewall.yml -e target=<hostname> --ask-vault-pass --limit=<hostname>
+    \${CY}Onboard Windows :\${NC} ansible-playbook playbooks/windows_bootstrap/site.yml -e target=<hostname> --limit <hostname> --ask-vault-pass
+    \${CY}Linux tools     :\${NC} ansible-playbook playbooks/linux/tools.yml --limit <hostname> --ask-vault-pass
+    \${CY}Zabbix agent    :\${NC} ansible-playbook playbooks/zabbix/zabbix_agent.yml --limit <hostname> --ask-vault-pass
+    \${CY}Ping all        :\${NC} ansible all -i ${CONFIGS_DIR}/inventory -m ping
+    \${CY}Templates       :\${NC} ansible-playbook ${PLAYBOOKS_DIR}/proxmox/cloud_templates.yml
 "
 MOTD
 

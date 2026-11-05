@@ -1106,22 +1106,22 @@ Why this order, not some other one:
 `/etc/update-motd.d/10-examplemusic` (written by `bootstrap/web/provision/ansibleme.sh`,
 shown on every login to the control node) carries a short "Quick reference" block with
 the handful of commands used often enough to be worth seeing without digging through
-this guide. As of `ansibleme.sh` v1.43.0 (2026-11-05), that block is:
+this guide. As of `ansibleme.sh` v1.43.1 (2026-11-05), that block is:
 
 ```bash
-# Onboard PVE  : ansible-playbook playbooks/proxmox/site.yml --user=root -k
-# Ping all     : ansible all -m ping
-# Templates    : ansible-playbook playbooks/proxmox/cloud_templates.yml
-# Linux tools  : ansible-playbook playbooks/linux/tools.yml --limit <hostname> --ask-vault-pass
-# Zabbix agent : ansible-playbook playbooks/zabbix/zabbix_agent.yml --limit <hostname> --ask-vault-pass
-# Onboard Win  : ansible-playbook playbooks/windows_bootstrap/site.yml -e target=<hostname> --limit <hostname> --ask-vault-pass
-# Onboard FWL  : ansible-playbook -e target=<hostname> playbooks/firewallme/playbooks/90-firewall.yml --ask-vault-pass --limit=<hostname>
+# Onboard PVE     : ansible-playbook playbooks/proxmox/site.yml -i /home/ansible/ansible/configs/inventory --user=root -k
+# Onboard FWL     : ansible-playbook playbooks/firewallme/playbooks/90-firewall.yml -e target=<hostname> --ask-vault-pass --limit=<hostname>
+# Onboard Windows : ansible-playbook playbooks/windows_bootstrap/site.yml -e target=<hostname> --limit <hostname> --ask-vault-pass
+# Linux tools     : ansible-playbook playbooks/linux/tools.yml --limit <hostname> --ask-vault-pass
+# Zabbix agent    : ansible-playbook playbooks/zabbix/zabbix_agent.yml --limit <hostname> --ask-vault-pass
+# Ping all        : ansible all -i /home/ansible/ansible/configs/inventory -m ping
+# Templates       : ansible-playbook /home/ansible/ansible/playbooks/proxmox/cloud_templates.yml
 ```
 
 Three of these (`linux/tools.yml`, `90-firewall.yml`, `zabbix_agent.yml`) are the exact
 same three commands from "Order of operations" just above — the MOTD's version is the
 same invocation, just without the ordering narrative, since that's a banner, not a
-tutorial. The one genuinely new here is **Onboard Win**:
+tutorial. The one genuinely new here is **Onboard Windows**:
 
 ```bash
 ansible-playbook -i configs/inventory playbooks/windows_bootstrap/site.yml \
@@ -2392,6 +2392,7 @@ command on one line before trusting it.
 | 2026-10-12 | Replaced "What's deliberately not covered here" (FSMO transfer) with a real worked example -- all 5 roles moved `EXADCSGOT001` → `EXADCSCLD001` live, confirmed via `netdom query fsmo` on both DCs. Documents: verifying health/replication first; a real post-reboot clock-skew incident on CLD (`KRB_AP_ERR_TKT_NYV`, self-corrected by Windows Time once network access to the PDC was restored) and a `DFSR` found `Stopped`; a known-benign `dcdiag` `KnowsOfRoleHolders`/`DsBindWithSpnEx` "Access is denied" anomaly confirmed bidirectional between these two DCs with SPNs/services all otherwise healthy, root cause still genuinely unconfirmed; and the probe-one-role-first approach that confirmed `Move-ADDirectoryServerOperationMasterRole` (ADWS-based) isn't affected by that legacy RPC quirk before transferring the remaining 4 roles. |
 | 2026-10-24 | Added "Onboarding a TrueNAS NAS/SAN -- Worked Example (`EXANASFAL001`)", a new top-level section before "Real-World Invocations -- Day 2" -- the real `playbooks/truenas/site.yml --user=truenas_admin -k` command used to build `EXANASFAL001` for real, across many live-debugged re-runs. Highlights the single most generally-useful lesson from the whole exercise: `--user`/`-u` on the command line is Ansible's *lowest*-precedence source of all, genuinely beaten by any inventory `group_vars`/`host_vars` setting `ansible_user` (as `group_vars/all/main.yml` does, estate-wide) -- worth knowing any time a CLI user override seems to be silently ignored. The rest of that chain's real history (a genuine third-party collection bug, automated ZFS pool creation, a VM-disk-serial quirk) is deliberately left as a pointer to `git log`/commit history rather than catalogued here -- out of scope for a beginner's walkthrough. |
 | 2026-11-05 | Added "Quick reference -- the same four commands the control node's own MOTD shows", right after "Order of operations for a firewall that needs Zabbix fixed or added" -- Robert's ask, keeping the MOTD (`ansibleme.sh` v1.43.0, new `linux/tools.yml`/`zabbix_agent.yml`/`windows_bootstrap/site.yml`/`90-firewall.yml` entries in its own "Quick reference" banner) and this guide showing the same four commands rather than drifting apart. Three were already documented almost verbatim in the section just above; the new one, `windows_bootstrap/site.yml -e target=<hostname> --limit <hostname>`, is explicitly the Day-2 already-onboarded form, with a pointer back to the two-`-i` comma form for a genuinely new box and a note on why `-e target=` and `--limit` both carry the hostname (the real 2026-09-19 `hosts: all` incident, not redundancy). |
+| 2026-11-05 | Updated the "Quick reference" block above to match `ansibleme.sh` v1.43.1 -- Robert pasted the exact banner he wanted (reordered, wider 16-char label column, "Onboard Win" spelled out as "Onboard Windows"). Three paths in his paste didn't match the real repo (`proxmox/pve_onboard.yml` doesn't exist -- real file is `proxmox/site.yml`; `playbooks/90-firewall.yml` and `playbooks/zabbix_agent.yml` were both missing their own subdirectory) -- confirmed via `find` against the real checkout before applying, not copied blind; see `ansibleme.sh`'s own v1.43.1 changelog entry for the full detail. |
 
 ---
 
