@@ -1,0 +1,206 @@
+---
+# =============================================================================
+# playbooks/heal-hub-allowedips.yml
+# Example Music Limited — add every spoke's own missing WAN address to its AllowedIPs
+# =============================================================================
+# Does exactly one thing: on a WireGuard hub (hub-primary/hub-regional), for every
+# already-registered spoke's "# BEGIN/END ANSIBLE MANAGED BLOCK <site>" peer block in
+# /etc/wireguard/wg0.conf, checks whether its AllowedIPs already includes that spoke's own
+# WAN address, and appends it if not.
+#
+# Root cause this heals: INC-2026-10-30-WG-ALLOWEDIPS (docs/INCIDENT-LOG.md) -- the hub
+# silently discards a reply arriving from a spoke's own WAN identity (e.g. a connection
+# relayed via the hub rather than originating from the spoke's local network) unless its
+# AllowedIPs explicitly includes that address. Fixed in the code that WRITES a peer block on
+# registration (roles/firewall/tasks/10_register_spoke_on_hub.yml / add-wg-spoke.yml), but
+# that only takes effect the next time a spoke successfully completes its OWN run against the
+# hub. A spoke that can't currently reach the hub to re-register (e.g. its own inbound SSH is
+# broken, the exact trigger for this playbook, EXAFWLLIV001, 2026-11-05) stays stuck with its
+# old, incomplete entry indefinitely -- this reconciles every already-registered spoke from
+# the hub side alone, needing no access to any spoke at all.
+#
+# Deliberately does NOT recompute the whole AllowedIPs string. The LAN subnet and WAN address
+# are both pure conventions from each site's own octet (confirmed directly against
+# roles/firewall/tasks/00_preflight_1_derive.yml), fully derivable from sites.csv -- but the
+# tunnel IP is an ask-time value with a real override history (older spokes defaulted to .2,
+# newer ones to .1, roles/firewall/tasks/00_preflight_3_ask.yml, changed 2026-07-19) and is
+# NOT safely re-derivable from the octet alone. Only the one specific, known-missing piece
+# (the WAN address) is checked and appended; everything else already on file -- tunnel IP,
+# LAN subnet, any extra subnets, PublicKey, PresharedKey, Endpoint -- is left untouched,
+# whatever it already is. See roles/firewall/files/heal_wg_allowedips.py for the actual logic.
+#
+# Usage:
+#   # Preview only -- always runs first, never writes:
+#   ansible-playbook -i configs/inventory playbooks/firewallme/playbooks/heal-hub-allowedips.yml \
+#     -e target=EXAFWLCLD001
+#
+#   # Preview, then prompts "type CONFIRM" before actually fixing anything found:
+#   ansible-playbook -i configs/inventory playbooks/firewallme/playbooks/heal-hub-allowedips.yml \
+#     -e target=EXAFWLCLD001 -e apply=true
+#
+# Idempotent: every spoke already correct -> reports that, changes nothing, safe to run any
+# time against any hub, not just after a known incident -- same convention as
+# dedupe-wg-peers.yml, which this playbook deliberately mirrors in shape.
+#
+# Changelog:
+#   2026-11-05  Initial version. Robert, after EXAFWLLIV001 turned up unreachable from
+#               EXAANSCLD001 with the exact INC-2026-10-30-WG-ALLOWEDIPS symptom: "I was
+#               strongly under the impression last week's fix was going to solve that issue
+#               permanently... a run of the playbook against CLD... couldn't heal it all in
+#               one go?" Checked the code rather than assume either way -- he was right that
+#               every value needed except the tunnel IP already derives from sites.csv alone,
+#               so this is a real, previously-missing capability, not something already
+#               covered by the original fix. Built as a real, idempotent, reusable mechanism,
+#               modelled directly on dedupe_wg_peers.py/dedupe-wg-peers.yml's own shape.
+# =============================================================================
+
+- name: "Example Music — Heal every spoke's missing WAN address in the hub's AllowedIPs"
+  hosts: "{{ target }}"
+  gather_facts: false
+  become: true
+  serial: 1
+
+  pre_tasks:
+    - name: Gate on /etc/example-music/* freshness
+      include_tasks: ../../../tasks/example_music_freshness_gate.yml
+      vars:
+        example_music_gate_files: [sites.csv]
+        example_music_gate_repo_root: "{{ playbook_dir }}/../../../.."
+
+  tasks:
+    - name: "[heal-hub-allowedips] Confirm wg0.conf exists on this host"
+      ansible.builtin.stat:
+        path: /etc/wireguard/wg0.conf
+      register: _wg_conf_stat
+
+    - name: "[heal-hub-allowedips] FAIL — no wg0.conf on this host"
+      ansible.builtin.fail:
+        msg: "{{ inventory_hostname }} has no /etc/wireguard/wg0.conf -- nothing to do."
+      when: not _wg_conf_stat.stat.exists
+
+    # ── Derive wg_site_octets from sites.csv ─────────────────────────────────
+    # Same read_csv + combine-loop logic as roles/firewall/tasks/00_preflight_1_derive.yml /
+    # playbooks/add-wg-spoke.yml, which this standalone play doesn't include -- sites.csv
+    # stays the one authoritative source, never a second hand-maintained copy.
+
+    - name: "[heal-hub-allowedips] Load sites.csv from control node"
+      delegate_to: localhost
+      become: false
+      ansible.builtin.read_csv:
+        path: "{{ sites_csv_path }}"
+      register: _sites_csv_raw
+      vars:
+        ansible_connection: local
+
+    - name: "[heal-hub-allowedips] Build wg_site_octets from sites.csv"
+      ansible.builtin.set_fact:
+        wg_site_octets: "{{ wg_site_octets | default({}) | combine({item.Site: item.Subnet.split('.')[2] | int}) }}"
+      loop: "{{ _sites_csv_raw.list | selectattr('Subnet', 'ne', 'N/A') | selectattr('Site', 'ne', 'BRD') | list }}"
+      loop_control:
+        label: "{{ item.Site }}"
+
+    - name: "[heal-hub-allowedips] Preview — scan for spokes missing their own WAN address (always runs, never writes)"
+      ansible.builtin.script:
+        cmd: >-
+          {{ playbook_dir }}/../roles/firewall/files/heal_wg_allowedips.py
+          /etc/wireguard/wg0.conf
+          {{ wg_site_octets | to_json | quote }}
+          --check
+      register: _heal_preview
+      changed_when: false
+
+    - name: "[heal-hub-allowedips] Preview result"
+      ansible.builtin.debug:
+        msg: "{{ _heal_preview.stdout_lines }}"
+
+    - name: "[heal-hub-allowedips] Set found-gaps fact"
+      ansible.builtin.set_fact:
+        _heal_found: "{{ _heal_preview.stdout is search('HEAL_COUNT=([1-9][0-9]*)') }}"
+
+    - name: "[heal-hub-allowedips] NOTE — nothing to do"
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }}: every registered spoke's AllowedIPs already includes its own WAN address. Nothing to do."
+      when: not _heal_found
+
+    - name: "[heal-hub-allowedips] NOTE — preview only, re-run with -e apply=true to fix the spoke(s) shown above"
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }}: gap(s) found above. Re-run with -e apply=true to fix them."
+      when:
+        - _heal_found
+        - not (apply | default(false) | bool)
+
+    - name: "[heal-hub-allowedips] Confirm before applying"
+      ansible.builtin.pause:
+        prompt: |
+
+          ── {{ inventory_hostname }}: AllowedIPs gap(s) found, shown above ──
+          Only the AllowedIPs line in each spoke listed above gets the one missing entry
+          (that spoke's own WAN address) appended. Tunnel IP, LAN subnet, any extra subnets,
+          PublicKey, PresharedKey, and Endpoint are left completely untouched, in every block,
+          including every spoke NOT listed above.
+          A timestamped-by-content backup is written to wg0.conf.bak-heal-allowedips first.
+
+          Type CONFIRM to fix them now, or Ctrl+C to abort.
+      register: _heal_confirm
+      when:
+        - _heal_found
+        - apply | default(false) | bool
+
+    - name: "[heal-hub-allowedips] FAIL — confirmation not given"
+      ansible.builtin.fail:
+        msg: "Confirmation not given (expected CONFIRM) -- nothing changed."
+      when:
+        - _heal_found
+        - apply | default(false) | bool
+        - (_heal_confirm.user_input | default('')) != 'CONFIRM'
+
+    - name: "[heal-hub-allowedips] Apply — fix the confirmed gap(s)"
+      ansible.builtin.script:
+        cmd: >-
+          {{ playbook_dir }}/../roles/firewall/files/heal_wg_allowedips.py
+          /etc/wireguard/wg0.conf
+          {{ wg_site_octets | to_json | quote }}
+      register: _heal_apply
+      changed_when: "'HEAL_COUNT=0' not in _heal_apply.stdout"
+      when:
+        - _heal_found
+        - apply | default(false) | bool
+        - (_heal_confirm.user_input | default('')) == 'CONFIRM'
+
+    - name: "[heal-hub-allowedips] Apply result"
+      ansible.builtin.debug:
+        msg: "{{ _heal_apply.stdout_lines }}"
+      when: _heal_apply is not skipped
+
+    # Re-sync live state from the corrected file via wg syncconf, same mechanism
+    # dedupe-wg-peers.yml already uses -- reads directly from the one file this script just
+    # corrected, rather than a separately-maintained `wg set` command that could drift from
+    # it (exactly the "two places must match" bug INC-2026-10-30-WG-ALLOWEDIPS's own
+    # follow-up found: a command pushing a peer list live had its own stale copy of it).
+    - name: "[heal-hub-allowedips] Re-sync live WireGuard state from the corrected file (no restart, no downtime)"
+      ansible.builtin.shell: wg syncconf wg0 <(wg-quick strip /etc/wireguard/wg0.conf)
+      args:
+        executable: /bin/bash
+      when:
+        - _heal_apply is not skipped
+        - _heal_apply.changed
+
+    - name: "[heal-hub-allowedips] Show live peer state after sync"
+      ansible.builtin.command: wg show wg0 allowed-ips
+      register: _wg_show_after
+      changed_when: false
+      when:
+        - _heal_apply is not skipped
+        - _heal_apply.changed
+
+    - name: "[heal-hub-allowedips] Post-fix live state"
+      ansible.builtin.debug:
+        msg: "{{ _wg_show_after.stdout_lines }}"
+      when: _wg_show_after is not skipped
+
+    - name: "[heal-hub-allowedips] Done — fixed, backup at wg0.conf.bak-heal-allowedips"
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }}: AllowedIPs reconciliation complete."
+      when:
+        - _heal_apply is not skipped
+        - _heal_apply.changed
