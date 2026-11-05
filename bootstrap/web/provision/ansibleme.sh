@@ -579,6 +579,22 @@
 #                     playbook that bootstraps the box Ansible itself runs from is a
 #                     chicken-and-egg problem by construction, which is exactly why this
 #                     break-glass script exists in the first place.
+# v1.43.0 2026-11-05  Robert's ask: the dynamic MOTD's own "Quick reference" section only
+#                     ever had 3 entries (Onboard PVE/Ping all/Templates) -- added 4 more,
+#                     same style (12-char-aligned label, generic <hostname> placeholder,
+#                     not a literal example host): Linux tools (linux/tools.yml), Zabbix
+#                     agent (zabbix/zabbix_agent.yml), Onboard Win (windows_bootstrap/
+#                     site.yml), Onboard FWL (firewallme/playbooks/90-firewall.yml). Flag
+#                     choices per command match this estate's own already-documented
+#                     patterns, not guessed -- linux/tools.yml and zabbix_agent.yml use
+#                     plain --limit (their own hosts: lines don't need a target var);
+#                     windows_bootstrap/site.yml and 90-firewall.yml both carry -e
+#                     target=<hostname> AND --limit (belt-and-suspenders, matching the
+#                     real 2026-09-19 incident where a play silently ran against hosts:
+#                     all because target was never set -- see site.yml's own changelog).
+#                     Same four commands also added to docs/ansible/
+#                     beginners_guide_to_ansible.md's existing "Order of operations"
+#                     section, which already had 3 of the 4 nearly verbatim.
 #
 # ==============================================================================
 
@@ -2383,6 +2399,10 @@ echo -e "
     \${CY}Onboard PVE :\${NC} ansible-playbook ${PLAYBOOKS_DIR}/proxmox/site.yml --user=root -k
     \${CY}Ping all    :\${NC} ansible all -m ping
     \${CY}Templates   :\${NC} ansible-playbook ${PLAYBOOKS_DIR}/proxmox/cloud_templates.yml
+    \${CY}Linux tools :\${NC} ansible-playbook ${PLAYBOOKS_DIR}/linux/tools.yml --limit <hostname> --ask-vault-pass
+    \${CY}Zabbix agent:\${NC} ansible-playbook ${PLAYBOOKS_DIR}/zabbix/zabbix_agent.yml --limit <hostname> --ask-vault-pass
+    \${CY}Onboard Win :\${NC} ansible-playbook ${PLAYBOOKS_DIR}/windows_bootstrap/site.yml -e target=<hostname> --limit <hostname> --ask-vault-pass
+    \${CY}Onboard FWL :\${NC} ansible-playbook -e target=<hostname> ${PLAYBOOKS_DIR}/firewallme/playbooks/90-firewall.yml --ask-vault-pass --limit=<hostname>
 "
 MOTD
 
