@@ -1258,6 +1258,68 @@ standalone playbook in this family ever references a bare role-default variable 
 without checking whether an existing sibling playbook already had to solve the same
 problem.
 
+### Spoke unreachable, AllowedIPs already correct — check for the missing CLD-LAN route
+
+A second, distinct cause of "spoke unreachable from `EXAANSCLD001`" surfaced 2026-11-05
+on `EXAFWLFAL001`/`EXAFWLMCR001`/`EXAFWLLND001` even after the hub's `AllowedIPs` was
+confirmed correct and the PresharedKey confirmed matching on both ends: **asymmetric
+routing**, not WireGuard at all. `192.168.69.0/24` is CLD's own LAN (where
+`EXAANSCLD001` lives, at `.9`); `192.168.139.0/24` is VRK's subnet, which is *also* used
+estate-wide as every firewall's WAN/provisioning range (`fw_wan_static_gw`,
+`192.168.139.254`, is the shared gateway every static-WAN firewall points at). That
+shared gateway has no route back to `192.168.69.0/24` — so a spoke's reply to anything
+originating from `EXAANSCLD001` goes out via `.254` and vanishes, even though the
+spoke's own WireGuard/SSH stack is completely healthy.
+
+This exact symptom, for `EXAFWLABD001`/`EXAFWLFAL001` specifically, was already found
+and fixed in code on 2026-10-30 (`roles/firewall/tasks/06_network_manager.yml`'s own
+changelog, `00_preflight_1_derive.yml`'s `fw_cld_vrk_ip`, `wan.nmconnection.j2`'s
+`route1=` line) — `wan.nmconnection.j2` now adds a static route to CLD's LAN via
+`fw_cld_vrk_ip` (CLD's own WAN address, `192.168.139.69`, not the generic shared
+gateway) for every non-CLD firewall. Same bug class as the `AllowedIPs` gap above: fixed
+in the template, but only takes effect the next time that specific box completes a real
+Ansible run — a box that's *currently* unreachable because the route is missing has no
+way to pick up its own fix, the same chicken-and-egg problem `heal-hub-allowedips.yml`
+exists for.
+
+**Check first** (from anywhere that can already reach the box — the box's own console,
+or a host on the flat VRK network):
+
+```bash
+ip route show | grep 192.168.69
+```
+
+Nothing printed means the route genuinely is missing. **Path of last resort** to break
+the chicken-and-egg: add the route manually, once, via whatever out-of-band access
+already works (SSH from a box on the flat VRK network, console, or — when the box isn't
+SSH-reachable from anywhere convenient but its VM is hosted locally on its own Proxmox
+node — `qm guest exec` through the QEMU guest agent, bypassing the network path
+entirely):
+
+```bash
+sudo nmcli connection modify wan +ipv4.routes "192.168.69.0/24 192.168.139.69"
+sudo nmcli device reapply ens18
+```
+
+Via `qm guest exec` from that VM's own Proxmox host (guest-exec is async — it hands back
+a PID, not output, so a follow-up `exec-status` call is needed to see the result; it
+also runs as root in the guest by default, so drop `sudo`; wrap in `/bin/sh -c` since
+guest-exec doesn't go through a shell on its own):
+
+```bash
+qm list | grep -i fal                      # find the VMID
+qm guest exec <VMID> --timeout 30 -- /bin/sh -c \
+  'nmcli connection modify wan +ipv4.routes "192.168.69.0/24 192.168.139.69" ; nmcli device reapply ens18'
+qm guest exec-status <VMID> <PID>           # PID from the previous call's {"pid": ...}
+```
+
+This only restores *this one box's* route — it doesn't touch `AllowedIPs`, the hub, or
+any other spoke. Once `EXAANSCLD001` can reach the box again, a completely normal
+`ansible-playbook playbooks/linux/tools.yml --limit <host> --ask-vault-pass` (or a full
+`90-firewall.yml` re-run) persists the fix properly through the real template — no new
+Ansible code needed, since the template already has it; the manual command is purely to
+unblock reachability so the existing self-heal path can take over.
+
 ### Windows bootstrap — re-running to confirm a fix actually held
 
 > **Correction, 2026-09-21**: this section previously showed `windows_dc/site.yml
@@ -2457,6 +2519,7 @@ command on one line before trusting it.
 | 2026-11-05 | Added "Quick reference -- the same four commands the control node's own MOTD shows", right after "Order of operations for a firewall that needs Zabbix fixed or added" -- Robert's ask, keeping the MOTD (`ansibleme.sh` v1.43.0, new `linux/tools.yml`/`zabbix_agent.yml`/`windows_bootstrap/site.yml`/`90-firewall.yml` entries in its own "Quick reference" banner) and this guide showing the same four commands rather than drifting apart. Three were already documented almost verbatim in the section just above; the new one, `windows_bootstrap/site.yml -e target=<hostname> --limit <hostname>`, is explicitly the Day-2 already-onboarded form, with a pointer back to the two-`-i` comma form for a genuinely new box and a note on why `-e target=` and `--limit` both carry the hostname (the real 2026-09-19 `hosts: all` incident, not redundancy). |
 | 2026-11-05 | Updated the "Quick reference" block above to match `ansibleme.sh` v1.43.1 -- Robert pasted the exact banner he wanted (reordered, wider 16-char label column, "Onboard Win" spelled out as "Onboard Windows"). Three paths in his paste didn't match the real repo (`proxmox/pve_onboard.yml` doesn't exist -- real file is `proxmox/site.yml`; `playbooks/90-firewall.yml` and `playbooks/zabbix_agent.yml` were both missing their own subdirectory) -- confirmed via `find` against the real checkout before applying, not copied blind; see `ansibleme.sh`'s own v1.43.1 changelog entry for the full detail. |
 | 2026-11-05 | Added "Hub AllowedIPs self-heal -- preview, then apply", right after "WireGuard duplicate peer cleanup" -- `heal-hub-allowedips.yml`'s real preview/apply/`CONFIRM` sequence against `EXAFWLCLD001`, with real captured output. First live run found the gap was estate-wide (8 spokes still missing their own WAN address, not just the one that surfaced it), confirming `INC-2026-10-30-WG-ALLOWEDIPS` was never fully rolled out past the two spokes originally tested. Also documents a real bug that first run hit (`'sites_csv_path' is undefined` -- a role-only default this standalone play didn't inherit, same issue `add-wg-spoke.yml` already solved back on 2026-07-16, missed the first time round). Robert's explicit call: keep this as its own standalone playbook rather than folding it into an existing one for now, but make sure it's documented here. |
+| 2026-11-05 | Added "Spoke unreachable, AllowedIPs already correct -- check for the missing CLD-LAN route", right after the AllowedIPs self-heal section -- a second, distinct cause of the same "unreachable from `EXAANSCLD001`" symptom, hit live on FAL/MCR/LND after AllowedIPs and the PresharedKey were both already confirmed correct. Root cause is asymmetric routing (the shared VRK gateway, `192.168.139.254`, has no route back to CLD's own LAN, `192.168.69.0/24`), already fixed in `wan.nmconnection.j2` on 2026-10-30 via `fw_cld_vrk_ip` but, same bug class as the AllowedIPs gap, never rolled out to every already-built spoke. Documents the manual `nmcli` hotfix (the same "path of last resort" pattern as `INC-2026-10-30-WG-ALLOWEDIPS`'s own hotfix commands) plus a `qm guest exec` form for reaching a box via its own Proxmox host's QEMU guest agent when no other out-of-band path is convenient -- including the two real gotchas (`qm guest exec` is async and needs a follow-up `exec-status` call; it runs as root by default, so `sudo` is dropped). |
 
 ---
 
