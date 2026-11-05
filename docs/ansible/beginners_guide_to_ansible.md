@@ -1195,6 +1195,69 @@ post-cleanup `wg show` output confirmed every remaining peer — including `FAL`
 themselves, now present only once each via their real managed block — still handshaking
 correctly (`ok=14 changed=2 skipped=6 failed=0`).
 
+### Hub AllowedIPs self-heal — preview, then apply
+
+`heal-hub-allowedips.yml` exists for exactly the symptom `INC-2026-10-30-WG-ALLOWEDIPS`
+(`docs/INCIDENT-LOG.md`) describes: a spoke firewall unreachable from the estate's own
+network despite its WireGuard tunnel showing healthy, because the hub's own per-spoke
+`AllowedIPs` never included that spoke's own WAN address. That incident's code fix only
+takes effect the next time a spoke successfully re-registers itself against the hub —
+a spoke that can't currently reach the hub at all (the exact trigger for building this,
+`EXAFWLLIV001` turning up unreachable from `EXAANSCLD001`, 2026-11-05) has no way to
+benefit from it. This playbook reconciles every already-registered spoke from the hub
+side alone — no access to any spoke needed — by reading sites.csv for the two pieces of
+each spoke's `AllowedIPs` that are pure site-octet conventions (LAN subnet, WAN address),
+checking whether the WAN address is already present, and appending it if not. It
+deliberately does **not** touch the tunnel IP, which has a real override history and
+isn't safely re-derivable the same way — see the playbook's own header comment for why.
+
+Same preview-then-apply shape as `dedupe-wg-peers.yml` above. Preview (safe to run any
+time, never writes):
+
+```bash
+ansible-playbook -i configs/inventory playbooks/firewallme/playbooks/heal-hub-allowedips.yml \
+  -e target=EXAFWLCLD001 --ask-vault-pass
+```
+
+Real captured output, live against `EXAFWLCLD001`, 2026-11-05 — confirmed the gap was
+estate-wide, not just the one spoke that happened to surface it: eight spokes
+(`BRT`/`AMS`/`ODE`/`LAX`/`BRK`/`LIV`/`GOT`/`DET`) were still missing their own WAN
+address; only `FAL` and `ABD` already had it, matching `INC-2026-10-30-WG-ALLOWEDIPS`'s
+own account that those were the only two ever fixed at the time:
+
+```text
+-- BRT: AllowedIPs missing its own WAN address --
+   current : 10.0.169.1/32, 192.168.169.0/24
+   corrected: 10.0.169.1/32, 192.168.169.0/24, 192.168.139.169/32
+[... AMS, ODE, LAX, BRK, LIV, GOT, DET follow the same shape ...]
+HEAL_COUNT=8 (check mode, nothing written)
+```
+
+Applying needs the same `-e apply=true` plus typing `CONFIRM`:
+
+```bash
+ansible-playbook -i configs/inventory playbooks/firewallme/playbooks/heal-hub-allowedips.yml \
+  -e target=EXAFWLCLD001 -e apply=true --ask-vault-pass
+```
+
+Confirmed live: all eight corrected, a timestamped `wg0.conf.bak-heal-allowedips` backup
+written first, WireGuard re-synced from the corrected file with no restart/downtime
+(`wg syncconf`, not a separately-maintained `wg set` — the exact "two places must match"
+bug `INC-2026-10-30-WG-ALLOWEDIPS`'s own follow-up found, deliberately not repeated
+here), and the post-fix `wg show wg0 allowed-ips` output confirmed every peer, including
+all eight just-fixed ones, now carrying its own WAN address (`ok=16 changed=2 skipped=6
+failed=0`).
+
+**One genuine bug found by this same first live run, fixed the same day**: the playbook
+failed outright the very first time — `'sites_csv_path' is undefined`. That variable
+only has a default in `roles/firewall/defaults/main.yml`, which only loads when a play
+actually includes that role; this is a standalone play with no `roles:` to inherit it
+from. `add-wg-spoke.yml` hit this exact same issue back on 2026-07-16 and fixed it by
+restating the default locally in its own `vars:` block — worth knowing if a new
+standalone playbook in this family ever references a bare role-default variable name
+without checking whether an existing sibling playbook already had to solve the same
+problem.
+
 ### Windows bootstrap — re-running to confirm a fix actually held
 
 > **Correction, 2026-09-21**: this section previously showed `windows_dc/site.yml
@@ -2393,6 +2456,7 @@ command on one line before trusting it.
 | 2026-10-24 | Added "Onboarding a TrueNAS NAS/SAN -- Worked Example (`EXANASFAL001`)", a new top-level section before "Real-World Invocations -- Day 2" -- the real `playbooks/truenas/site.yml --user=truenas_admin -k` command used to build `EXANASFAL001` for real, across many live-debugged re-runs. Highlights the single most generally-useful lesson from the whole exercise: `--user`/`-u` on the command line is Ansible's *lowest*-precedence source of all, genuinely beaten by any inventory `group_vars`/`host_vars` setting `ansible_user` (as `group_vars/all/main.yml` does, estate-wide) -- worth knowing any time a CLI user override seems to be silently ignored. The rest of that chain's real history (a genuine third-party collection bug, automated ZFS pool creation, a VM-disk-serial quirk) is deliberately left as a pointer to `git log`/commit history rather than catalogued here -- out of scope for a beginner's walkthrough. |
 | 2026-11-05 | Added "Quick reference -- the same four commands the control node's own MOTD shows", right after "Order of operations for a firewall that needs Zabbix fixed or added" -- Robert's ask, keeping the MOTD (`ansibleme.sh` v1.43.0, new `linux/tools.yml`/`zabbix_agent.yml`/`windows_bootstrap/site.yml`/`90-firewall.yml` entries in its own "Quick reference" banner) and this guide showing the same four commands rather than drifting apart. Three were already documented almost verbatim in the section just above; the new one, `windows_bootstrap/site.yml -e target=<hostname> --limit <hostname>`, is explicitly the Day-2 already-onboarded form, with a pointer back to the two-`-i` comma form for a genuinely new box and a note on why `-e target=` and `--limit` both carry the hostname (the real 2026-09-19 `hosts: all` incident, not redundancy). |
 | 2026-11-05 | Updated the "Quick reference" block above to match `ansibleme.sh` v1.43.1 -- Robert pasted the exact banner he wanted (reordered, wider 16-char label column, "Onboard Win" spelled out as "Onboard Windows"). Three paths in his paste didn't match the real repo (`proxmox/pve_onboard.yml` doesn't exist -- real file is `proxmox/site.yml`; `playbooks/90-firewall.yml` and `playbooks/zabbix_agent.yml` were both missing their own subdirectory) -- confirmed via `find` against the real checkout before applying, not copied blind; see `ansibleme.sh`'s own v1.43.1 changelog entry for the full detail. |
+| 2026-11-05 | Added "Hub AllowedIPs self-heal -- preview, then apply", right after "WireGuard duplicate peer cleanup" -- `heal-hub-allowedips.yml`'s real preview/apply/`CONFIRM` sequence against `EXAFWLCLD001`, with real captured output. First live run found the gap was estate-wide (8 spokes still missing their own WAN address, not just the one that surfaced it), confirming `INC-2026-10-30-WG-ALLOWEDIPS` was never fully rolled out past the two spokes originally tested. Also documents a real bug that first run hit (`'sites_csv_path' is undefined` -- a role-only default this standalone play didn't inherit, same issue `add-wg-spoke.yml` already solved back on 2026-07-16, missed the first time round). Robert's explicit call: keep this as its own standalone playbook rather than folding it into an existing one for now, but make sure it's documented here. |
 
 ---
 
