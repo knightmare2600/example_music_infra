@@ -99,9 +99,12 @@ already has, not the target machine pulling one over the network.
 >
 > - [salt#70003](https://github.com/saltstack/salt/pull/70003) — "Add native Windows arm64
 >   minion MSI support"
-> - [relenv#318](https://github.com/saltstack/relenv/pull/318) — "Windows arm64 support"
+> - [relenv#328](https://github.com/saltstack/relenv/pull/328) — "Windows arm64 support"
 >   (relenv is Salt's own relocatable Python environment builder, a real dependency of the
->   minion build pipeline)
+>   minion build pipeline). Originally #318, open as of the 2026-08-10 date above — that PR
+>   was later accidentally auto-closed when its source fork was deleted, and resubmitted as
+>   #328 with the same commits, merged 2026-11-07 (see root `README.md`'s "Upstream
+>   Contributions" section for the current status of all three)
 > - [pymssql#1013](https://github.com/pymssql/pymssql/pull/1013) — "Add native Windows arm64
 >   wheel builds" (a Salt dependency, needed for the build to complete on ARM64 at all)
 >
