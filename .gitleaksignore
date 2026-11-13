@@ -16,10 +16,10 @@
 # were a real leaked secret.
 #
 # 2026-11-13: fingerprints regenerated after git-filter-repo rewrote every
-# commit's hash (--replace-text + --replace-message, scrubbing
-# example1.co.uk from the entire history -- see below). The 11 entries here
-# are the same already-confirmed-safe findings as before, just under their
-# new post-rewrite commit hashes.
+# commit's hash (--replace-text + --replace-message, scrubbing Robert's real
+# personal email domain from the entire history -- see below). The 11
+# entries here are the same already-confirmed-safe findings as before, just
+# under their new post-rewrite commit hashes.
 # =============================================================================
 
 # AWS's own official public example credentials (the "EXAMPLE"/"EXAMPLEKEY"
@@ -91,4 +91,13 @@ a2310838b0b5906df3c6409c8f912a2d93e3f828:docs/api2.txt:generic-api-key:27076
 # and an empty-in-practice allowlist block is a worse trap for a future
 # reader than no block at all. The custom rule itself stays active (in
 # .gitleaks.local.toml, never committed) to catch any NEW leak the same way.
+#
+# 2026-11-13, same day: the commit that wrote the explanation above
+# (302fc37a) spelled the domain out literally while describing the scrub,
+# so the rule caught its own write-up -- one single-finding recursion, not a
+# new leak. Reworded that line in a follow-up commit so it no longer repeats
+# the literal domain, and allowlisted this one historical fingerprint below
+# rather than running a second filter-repo pass just to scrub a sentence
+# about having already run the first one.
 # =============================================================================
+302fc37a5657327d8eb18031e2a45a3f18a30c2f:.gitleaksignore:robert-real-email-domain:20
