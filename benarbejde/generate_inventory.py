@@ -1391,7 +1391,13 @@ NON_STANDARD_SITES = {"VRK", "FRD"}
 # had no such collision, so WAP1 stays at the synthesized default (.82) there -- only WAP2+ needed
 # real rows.
 SUPPRESSED_STANDARD_ROLES = {
-  "CLD": {"SBC", "WAP"},
+  # 2026-11-13: added "PBS" -- PBS's own standard single-slot (.14, added 2026-10-29) collided
+  # with CLD's real, Enabled:true EXARMMCLD001 (TacticalRMM, added 2026-08-04, well before PBS
+  # existed) -- same shape as the SBC/WAP entries below, just PBS-on-RMM instead of
+  # SBC-on-PBX/WAP-on-UFC. Confirmed RMM is not decommissioned (Enabled: true, no Legacy/Planned
+  # flag, active description) before suppressing -- the synthesized PBS placeholder is the
+  # fictional one here, CLD has no real PBS device of its own.
+  "CLD": {"SBC", "WAP", "PBS"},
   "AKL": {"WAP"},
   "SYD": {"WAP"},
   # 2026-09-24: same WAP-on-CAM/SBC-on-PBX slot-reuse shape as above, just BMC-on-SWI --
