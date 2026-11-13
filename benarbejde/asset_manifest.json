@@ -334,7 +334,7 @@
       "name": "fyrtaarn",
       "_comment": "Robert's own BMC controller app, self-contained Go binary, no runtime deps. Installed to /usr/local/bin/fyrtaarn (Linux/macOS) or C:\\Tools\\fyrtaarn\\fyrtaarn.exe (Windows, matching this repo's existing C:\\Tools\\<name>\\ convention -- see docs/gitleaks_guide.md). The 3 workstation setup scripts only consume linux-amd64/linux-arm64/darwin-amd64/darwin-arm64/windows-amd64/windows-arm64 -- the remaining entries (armv7, mips64el, mipsel, ppc64) are real published SBC/embedded builds kept here for completeness and for check_workstation_tool_versions.py's own existence/checksum verification, not currently installed by any script.",
       "repo": "knightmare2600/fyrtaarn",
-      "tag": "0.0.7.8",
+      "tag": "0.6.5",
       "assets": {
         "linux-amd64": "fyrtaarn-linux-amd64",
         "linux-arm64": "fyrtaarn-linux-arm64",
