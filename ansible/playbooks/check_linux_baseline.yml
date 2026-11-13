@@ -132,6 +132,30 @@
       register: _linux_baseline_marker
       when: host_role | upper not in ['PVE', 'NAS']
 
+    - name: Refresh nodeinfo.json after a successful baseline check
+      # Non-fatal, block/rescue (not ignore_errors:) -- same pattern
+      # windows_dc/playbooks/40-dc-summary.yml already established (see
+      # check_nodeinfo_coverage.py's own header): a nodeinfo write failure
+      # must never mask or interfere with this file's own real job, the
+      # abort gate below. Only runs once the marker is confirmed present --
+      # there's nothing meaningful to record about a host that's about to
+      # hard-abort. PVE/NAS stay excluded, same as the stat task above --
+      # their own real "deploy" playbooks (proxmox/30-example-music.yml,
+      # truenas's own chain) already write nodeinfo.json independently.
+      tags: always
+      when:
+        - host_role | upper not in ['PVE', 'NAS']
+        - _linux_baseline_marker.stat.exists | default(false)
+      block:
+        - include_tasks: ../tasks/nodeinfo.yml
+          vars:
+            nodeinfo_role: "{{ host_role }}"
+            nodeinfo_site: "{{ host_site | default('UNKNOWN') }}"
+            nodeinfo_bootstrapped_by: "check_linux_baseline.yml"
+      rescue:
+        - debug:
+            msg: "nodeinfo.json refresh failed non-fatally -- the baseline check result above still stands."
+
     - name: ABORT — linux/tools.yml has not been run against this host yet
       ansible.builtin.fail:
         msg: >-

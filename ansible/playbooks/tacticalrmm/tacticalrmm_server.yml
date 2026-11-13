@@ -2821,6 +2821,7 @@
           }}
 
     - name: "20 | Refresh nodeinfo.json with the final install status"
+      tags: always
       include_tasks: ../../tasks/nodeinfo.yml
       vars:
         nodeinfo_hostname: "{{ rmm_hostname }}"
