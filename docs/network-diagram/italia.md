@@ -65,8 +65,10 @@ graph TD
     T_FWL["🧱 EXAFWLMIL001<br/>LAN Face<br/>192.168.39.253"]
     T_FWL["🧱 EXAFWLMIL001<br/>FWL 1<br/>192.168.39.253 — planned"]
     T_PVE --> T_DCS --> T_DCS --> T_SBC --> T_SBC --> T_FWL --> T_FWL
+    T_PBS["🧳 EXAPBSMIL001<br/>PBS<br/>192.168.39.14"]
     T_ILO["🔧 EXAILOMIL001<br/>ILO 1<br/>192.168.39.3 — planned"]
     T_RAC["🔧 EXARACMIL002<br/>RAC 2<br/>192.168.39.4 — planned"]
+    T_PBS --> T_RAC
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -89,6 +91,7 @@ graph TD
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PBS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_ILO fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:TOPOLOGY:MIL:END

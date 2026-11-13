@@ -160,6 +160,7 @@ graph TD
     T_SBC["🛡️ EXASBCAKL001<br/>VoIP SBC<br/>192.168.93.48"]
     T_FWL["🧱 EXAFWLAKL001<br/>Site Firewall<br/>192.168.93.253"]
     T_PVE --> T_DCS --> T_SVR --> T_SBC --> T_FWL
+    T_PBS["🧳 EXAPBSAKL001<br/>PBS<br/>192.168.93.14"]
     T_RAC["🔧 EXARACAKL001<br/>Real, Confirmed Via Ad_computers.json (EXARACAKL001, Enab...<br/>192.168.93.2"]
     T_WKS["🖥️ EXAWKSAKL001<br/>Workstation<br/>192.168.93.40"]
     T_MBP["💻 EXAMBPAKL001<br/>MacBook Pro<br/>192.168.93.41"]
@@ -170,8 +171,8 @@ graph TD
     T_CAM["🎥 EXACAMAKL001<br/>Camera<br/>192.168.93.82"]
     T_COF["🍵 EXACOFAKL001<br/>Coffee Machine<br/>192.168.93.83"]
     T_ILO["🔧 EXAILOAKL001<br/>ILO 1<br/>192.168.93.3 — planned"]
+    T_PBS --> T_WKS --> T_PHN --> T_LCD --> T_CAM --> T_ILO
     T_RAC --> T_MBP --> T_TAB --> T_PRN --> T_COF
-    T_WKS --> T_PHN --> T_LCD --> T_CAM --> T_ILO
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_PVE fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -191,6 +192,7 @@ graph TD
     style T_SVR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PBS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_WKS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_MBP fill:#000000,stroke:#FFFFFF,color:#FFFFFF

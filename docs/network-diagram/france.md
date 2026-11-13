@@ -64,8 +64,10 @@ graph TD
     T_FWL["🧱 EXAFWLMRS001<br/>LAN Face<br/>192.168.91.253"]
     T_FWL["🧱 EXAFWLMRS001<br/>FWL 1<br/>192.168.91.253 — planned"]
     T_PVE --> T_DCS --> T_DCS --> T_SBC --> T_SBC --> T_FWL --> T_FWL
+    T_PBS["🧳 EXAPBSMRS001<br/>PBS<br/>192.168.91.14"]
     T_ILO["🔧 EXAILOMRS001<br/>ILO 1<br/>192.168.91.3 — planned"]
     T_RAC["🔧 EXARACMRS002<br/>RAC 2<br/>192.168.91.4 — planned"]
+    T_PBS --> T_RAC
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -88,6 +90,7 @@ graph TD
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PBS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_ILO fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:TOPOLOGY:MRS:END

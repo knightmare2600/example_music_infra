@@ -164,13 +164,14 @@ graph TD
     T_FWL["🧱 EXAFWLBRK001<br/>LAN Face<br/>192.168.136.253"]
     T_FWL["🧱 EXAFWLBRK001<br/>FWL 1<br/>192.168.136.253 — planned"]
     T_PVE --> T_DCS --> T_SBC --> T_SBC --> T_FWL --> T_FWL
+    T_PBS["🧳 EXAPBSBRK001<br/>PBS<br/>192.168.136.14"]
     T_DON["🍩 EXADONBRK001<br/>Donut Vending<br/>192.168.136.60"]
     T_LAP["💻 EXALAPBRK001<br/>Tour Laptop<br/>No IP Address"]
     T_VND["🍫 EXAVNDBRK001<br/>Maple Syrup Vending Unit<br/>192.168.136.61"]
     T_ILO["🔧 EXAILOBRK001<br/>ILO 1<br/>192.168.136.3 — planned"]
     T_RAC["🔧 EXARACBRK002<br/>RAC 2<br/>192.168.136.4 — planned"]
+    T_PBS --> T_LAP --> T_ILO
     T_DON --> T_VND --> T_RAC
-    T_LAP --> T_ILO
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -190,6 +191,7 @@ graph TD
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PBS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_DON fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_LAP fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_VND fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -320,8 +322,10 @@ graph TD
     T_FWL["🧱 EXAFWLTOR001<br/>LAN Face<br/>192.168.146.253"]
     T_FWL["🧱 EXAFWLTOR001<br/>FWL 1<br/>192.168.146.253 — planned"]
     T_PVE --> T_DCS --> T_SBC --> T_SBC --> T_FWL --> T_FWL
+    T_PBS["🧳 EXAPBSTOR001<br/>PBS<br/>192.168.146.14"]
     T_ILO["🔧 EXAILOTOR001<br/>ILO 1<br/>192.168.146.3 — planned"]
     T_RAC["🔧 EXARACTOR002<br/>RAC 2<br/>192.168.146.4 — planned"]
+    T_PBS --> T_RAC
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -343,6 +347,7 @@ graph TD
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PBS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_ILO fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:TOPOLOGY:TOR:END
@@ -408,8 +413,10 @@ graph TD
     T_FWL["🧱 EXAFWLMTL001<br/>LAN Face<br/>192.168.154.253"]
     T_FWL["🧱 EXAFWLMTL001<br/>FWL 1<br/>192.168.154.253 — planned"]
     T_PVE --> T_DCS --> T_DCS --> T_SBC --> T_SBC --> T_FWL --> T_FWL
+    T_PBS["🧳 EXAPBSMTL001<br/>PBS<br/>192.168.154.14"]
     T_ILO["🔧 EXAILOMTL001<br/>ILO 1<br/>192.168.154.3 — planned"]
     T_RAC["🔧 EXARACMTL002<br/>RAC 2<br/>192.168.154.4 — planned"]
+    T_PBS --> T_RAC
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -432,6 +439,7 @@ graph TD
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PBS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_ILO fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:TOPOLOGY:MTL:END
@@ -484,8 +492,10 @@ graph TD
     T_FWL["🧱 EXAFWLKNG001<br/>LAN Face<br/>192.168.163.253"]
     T_FWL["🧱 EXAFWLKNG001<br/>FWL 1<br/>192.168.163.253 — planned"]
     T_PVE --> T_DCS --> T_DCS --> T_SBC --> T_SBC --> T_FWL --> T_FWL
+    T_PBS["🧳 EXAPBSKNG001<br/>PBS<br/>192.168.163.14"]
     T_ILO["🔧 EXAILOKNG001<br/>ILO 1<br/>192.168.163.3 — planned"]
     T_RAC["🔧 EXARACKNG002<br/>RAC 2<br/>192.168.163.4 — planned"]
+    T_PBS --> T_RAC
     style T_VRK fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_BMC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
@@ -508,6 +518,7 @@ graph TD
     style T_SBC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_FWL fill:#000000,stroke:#FFFFFF,color:#FFFFFF
+    style T_PBS fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_ILO fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style T_RAC fill:#000000,stroke:#FFFFFF,color:#FFFFFF
 %% GENERATED:TOPOLOGY:KNG:END
