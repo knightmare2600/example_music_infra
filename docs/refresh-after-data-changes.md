@@ -28,6 +28,7 @@ original 2026-07-26 incident did:
 - `ansible/playbooks/firewallme/playbooks/90-firewall.yml`
 - `ansible/playbooks/firewallme/playbooks/add-wg-spoke.yml`
 - `ansible/playbooks/firewallme/playbooks/dedupe-wg-peers.yml`
+- `ansible/playbooks/firewallme/playbooks/heal-hub-allowedips.yml`
 - `ansible/playbooks/linux/rename-host.yml`
 - `ansible/playbooks/salt/playbooks/10-master.yml`
 - `ansible/playbooks/windows_adschema/playbooks/10-ad-schema.yml`
@@ -70,7 +71,7 @@ ansible-playbook playbooks/linux/tools.yml --limit EXAANSCLD001
 ```
 
 The gate is a reactive backstop — it stops a run before it does anything wrong on stale data, but
-it only fires at the moment you happen to run one of the 16 gated playbooks. A live incident
+it only fires at the moment you happen to run one of the 17 gated playbooks. A live incident
 2026-09-01 (`EXAFWLATL001` firewall onboarding test) hit exactly this: the control node's own
 `sites.csv` had drifted stale from earlier `benarbejde/` edits made days before, and the gate
 correctly caught it — but only after the operator had already started the firewall run. Refreshing
@@ -86,7 +87,7 @@ After any edit to `benarbejde/sites.csv`/`devices.csv`/`role_codes.csv`/
 | If you're about to... | Re-run this first |
 |---|---|
 | Run `create-vm.py`, or anything else that reads `/etc/example-music/*` **directly on a Proxmox node** | `ansible-playbook playbooks/linux/tools.yml --limit <that PVE node>` |
-| Run any of the 16 gated playbooks listed above | Nothing extra — the gate catches a stale control-node copy for you |
+| Run any of the 17 gated playbooks listed above | Nothing extra — the gate catches a stale control-node copy for you |
 | Expect a new/changed device to resolve in DNS | `ansible-playbook playbooks/bind9/bind9-dns.yml --tags zones-full,reload` against `EXADNSVRK001` |
 | Run anything else, on any other host, that reads `/etc/example-music/*` directly (not via the control node) | `ansible-playbook playbooks/linux/tools.yml --limit <that host>` |
 
