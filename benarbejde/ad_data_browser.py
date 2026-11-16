@@ -52,7 +52,7 @@ try:
     from textual.binding import Binding
     from textual.containers import Horizontal, Vertical, VerticalScroll
     from textual.screen import ModalScreen, Screen
-    from textual.widgets import Button, DataTable, Footer, Header, Input, Label, Static
+    from textual.widgets import Button, DataTable, Footer, Header, Input, Label, Static, Tree
 except ImportError:
     print("ERROR: textual not installed.")
     print("  apt install python3-textual   (already staged on this estate's control hosts)")
@@ -133,6 +133,12 @@ COLLECTIONS = {
             "Name", "SamAccountName", "Role", "Site", "Description",
             "DNSHostName", "OS", "OperatingSystemVersion", "IPv4Address",
         ],
+        # Real ad_ou DN strings exist on every record (confirmed directly,
+        # 0 blanks across 880 computers) -- a real OU tree to browse, not
+        # synthesized. ad_groups.json has no equivalent field at all (no
+        # per-group OU placement in this dataset), so "groups" below
+        # deliberately has no tree_field -- stays flat, same as before.
+        "tree_field": "ad_ou",
     },
     "users": {
         "json_file": "ad_users.json",
@@ -147,6 +153,7 @@ COLLECTIONS = {
             "Department", "Company", "Description", "City", "Country",
             "Manager", "Groups",
         ],
+        "tree_field": "ad_ou",
     },
     "groups": {
         "json_file": "ad_groups.json",
@@ -178,6 +185,53 @@ def _cell_text(value):
 
 def _search_text(record, search_fields):
     return " ".join(_cell_text(record.get(f, "")) for f in search_fields).lower()
+
+
+# =============================================================================
+# OU DN PARSING — turns a real AD distinguished name like
+# "OU=Telephony,OU=Devices,OU=Aberdeen,OU=Scotland,OU=United Kingdom,
+# OU=Europe,OU=Sites,DC=jukebox,DC=internal" into a root-to-leaf tuple:
+# ("jukebox.internal", "Sites", "Europe", "United Kingdom", "Scotland",
+# "Aberdeen", "Devices", "Telephony"). Confirmed directly against the real
+# data before relying on this shape: 334 distinct ad_ou values across
+# computers+users, every one OU=/DC=-only (no CN= or other RDN types, no
+# escaped commas inside a value) -- a plain comma-split is safe here, not
+# a generic RFC 4514 DN parser (which would also need to handle escaping,
+# not a real concern for this dataset).
+# =============================================================================
+
+_NO_OU_PATH = ("(no OU)",)
+
+
+def _parse_ou_path(dn):
+    """DN components are listed leaf-to-root (standard LDAP convention);
+    reversed here to read root-to-leaf, the natural order for a tree. The
+    two (or more) trailing DC= components collapse into ONE root label in
+    their original encounter order ("jukebox", "internal" -> "jukebox.
+    internal") -- matching ad_forest.json's own domain_fqdn convention,
+    rather than a chain of separate one-word DC nodes."""
+    dn = (dn or "").strip()
+    if not dn:
+        return _NO_OU_PATH
+    dc_values = []
+    ou_values = []
+    for token in dn.split(","):
+        token = token.strip()
+        if not token:
+            continue
+        upper = token.upper()
+        if upper.startswith("DC="):
+            dc_values.append(token.split("=", 1)[1])
+        elif upper.startswith("OU="):
+            ou_values.append(token.split("=", 1)[1])
+        # Any other RDN type (CN=, etc.) isn't expected in this dataset's
+        # ad_ou values -- skip defensively rather than crash on a shape
+        # that's never actually occurred.
+    if not dc_values and not ou_values:
+        return _NO_OU_PATH
+    domain_label = ".".join(dc_values) if dc_values else "(unknown domain)"
+    ou_values.reverse()
+    return (domain_label, *ou_values)
 
 
 # =============================================================================
@@ -272,12 +326,6 @@ class MainMenuScreen(ArrowFocusMixin, Screen):
 # =============================================================================
 
 class BrowserScreen(ArrowFocusMixin, Screen):
-    # Only the filter Input is in AUTO_FOCUS's selector -- the DataTable is
-    # deliberately reachable via Tab/Down from there (see the "down"
-    # binding below), not auto-focused itself, so typing starts working
-    # immediately on screen entry.
-    AUTO_FOCUS = "#browser-filter"
-
     BINDINGS = [
         Binding("f1", "show_help", "Help", show=True),
         Binding("f2", "go_back", "Back", show=True),
@@ -288,6 +336,8 @@ class BrowserScreen(ArrowFocusMixin, Screen):
         # Down from the filter box moves into the table (DataTable's own
         # Up/Down -- row cursor movement -- takes over once it has focus,
         # never reaching this binding; see ArrowFocusMixin's own comment).
+        # From the tree, Down/Up are consumed by Tree's own cursor
+        # movement first, same non-interference.
         Binding("down", "focus_next_item", show=False),
         Binding("up", "focus_previous_item", show=False),
     ]
@@ -295,6 +345,18 @@ class BrowserScreen(ArrowFocusMixin, Screen):
     DEFAULT_CSS = """
     BrowserScreen {
         layout: vertical;
+    }
+    #browser-main {
+        layout: horizontal;
+        height: 1fr;
+    }
+    #browser-tree {
+        width: 42;
+        border-right: solid $panel;
+    }
+    #browser-right {
+        layout: vertical;
+        width: 1fr;
     }
     #browser-filter-row {
         height: 3;
@@ -322,37 +384,87 @@ class BrowserScreen(ArrowFocusMixin, Screen):
         self.collection = collection
         self.spec = COLLECTIONS[collection]
         self.records = self.app.data_for(collection)
+        self._tree_field = self.spec.get("tree_field")
+        # Parsed once here, not re-parsed on every filter keystroke --
+        # parallel list, same indices as self.records throughout.
+        self._paths = (
+            [_parse_ou_path(r.get(self._tree_field, "")) for r in self.records]
+            if self._tree_field else None
+        )
+        self._selected_ou = None  # None = no OU constraint (show everything)
+        # Only the filter Input is in AUTO_FOCUS's selector when there's no
+        # tree pane -- the DataTable is reachable via Tab/Down from there
+        # (see the "down" binding above). When a tree pane exists, it gets
+        # initial focus instead, matching dsa.msc's own tree-first opening.
+        self.AUTO_FOCUS = "#browser-tree" if self._tree_field else "#browser-filter"
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=False)
-        with Horizontal(id="browser-filter-row"):
-            yield Label("Filter:")
-            yield Input(placeholder="type to filter -- matches name, site, description, ...",
-                        id="browser-filter")
-        yield Static("", id="browser-count")
-        yield DataTable(id="browser-table", cursor_type="row", zebra_stripes=True)
+        with Horizontal(id="browser-main"):
+            if self._tree_field:
+                yield Tree(self.spec["title"], id="browser-tree")
+            with Vertical(id="browser-right"):
+                with Horizontal(id="browser-filter-row"):
+                    yield Label("Filter:")
+                    yield Input(
+                        placeholder="type to filter -- matches name, site, description, ...",
+                        id="browser-filter",
+                    )
+                yield Static("", id="browser-count")
+                yield DataTable(id="browser-table", cursor_type="row", zebra_stripes=True)
         yield ThemeFooter()
 
     def on_mount(self) -> None:
         self.sub_title = f"{self.spec['title']} ({len(self.records)} total)"
         table = self.query_one("#browser-table", DataTable)
         table.add_columns(*(label for label, _ in self.spec["columns"]))
+        if self._tree_field:
+            self._build_tree()
         self._refresh_rows("")
+
+    def _build_tree(self) -> None:
+        """Builds the OU tree from every distinct root-to-leaf path in
+        self._paths. Parent nodes are created on demand as each record's
+        path is walked, cached by their own full path tuple so two records
+        sharing an ancestor OU never create a duplicate branch for it."""
+        tree = self.query_one("#browser-tree", Tree)
+        root_label = next(iter(self._paths), ("",))[0] if self._paths else ""
+        tree.root.data = (root_label,)
+        tree.root.label = root_label
+        cache = {(root_label,): tree.root}
+        for path in sorted(set(self._paths)):
+            node = tree.root
+            for depth in range(1, len(path)):
+                key = path[: depth + 1]
+                child = cache.get(key)
+                if child is None:
+                    child = node.add(path[depth], data=key)
+                    cache[key] = child
+                node = child
+        tree.root.expand()
+
+    def on_tree_node_selected(self, event: Tree.NodeSelected) -> None:
+        self._selected_ou = event.node.data
+        self._refresh_rows(self.query_one("#browser-filter", Input).value)
 
     def _refresh_rows(self, filter_text: str) -> None:
         table = self.query_one("#browser-table", DataTable)
         table.clear()
         needle = filter_text.strip().lower()
+        ou = self._selected_ou
         shown = 0
         for i, record in enumerate(self.records):
+            if ou and (self._paths[i][: len(ou)] != ou):
+                continue
             if needle and needle not in _search_text(record, self.spec["search_fields"]):
                 continue
             row = [_cell_text(record.get(field, "")) for _, field in self.spec["columns"]]
             table.add_row(*row, key=str(i))
             shown += 1
-        self.query_one("#browser-count", Static).update(
-            f"{shown} of {len(self.records)} shown" if needle else f"{len(self.records)} record(s)"
-        )
+
+        scope = f" (OU: {' > '.join(ou[1:])})" if ou and len(ou) > 1 else ""
+        count_text = f"{shown} of {len(self.records)} shown{scope}" if (needle or ou) else f"{len(self.records)} record(s)"
+        self.query_one("#browser-count", Static).update(count_text)
 
     def on_input_changed(self, event: Input.Changed) -> None:
         if event.input.id == "browser-filter":
@@ -514,6 +626,13 @@ class AboutModal(ArrowFocusMixin, ModalScreen):
                 markup=False,
             )
             yield Static(
+                "Computers and Users also get an OU tree on the left, built from their "
+                "real ad_ou values -- Enter/click an OU to show everything under it, "
+                "combinable with the Filter box. Groups has no OU tree (ad_groups.json "
+                "carries no OU placement at all) and stays a flat list.",
+                markup=False,
+            )
+            yield Static(
                 "NOT a revival of benarbejde/archive/parse_tdf.py -- that script is "
                 "legacy and must never be used again. This tool only reads the "
                 "already-converted JSON files already committed to the repo.",
@@ -553,8 +672,9 @@ class HelpModal(ArrowFocusMixin, ModalScreen):
     ]
 
     MENU_LINES = [
-        "Browse Computers/Users/Groups  Filter + table over one JSON file.",
-        "View Forest Config             ad_forest.json's own key:value pairs.",
+        "Browse Computers/Users  OU tree (left) + filter/table (right).",
+        "Browse Groups           Filter + table only -- no OU data exists.",
+        "View Forest Config      ad_forest.json's own key:value pairs.",
     ]
 
     HELP_LINES = [
@@ -563,9 +683,11 @@ class HelpModal(ArrowFocusMixin, ModalScreen):
         "F7              Cycle colour theme",
         "F9              About",
         "F10             Quit",
-        "Enter / Click   On a table row: open that record's full detail",
-        "Up/Down/PgUp/PgDn  Move within the table",
-        "Tab / Shift+Tab Move between the filter box and the table",
+        "Enter / Click   On a tree OU: expand + scope the table to it.",
+        "                On a table row: open that record's full detail",
+        "Space           On a tree OU: expand/collapse without selecting",
+        "Up/Down/PgUp/PgDn  Move within the tree or the table",
+        "Tab / Shift+Tab Move between the tree, filter box, and table",
         "Down (in filter) Also moves into the table, same as Tab",
     ]
 

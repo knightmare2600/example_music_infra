@@ -38,11 +38,18 @@ def fixture_paths(tmp_path):
         {"Name": "EXARTRTST001", "SamAccountName": "EXARTRTST001$", "Role": "RTR",
          "Site": "TST", "Description": "Test router", "Enabled": True,
          "DNSHostName": "EXARTRTST001.jukebox.internal", "OS": "Debian",
-         "OperatingSystemVersion": "12", "IPv4Address": "10.99.0.1"},
+         "OperatingSystemVersion": "12", "IPv4Address": "10.99.0.1",
+         "ad_ou": "OU=Network,OU=Devices,OU=Testville,OU=Testland,OU=Sites,DC=jukebox,DC=internal"},
         {"Name": "EXAWKSTST001", "SamAccountName": "EXAWKSTST001$", "Role": "WKS",
          "Site": "TST", "Description": "", "Enabled": False,
          "DNSHostName": "EXAWKSTST001.jukebox.internal", "OS": "Windows 11",
-         "OperatingSystemVersion": "23H2", "IPv4Address": "10.99.0.101"},
+         "OperatingSystemVersion": "23H2", "IPv4Address": "10.99.0.101",
+         "ad_ou": "OU=Workstations,OU=Devices,OU=Testville,OU=Testland,OU=Sites,DC=jukebox,DC=internal"},
+        {"Name": "EXAWKSOTH001", "SamAccountName": "EXAWKSOTH001$", "Role": "WKS",
+         "Site": "OTH", "Description": "", "Enabled": True,
+         "DNSHostName": "EXAWKSOTH001.jukebox.internal", "OS": "Windows 11",
+         "OperatingSystemVersion": "23H2", "IPv4Address": "10.99.1.101",
+         "ad_ou": "OU=Workstations,OU=Devices,OU=Otherville,OU=Testland,OU=Sites,DC=jukebox,DC=internal"},
     ]
     users = [
         {"Name": "Test Person", "SamAccountName": "test.person",
@@ -52,7 +59,8 @@ def fixture_paths(tmp_path):
          "Locked": False, "MustChangePassword": False, "Department": "QA",
          "Company": "Test Co", "Description": "A fixture user", "telephoneNumber": "",
          "mobile": "", "Street": "", "City": "Testville", "PostalCode": "",
-         "physicalDeliveryOfficeName": "", "ad_ou": "", "ad_band_ou_name": "", "ad_band_parent": ""},
+         "physicalDeliveryOfficeName": "", "ad_band_ou_name": "", "ad_band_parent": "",
+         "ad_ou": "OU=Testers,OU=Users,OU=Testville,OU=Testland,OU=Sites,DC=jukebox,DC=internal"},
     ]
     groups = [
         {"Name": "Testers", "Description": "Fixture group", "Type": "Security",
@@ -100,6 +108,32 @@ class TestCellText:
 
     def test_empty_list_renders_blank(self):
         assert adb._cell_text([]) == ""
+
+
+class TestParseOuPath:
+    def test_real_shaped_dn_parses_root_to_leaf(self):
+        dn = ("OU=Telephony,OU=Devices,OU=Aberdeen,OU=Scotland,OU=United "
+              "Kingdom,OU=Europe,OU=Sites,DC=jukebox,DC=internal")
+        assert adb._parse_ou_path(dn) == (
+            "jukebox.internal", "Sites", "Europe", "United Kingdom",
+            "Scotland", "Aberdeen", "Devices", "Telephony",
+        )
+
+    def test_blank_dn_returns_no_ou_sentinel(self):
+        assert adb._parse_ou_path("") == adb._NO_OU_PATH
+        assert adb._parse_ou_path(None) == adb._NO_OU_PATH
+        assert adb._parse_ou_path("   ") == adb._NO_OU_PATH
+
+    def test_domain_components_join_in_natural_fqdn_order(self):
+        # DC=jukebox,DC=internal (child-to-parent, standard DN order) must
+        # read as "jukebox.internal", matching ad_forest.json's own
+        # domain_fqdn convention -- not reversed to "internal.jukebox".
+        assert adb._parse_ou_path("DC=jukebox,DC=internal")[0] == "jukebox.internal"
+
+    def test_shallow_dn_still_parses(self):
+        assert adb._parse_ou_path("OU=Sites,DC=jukebox,DC=internal") == (
+            "jukebox.internal", "Sites",
+        )
 
 
 class TestSearchText:
@@ -160,8 +194,8 @@ def test_browser_shows_every_record_unfiltered(fixture_paths):
             await pilot.click("#menu-computers")
             await pilot.pause()
             table = app.screen.query_one("#browser-table", adb.DataTable)
-            assert table.row_count == 2
-            assert "2 record(s)" in str(app.screen.query_one("#browser-count", adb.Static).renderable)
+            assert table.row_count == 3
+            assert "3 record(s)" in str(app.screen.query_one("#browser-count", adb.Static).renderable)
     _run(body())
 
 
@@ -178,7 +212,7 @@ def test_filter_narrows_by_any_search_field(fixture_paths):
             app.screen.query_one("#browser-filter", adb.Input).value = "test router"
             await pilot.pause()
             assert table.row_count == 1
-            assert "1 of 2 shown" in str(app.screen.query_one("#browser-count", adb.Static).renderable)
+            assert "1 of 3 shown" in str(app.screen.query_one("#browser-count", adb.Static).renderable)
     _run(body())
 
 
@@ -193,11 +227,11 @@ def test_filter_is_case_insensitive_and_clears_back_to_full_list(fixture_paths):
 
             filt.value = "WKS"
             await pilot.pause()
-            assert table.row_count == 1
+            assert table.row_count == 2
 
             filt.value = ""
             await pilot.pause()
-            assert table.row_count == 2
+            assert table.row_count == 3
     _run(body())
 
 
@@ -211,7 +245,124 @@ def test_filter_matching_nothing_shows_zero_rows(fixture_paths):
             app.screen.query_one("#browser-filter", adb.Input).value = "nonexistent-zzz"
             await pilot.pause()
             assert table.row_count == 0
-            assert "0 of 2 shown" in str(app.screen.query_one("#browser-count", adb.Static).renderable)
+            assert "0 of 3 shown" in str(app.screen.query_one("#browser-count", adb.Static).renderable)
+    _run(body())
+
+
+def _find_child(node, label):
+    for child in node.children:
+        if str(child.label) == label:
+            return child
+    raise KeyError(f"{label!r} not found under {node.label!r}; children: "
+                   f"{[str(c.label) for c in node.children]}")
+
+
+def test_computers_and_users_get_a_tree_pane_groups_does_not(fixture_paths):
+    async def body():
+        app = adb.AdDataBrowserApp(fixture_paths)
+        async with app.run_test() as pilot:
+            for menu_id, expect_tree in (
+                ("#menu-computers", True), ("#menu-users", True), ("#menu-groups", False),
+            ):
+                await pilot.click(menu_id)
+                await pilot.pause()
+                trees = app.screen.query("#browser-tree")
+                assert len(trees) == (1 if expect_tree else 0), menu_id
+                await pilot.press("f2")
+                await pilot.pause()
+    _run(body())
+
+
+def test_tree_builds_real_ou_hierarchy_from_ad_ou(fixture_paths):
+    async def body():
+        app = adb.AdDataBrowserApp(fixture_paths)
+        async with app.run_test() as pilot:
+            await pilot.click("#menu-computers")
+            await pilot.pause()
+            tree = app.screen.query_one("#browser-tree", adb.Tree)
+
+            assert str(tree.root.label) == "jukebox.internal"
+            assert tree.root.data == ("jukebox.internal",)
+
+            sites = _find_child(tree.root, "Sites")
+            testland = _find_child(sites, "Testland")
+            testville = _find_child(testland, "Testville")
+            otherville = _find_child(testland, "Otherville")
+            devices = _find_child(testville, "Devices")
+            network = _find_child(devices, "Network")
+            workstations = _find_child(devices, "Workstations")
+
+            assert network.data == ("jukebox.internal", "Sites", "Testland", "Testville", "Devices", "Network")
+            # Testville and Otherville both have a "Devices" > "Workstations"
+            # branch -- must be two DISTINCT nodes (different full paths),
+            # never merged just because the leaf label matches.
+            other_devices = _find_child(otherville, "Devices")
+            other_workstations = _find_child(other_devices, "Workstations")
+            assert workstations.data != other_workstations.data
+    _run(body())
+
+
+def test_selecting_an_ou_node_filters_the_table_by_prefix(fixture_paths):
+    async def body():
+        app = adb.AdDataBrowserApp(fixture_paths)
+        async with app.run_test() as pilot:
+            await pilot.click("#menu-computers")
+            await pilot.pause()
+            tree = app.screen.query_one("#browser-tree", adb.Tree)
+            table = app.screen.query_one("#browser-table", adb.DataTable)
+
+            sites = _find_child(tree.root, "Sites")
+            testland = _find_child(sites, "Testland")
+            testville = _find_child(testland, "Testville")
+
+            # A leaf-level OU (Network) -- exactly the one router.
+            devices = _find_child(testville, "Devices")
+            network = _find_child(devices, "Network")
+            app.screen.on_tree_node_selected(adb.Tree.NodeSelected(network))
+            await pilot.pause()
+            assert table.row_count == 1
+            assert table.get_row_at(0)[0] == "EXARTRTST001"
+
+            # A higher, aggregating OU (Testville) -- both of its devices
+            # (router + workstation), never Otherville's workstation.
+            app.screen.on_tree_node_selected(adb.Tree.NodeSelected(testville))
+            await pilot.pause()
+            assert table.row_count == 2
+            names = {table.get_row_at(i)[0] for i in range(table.row_count)}
+            assert names == {"EXARTRTST001", "EXAWKSTST001"}
+
+            # The domain root -- everything, same as no OU selected at all.
+            app.screen.on_tree_node_selected(adb.Tree.NodeSelected(tree.root))
+            await pilot.pause()
+            assert table.row_count == 3
+    _run(body())
+
+
+def test_ou_selection_combines_with_text_filter(fixture_paths):
+    async def body():
+        app = adb.AdDataBrowserApp(fixture_paths)
+        async with app.run_test() as pilot:
+            await pilot.click("#menu-computers")
+            await pilot.pause()
+            tree = app.screen.query_one("#browser-tree", adb.Tree)
+            table = app.screen.query_one("#browser-table", adb.DataTable)
+
+            sites = _find_child(tree.root, "Sites")
+            testland = _find_child(sites, "Testland")
+            testville = _find_child(testland, "Testville")
+            app.screen.on_tree_node_selected(adb.Tree.NodeSelected(testville))
+            await pilot.pause()
+            assert table.row_count == 2
+
+            # Narrow further with the text filter, still scoped to Testville
+            # -- must not reach back into Otherville's matching workstation.
+            app.screen.query_one("#browser-filter", adb.Input).value = "WKS"
+            await pilot.pause()
+            assert table.row_count == 1
+            assert table.get_row_at(0)[0] == "EXAWKSTST001"
+
+            count_text = str(app.screen.query_one("#browser-count", adb.Static).renderable)
+            assert "OU: Sites > Testland > Testville" in count_text
     _run(body())
 
 
