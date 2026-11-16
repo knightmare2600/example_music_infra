@@ -62,6 +62,24 @@ except ImportError:
 BENARBEJDE = Path(__file__).resolve().parent
 
 
+class ArrowFocusMixin:
+    """Adds plain Up/Down as alternates for Tab/Shift+Tab, moving focus to
+    the next/previous focusable widget. Deliberately bound without
+    priority=True -- DataTable's own Up/Down row-cursor movement and
+    VerticalScroll's own native arrow-key scrolling keep working unchanged;
+    this only fires once the focused widget's own bindings have had first
+    refusal and the key bubbles up unhandled. Same pattern, same reasoning,
+    as site_device_tui.py's own identically-named mixin -- duplicated, not
+    imported, per this file's own header on why the two tools don't share
+    runtime code."""
+
+    def action_focus_next_item(self) -> None:
+        self.focus_next()
+
+    def action_focus_previous_item(self) -> None:
+        self.focus_previous()
+
+
 # =============================================================================
 # DATA LOADERS -- plain json.load(), nothing else. No fallback/search path
 # the way site_device_tui.py's _load_sites()/_load_role_codes() have, since
@@ -197,7 +215,9 @@ class ThemeFooter(Footer):
 # MAIN MENU
 # =============================================================================
 
-class MainMenuScreen(Screen):
+class MainMenuScreen(ArrowFocusMixin, Screen):
+    AUTO_FOCUS = "Button"
+
     DEFAULT_CSS = """
     MainMenuScreen { align: center middle; }
     #menu-box { width: 48; height: auto; }
@@ -210,6 +230,8 @@ class MainMenuScreen(Screen):
         Binding("f7", "cycle_theme", "Theme", show=True),
         Binding("f9", "show_about", "About", show=True),
         Binding("f10", "app_quit", "Quit", show=True),
+        Binding("down", "focus_next_item", show=False),
+        Binding("up", "focus_previous_item", show=False),
     ]
 
     def action_show_help(self) -> None:
@@ -249,7 +271,13 @@ class MainMenuScreen(Screen):
 # BROWSER SCREEN — filter Input + DataTable, one instance per collection.
 # =============================================================================
 
-class BrowserScreen(Screen):
+class BrowserScreen(ArrowFocusMixin, Screen):
+    # Only the filter Input is in AUTO_FOCUS's selector -- the DataTable is
+    # deliberately reachable via Tab/Down from there (see the "down"
+    # binding below), not auto-focused itself, so typing starts working
+    # immediately on screen entry.
+    AUTO_FOCUS = "#browser-filter"
+
     BINDINGS = [
         Binding("f1", "show_help", "Help", show=True),
         Binding("f2", "go_back", "Back", show=True),
@@ -257,6 +285,11 @@ class BrowserScreen(Screen):
         Binding("f9", "show_about", "About", show=True),
         Binding("f10", "app_quit", "Quit", show=True),
         Binding("escape", "go_back", "Back", show=False),
+        # Down from the filter box moves into the table (DataTable's own
+        # Up/Down -- row cursor movement -- takes over once it has focus,
+        # never reaching this binding; see ArrowFocusMixin's own comment).
+        Binding("down", "focus_next_item", show=False),
+        Binding("up", "focus_previous_item", show=False),
     ]
 
     DEFAULT_CSS = """
@@ -305,7 +338,6 @@ class BrowserScreen(Screen):
         table = self.query_one("#browser-table", DataTable)
         table.add_columns(*(label for label, _ in self.spec["columns"]))
         self._refresh_rows("")
-        self.query_one("#browser-filter", Input).focus()
 
     def _refresh_rows(self, filter_text: str) -> None:
         table = self.query_one("#browser-table", DataTable)
@@ -450,7 +482,9 @@ class ForestScreen(Screen):
 # HELP / ABOUT
 # =============================================================================
 
-class AboutModal(ModalScreen):
+class AboutModal(ArrowFocusMixin, ModalScreen):
+    AUTO_FOCUS = "Button"
+
     DEFAULT_CSS = """
     AboutModal { align: center middle; }
     #about-box {
@@ -463,6 +497,8 @@ class AboutModal(ModalScreen):
     BINDINGS = [
         Binding("escape", "close_about", "Close", show=True),
         Binding("f10", "close_about", "Close", show=False),
+        Binding("down", "focus_next_item", show=False),
+        Binding("up", "focus_previous_item", show=False),
     ]
 
     def compose(self) -> ComposeResult:
@@ -494,7 +530,9 @@ class AboutModal(ModalScreen):
             self.dismiss()
 
 
-class HelpModal(ModalScreen):
+class HelpModal(ArrowFocusMixin, ModalScreen):
+    AUTO_FOCUS = "Button"
+
     DEFAULT_CSS = """
     HelpModal { align: center middle; }
     #help-box {
@@ -510,6 +548,8 @@ class HelpModal(ModalScreen):
     BINDINGS = [
         Binding("escape", "close_help", "Close", show=True),
         Binding("f10", "close_help", "Close", show=False),
+        Binding("down", "focus_next_item", show=False),
+        Binding("up", "focus_previous_item", show=False),
     ]
 
     MENU_LINES = [
@@ -526,6 +566,7 @@ class HelpModal(ModalScreen):
         "Enter / Click   On a table row: open that record's full detail",
         "Up/Down/PgUp/PgDn  Move within the table",
         "Tab / Shift+Tab Move between the filter box and the table",
+        "Down (in filter) Also moves into the table, same as Tab",
     ]
 
     def compose(self) -> ComposeResult:

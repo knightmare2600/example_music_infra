@@ -77,6 +77,22 @@ except ImportError:
 BENARBEJDE = Path(__file__).resolve().parent
 REPO_ROOT = BENARBEJDE.parent
 
+
+class ArrowFocusMixin:
+    """Adds plain Up/Down as alternates for Tab/Shift+Tab, moving focus to
+    the next/previous focusable widget on screen. Deliberately bound
+    without priority=True -- a widget that already claims Up/Down itself
+    (Select's own open-the-dropdown binding, DataTable's own row-cursor
+    movement, VerticalScroll's own native arrow-key scrolling) keeps that
+    behaviour unchanged; these only fire once the focused widget's own
+    bindings have had first refusal and the key bubbles up unhandled."""
+
+    def action_focus_next_item(self) -> None:
+        self.focus_next()
+
+    def action_focus_previous_item(self) -> None:
+        self.focus_previous()
+
 # Reuse the real, already-tested implementations rather than duplicating any of
 # this -- same convention check_new_site_boilerplate.py itself already uses for
 # the same two modules. Both guard their own CLI logic behind
@@ -196,7 +212,9 @@ class ThemeFooter(Footer):
 # is two separate entry points rather than one branching wizard.
 # =============================================================================
 
-class MainMenuScreen(Screen):
+class MainMenuScreen(ArrowFocusMixin, Screen):
+    AUTO_FOCUS = "Button"
+
     DEFAULT_CSS = """
     MainMenuScreen { align: center middle; }
     #menu-box { width: 48; height: auto; }
@@ -212,6 +230,8 @@ class MainMenuScreen(Screen):
         Binding("f7", "cycle_theme", "Theme", show=True),
         Binding("f9", "show_about", "About", show=True),
         Binding("f10", "app_quit", "Quit", show=True),
+        Binding("down", "focus_next_item", show=False),
+        Binding("up", "focus_previous_item", show=False),
     ]
 
     def action_show_help(self) -> None:
@@ -263,10 +283,17 @@ class MainMenuScreen(Screen):
 # wizard via reset_factory, not hardcoded here.
 # =============================================================================
 
-class WizardScreen(Screen):
+class WizardScreen(ArrowFocusMixin, Screen):
     STEP_NUM = 1
     STEP_TOTAL = 1
     STEP_TITLE = ""
+
+    # First Input/Select in DOM order on whichever concrete step screen is
+    # showing -- Review-only screens (no Input/Select at all) harmlessly
+    # match nothing, leaving self.focused as None until Tab/Up/Down is
+    # first pressed (focus_next()'s own documented fallback: "if no widget
+    # is currently focused, focus the first focusable widget").
+    AUTO_FOCUS = "Input, Select"
 
     BINDINGS = [
         Binding("f1", "show_help", "Help", show=True),
@@ -278,6 +305,8 @@ class WizardScreen(Screen):
         Binding("f10", "wizard_quit", "Quit", show=True),
         Binding("ctrl+p", "wizard_back", "Back", show=False),
         Binding("ctrl+n", "wizard_next", "Next", show=False),
+        Binding("down", "focus_next_item", show=False),
+        Binding("up", "focus_previous_item", show=False),
     ]
 
     DEFAULT_CSS = """
@@ -348,7 +377,15 @@ class WizardScreen(Screen):
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=False)
-        with VerticalScroll(classes="step-body"):
+        with VerticalScroll(classes="step-body") as body:
+            # VerticalScroll is focusable by default, with its own native
+            # Up/Down = scroll bindings -- left alone, it both steals the
+            # very first focus (ahead of the real fields) and, once back in
+            # the Tab cycle, intercepts Up/Down as a scroll instead of the
+            # field-to-field navigation ArrowFocusMixin adds above. This is
+            # a pure layout wrapper here, not an interactive widget, so it
+            # has no business being a focus stop at all.
+            body.can_focus = False
             yield from self.compose_fields()
             yield Static("", id="step-error")
         with Horizontal(classes="nav-row"):
@@ -1929,7 +1966,9 @@ class QuickChecksScreen(WizardScreen):
 # HELP / ABOUT
 # =============================================================================
 
-class AboutModal(ModalScreen):
+class AboutModal(ArrowFocusMixin, ModalScreen):
+    AUTO_FOCUS = "Button"
+
     DEFAULT_CSS = """
     AboutModal { align: center middle; }
     #about-box {
@@ -1942,6 +1981,8 @@ class AboutModal(ModalScreen):
     BINDINGS = [
         Binding("escape", "close_about", "Close", show=True),
         Binding("f10", "close_about", "Close", show=False),
+        Binding("down", "focus_next_item", show=False),
+        Binding("up", "focus_previous_item", show=False),
     ]
 
     def compose(self) -> ComposeResult:
@@ -1981,7 +2022,9 @@ class AboutModal(ModalScreen):
             self.dismiss()
 
 
-class HelpModal(ModalScreen):
+class HelpModal(ArrowFocusMixin, ModalScreen):
+    AUTO_FOCUS = "Button"
+
     DEFAULT_CSS = """
     HelpModal { align: center middle; }
     #help-box {
@@ -1997,6 +2040,8 @@ class HelpModal(ModalScreen):
     BINDINGS = [
         Binding("escape", "close_help", "Close", show=True),
         Binding("f10", "close_help", "Close", show=False),
+        Binding("down", "focus_next_item", show=False),
+        Binding("up", "focus_previous_item", show=False),
     ]
 
     MENU_LINES = [
@@ -2024,6 +2069,8 @@ class HelpModal(ModalScreen):
         "F10             Quit",
         "Ctrl+P / Ctrl+N Back / Next (alternate)",
         "Tab / Shift+Tab Move between fields",
+        "Up / Down       Also moves between fields/buttons (Select's own",
+        "                Up/Down opens its dropdown instead, as normal)",
     ]
 
     def compose(self) -> ComposeResult:
