@@ -221,6 +221,25 @@ class TestSubnetValidator:
     def test_accepts_new_subnet(self, fixture_repo):
         assert tui.SubnetValidator().validate("10.99.9.0/24").is_valid
 
+    def test_exclude_allows_own_unchanged_subnet(self, fixture_repo):
+        """Edit Site's own use case: TST keeping its own 10.99.0.0/24 must
+        not be flagged as colliding with itself."""
+        assert tui.SubnetValidator(exclude="10.99.0.0/24").validate("10.99.0.0/24").is_valid
+
+    def test_exclude_still_rejects_a_different_sites_subnet(self, fixture_repo):
+        """Excluding TST's own subnet must not open the door to claiming a
+        DIFFERENT site's real subnet instead."""
+        result = tui.SubnetValidator(exclude="10.99.0.0/24").validate("10.99.0.0/24")
+        assert result.is_valid
+        # fixture_repo only has one real subnet (10.99.0.0/24); add a second
+        # known one to prove exclude is scoped to just the excluded value.
+        tui.KNOWN_SUBNETS.add("10.99.9.0/24")
+        try:
+            result = tui.SubnetValidator(exclude="10.99.0.0/24").validate("10.99.9.0/24")
+            assert not result.is_valid
+        finally:
+            tui.KNOWN_SUBNETS.discard("10.99.9.0/24")
+
 
 class TestIPInSubnetValidator:
     def test_rejects_outside_subnet(self, fixture_repo):
@@ -306,6 +325,60 @@ class TestDeviceOctetValidator:
     def test_accepts_free_octet(self):
         v = tui.DeviceOctetValidator(lambda: "WKS", lambda: {}, lambda: {})
         assert v.validate("150").is_valid
+
+
+class TestReplaceCsvRow:
+    """_replace_csv_row() -- shared rewrite-in-place helper for Edit Site /
+    Edit Device. Unit-tested directly against a tiny ad-hoc CSV, no
+    fixture_repo/Textual runtime needed."""
+
+    def _write(self, path, header, rows):
+        with path.open("w", newline="", encoding="utf-8") as f:
+            w = csv.writer(f, lineterminator="\n")
+            w.writerow(header)
+            w.writerows(rows)
+
+    def test_replaces_the_right_row_only(self, tmp_path):
+        path = tmp_path / "data.csv"
+        mirror = tmp_path / "mirror.csv"
+        self._write(path, ["Key", "Value"], [["a", "1"], ["b", "2"], ["c", "3"]])
+        mirror.write_bytes(path.read_bytes())
+
+        tui._replace_csv_row(path, mirror, lambda row: row["Key"] == "b", ["b", "CHANGED"])
+
+        rows = list(csv.DictReader(path.open(newline="", encoding="utf-8")))
+        assert [r["Value"] for r in rows] == ["1", "CHANGED", "3"]
+        assert mirror.read_bytes() == path.read_bytes()
+
+    def test_output_has_no_crlf(self, tmp_path):
+        path = tmp_path / "data.csv"
+        mirror = tmp_path / "mirror.csv"
+        self._write(path, ["Key", "Value"], [["a", "1"]])
+        mirror.write_bytes(path.read_bytes())
+
+        tui._replace_csv_row(path, mirror, lambda row: row["Key"] == "a", ["a", "2"])
+
+        assert b"\r" not in path.read_bytes()
+
+    def test_raises_on_zero_matches(self, tmp_path):
+        path = tmp_path / "data.csv"
+        mirror = tmp_path / "mirror.csv"
+        self._write(path, ["Key", "Value"], [["a", "1"]])
+        mirror.write_bytes(path.read_bytes())
+
+        with pytest.raises(ValueError, match="found 0"):
+            tui._replace_csv_row(path, mirror, lambda row: row["Key"] == "missing", ["x", "1"])
+
+    def test_raises_on_multiple_matches_without_writing(self, tmp_path):
+        path = tmp_path / "data.csv"
+        mirror = tmp_path / "mirror.csv"
+        self._write(path, ["Key", "Value"], [["a", "1"], ["a", "2"]])
+        mirror.write_bytes(path.read_bytes())
+        before = path.read_bytes()
+
+        with pytest.raises(ValueError, match="found 2"):
+            tui._replace_csv_row(path, mirror, lambda row: row["Key"] == "a", ["a", "X"])
+        assert path.read_bytes() == before, "must not write anything on an ambiguous match"
 
 
 # =============================================================================
@@ -528,6 +601,171 @@ def test_add_device_confirm_writes_correct_row(fixture_repo, monkeypatch):
     assert draft.hostname() == "EXAPRNTST001"
     mirror = fixture_repo / "bootstrap" / "web" / "proxmox" / "devices.csv"
     assert mirror.read_bytes() == devices_csv.read_bytes()
+
+
+def test_device_options_empty_sentinel_when_no_devices(fixture_repo):
+    screen = tui.DeviceEditPickerScreen(None, lambda: None)
+    assert screen._device_options("ZZZ") == [("(no devices at this site)", "")]
+
+
+def test_device_options_lists_real_devices(fixture_repo):
+    screen = tui.DeviceEditPickerScreen(None, lambda: None)
+    assert screen._device_options("TST") == [("RTR #1 — EXARTRTST001", "RTR:1")]
+
+
+async def _walk_to_site_edit(pilot, app, site="TST"):
+    await pilot.click("#menu-edit-site")
+    await pilot.pause()
+    app.screen.query_one("#edit-site-picker", tui.Select).value = site
+    await pilot.pause()
+    await pilot.press("f3")
+    await pilot.pause()
+    assert isinstance(app.screen, tui.SiteEditScreen)
+
+
+def test_edit_site_loads_existing_values_with_identity_read_only(fixture_repo):
+    async def body():
+        app = tui.SiteDeviceTuiApp(None)
+        async with app.run_test() as pilot:
+            await _walk_to_site_edit(pilot, app)
+            d = app.screen.draft
+            assert d.site == "TST" and d.edit_mode is True
+            assert d.city == "Testville"
+            assert d.subnet == "10.99.0.0/24"
+            # Gateway/DC/FW are deliberately set blank at construction and
+            # back-filled in on_mount() (see SiteEditScreen's own comment) --
+            # confirm the real value actually landed, not left blank.
+            assert app.screen.query_one("#esite-gateway", tui.Input).value == "10.99.0.253"
+            # No Input exists for the site code -- it's shown as a read-only
+            # Static, never an editable field.
+            assert len(app.screen.query("#esite-site")) == 0
+    _run(body())
+
+
+def test_edit_site_confirm_rewrites_in_place_without_adding_a_row(fixture_repo, monkeypatch):
+    calls = []
+    monkeypatch.setattr(ra, "regenerate_all", lambda *a: (calls.append(1), True)[1])
+
+    async def body():
+        app = tui.SiteDeviceTuiApp(None)
+        async with app.run_test() as pilot:
+            await _walk_to_site_edit(pilot, app)
+            app.screen.query_one("#esite-city", tui.Input).value = "Testville EDITED"
+            await pilot.pause()
+            await pilot.press("f3")
+            await pilot.pause()
+
+    _run(body())
+
+    assert len(calls) == 1
+    sites_csv = fixture_repo / "benarbejde" / "sites.csv"
+    rows = list(csv.DictReader(sites_csv.open(newline="", encoding="utf-8")))
+    assert len(rows) == 1, "Edit Site must rewrite in place, never append a second row"
+    assert rows[0]["City"] == "Testville EDITED"
+    assert rows[0]["Subnet"] == "10.99.0.0/24", "unchanged fields must round-trip untouched"
+    with sites_csv.open("rb") as f:
+        assert b"\r" not in f.read()
+    mirror = fixture_repo / "bootstrap" / "web" / "proxmox" / "sites.csv"
+    assert mirror.read_bytes() == sites_csv.read_bytes()
+
+
+def test_edit_site_f4_reset_discards_unsaved_edit(fixture_repo, monkeypatch):
+    monkeypatch.setattr(ra, "regenerate_all", lambda *a: True)
+
+    async def body():
+        app = tui.SiteDeviceTuiApp(None)
+        async with app.run_test() as pilot:
+            await _walk_to_site_edit(pilot, app)
+            app.screen.query_one("#esite-city", tui.Input).value = "UNSAVED JUNK"
+            await pilot.pause()
+            await pilot.press("f4")
+            await pilot.pause()
+            await pilot.press("f4")
+            await pilot.pause()
+            assert isinstance(app.screen, tui.SiteEditScreen)
+            assert app.screen.query_one("#esite-city", tui.Input).value == "Testville"
+    _run(body())
+
+
+async def _walk_to_device_edit(pilot, app, site="TST"):
+    await pilot.click("#menu-edit-device")
+    await pilot.pause()
+    app.screen.query_one("#edit-device-site", tui.Select).value = site
+    await pilot.pause()
+    await pilot.press("f3")
+    await pilot.pause()
+    assert isinstance(app.screen, tui.DeviceEditScreen)
+
+
+def test_edit_device_loads_existing_values_with_identity_read_only(fixture_repo):
+    async def body():
+        app = tui.SiteDeviceTuiApp(None)
+        async with app.run_test() as pilot:
+            await _walk_to_device_edit(pilot, app)
+            d = app.screen.draft
+            assert d.edit_mode is True
+            assert (d.site, d.type, d.number) == ("TST", "RTR", 1)
+            assert d.host_octet == "1"
+            assert d.hostname() == "EXARTRTST001"
+            # Identity fields are shown in one read-only Static -- no Input
+            # for Site/Type/Number/HostOctet exists on this screen at all.
+            for fid in ("edev-site", "edev-type", "edev-number", "edev-hostoctet"):
+                assert len(app.screen.query(f"#{fid}")) == 0
+    _run(body())
+
+
+def test_edit_device_confirm_rewrites_in_place_preserving_identity(fixture_repo, monkeypatch):
+    calls = []
+    monkeypatch.setattr(ra, "regenerate_all", lambda *a: (calls.append(1), True)[1])
+
+    async def body():
+        app = tui.SiteDeviceTuiApp(None)
+        async with app.run_test() as pilot:
+            await _walk_to_device_edit(pilot, app)
+            app.screen.query_one("#edev-notes", tui.Input).value = "notes EDITED"
+            await pilot.pause()
+            await pilot.press("f3")
+            await pilot.pause()
+
+    _run(body())
+
+    assert len(calls) == 1
+    devices_csv = fixture_repo / "benarbejde" / "devices.csv"
+    rows = list(csv.DictReader(devices_csv.open(newline="", encoding="utf-8")))
+    assert len(rows) == 1, "Edit Device must rewrite in place, never append a second row"
+    assert rows[0]["Notes"] == "notes EDITED"
+    assert rows[0]["Site"] == "TST" and rows[0]["Type"] == "RTR" and rows[0]["Number"] == "1"
+    assert rows[0]["HostOctet"] == "1", "identity fields must round-trip untouched"
+    with devices_csv.open("rb") as f:
+        assert b"\r" not in f.read()
+    mirror = fixture_repo / "bootstrap" / "web" / "proxmox" / "devices.csv"
+    assert mirror.read_bytes() == devices_csv.read_bytes()
+
+
+def test_edit_device_picker_rejects_blank_pick(fixture_repo, monkeypatch):
+    """DeviceEditPickerScreen.commit() must refuse to proceed (and must
+    never raise) if the picked site genuinely has zero devices -- exercised
+    directly rather than through the UI, since fixture_repo's only site
+    always has a device (see test_device_options_empty_sentinel... above
+    for the underlying data-level guarantee this depends on)."""
+    screen = tui.DeviceEditPickerScreen(None, lambda: None)
+    screen._site = "doesn't matter, commit() re-reads the widgets"
+    # Simulate the widget state commit() reads without a full Pilot mount:
+    # DeviceEditPickerScreen.commit() calls query_one() against two real
+    # Selects, so drive it through a real (if minimal) mounted screen.
+    async def body():
+        app = tui.SiteDeviceTuiApp(None)
+        async with app.run_test() as pilot:
+            await pilot.click("#menu-edit-device")
+            await pilot.pause()
+            device_select = app.screen.query_one("#edit-device-pick", tui.Select)
+            device_select.set_options([("(no devices at this site)", "")])
+            device_select.value = ""
+            await pilot.pause()
+            error = app.screen.commit()
+            assert error is not None
+            assert "no devices yet" in error
+    _run(body())
 
 
 def test_add_device_number_increments_for_second_instance(fixture_repo, monkeypatch):

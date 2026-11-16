@@ -37,8 +37,16 @@ Build stages (see the plan -- each is independently demoable):
     4. Add-Device wizard, full flow incl. suggest_free_ip integration
     5. Post-save sanity pass + "Run Quick Checks" menu option
     6. Polish pass
-    7. Tests (pytest for validators, Textual Pilot for wizard walks)   <- this stage
+    7. Tests (pytest for validators, Textual Pilot for wizard walks)
        -- see benarbejde/test_site_device_tui.py (requires apt: python3-pytest)
+
+Added after the original 7-stage plan, same discipline: "Edit Site" / "Edit
+Device" (2026-11-16) -- picks an EXISTING row, rewrites it in place instead
+of appending. Identity-bearing fields are shown read-only, never editable:
+a site's own Site code, and a device's Site/Type/Number/HostOctet -- all of
+these feed generate_inventory.py's build_hostname()/address-policy
+computation, so changing any of them here would really be a rename, not an
+edit, and this tool deliberately doesn't support that (Robert's own call).
 =============================================================================
 """
 
@@ -224,6 +232,8 @@ class MainMenuScreen(Screen):
             yield Label("Example Music Limited — Site/Device Data Entry", id="menu-title")
             yield Button("Add Site",         id="menu-add-site")
             yield Button("Add Device",       id="menu-add-device")
+            yield Button("Edit Site",        id="menu-edit-site")
+            yield Button("Edit Device",      id="menu-edit-device")
             yield Button("Run Quick Checks", id="menu-run-checks")
             yield Button("Quit (F10)",       id="menu-quit")
         yield ThemeFooter()
@@ -233,6 +243,10 @@ class MainMenuScreen(Screen):
             self.app.push_screen(_new_site_wizard())
         elif event.button.id == "menu-add-device":
             self.app.push_screen(_new_device_wizard())
+        elif event.button.id == "menu-edit-site":
+            self.app.push_screen(_new_site_edit_picker())
+        elif event.button.id == "menu-edit-device":
+            self.app.push_screen(_new_device_edit_picker())
         elif event.button.id == "menu-run-checks":
             self.app.push_screen(QuickChecksScreen(None, _new_standalone_quick_checks))
         elif event.button.id == "menu-quit":
@@ -492,6 +506,20 @@ class TimezoneValidator(Validator):
 
 
 class SubnetValidator(Validator):
+    """exclude: a site's own CURRENT subnet, so Edit Site doesn't reject
+    'no change' as a collision with itself. None (the default, used by
+    Add Site) means every known subnet is a real collision -- there's no
+    site yet to exclude."""
+
+    def __init__(self, exclude=None):
+        super().__init__()
+        self._exclude = None
+        if exclude:
+            try:
+                self._exclude = str(ipaddress.ip_network(exclude, strict=False))
+            except ValueError:
+                self._exclude = None
+
     def validate(self, value: str) -> ValidationResult:
         v = value.strip()
         if not v:
@@ -500,7 +528,7 @@ class SubnetValidator(Validator):
             net = ipaddress.ip_network(v, strict=True)
         except ValueError as e:
             return self.failure(f"Not a valid CIDR subnet: {e}")
-        if str(net) in KNOWN_SUBNETS:
+        if str(net) in KNOWN_SUBNETS and str(net) != self._exclude:
             return self.failure(f"Subnet {v} is already used by another site.")
         return self.success()
 
@@ -629,6 +657,35 @@ class SiteDraft:
         self.timezone = ""
         self.ansible_region = ""
         self.entity = "Example Music Limited"
+        self.edit_mode = False
+
+    @classmethod
+    def from_existing(cls, code):
+        """Loads an EXISTING sites.csv row (via the already-loaded SITES
+        dict, same source every validator/picker already reads) for Edit
+        Site -- as_csv_row() below will round-trip it byte-for-byte on any
+        field the edit screen doesn't change."""
+        row = SITES[code]
+        d = cls()
+        d.site = code
+        d.city = row.get("City", "")
+        d.country = row.get("Country", "")
+        d.country_code = row.get("CountryCode", "")
+        d.province = row.get("Province", "")
+        d.office_name = row.get("OfficeName", "")
+        d.street = row.get("Street", "")
+        d.postal_code = row.get("PostalCode", "")
+        d.subnet = row.get("Subnet", "")
+        d.gateway = row.get("Gateway", "")
+        d.dc = row.get("DC", "")
+        d.fw = row.get("FW", "")
+        d.landline = row.get("Landline", "")
+        d.mobile = row.get("Mobile", "")
+        d.timezone = row.get("Timezone", "")
+        d.ansible_region = row.get("AnsibleRegion", "")
+        d.entity = row.get("Entity", "")
+        d.edit_mode = True
+        return d
 
     def as_csv_row(self):
         """Exact sites.csv column order -- see the real header this must
@@ -826,8 +883,13 @@ class SiteReviewScreen(WizardScreen):
 
     def commit(self):
         if not self._written:
+            # lineterminator="\n" -- without it csv.writer's default 'excel'
+            # dialect appends "\r\n", leaving this one new row as the only
+            # CRLF line in an otherwise LF-only file (confirmed: sites.csv
+            # has zero \r anywhere today). Same bug class the 2026-11-13
+            # CRITICALITY ALARM fix script had to work around explicitly.
             with (BENARBEJDE / "sites.csv").open("a", newline="", encoding="utf-8") as f:
-                csv.writer(f).writerow(self.draft.as_csv_row())
+                csv.writer(f, lineterminator="\n").writerow(self.draft.as_csv_row())
             # Sync the served mirror immediately, same reasoning
             # write_rows_and_regenerate() already uses for devices.csv --
             # leaves the tree internally consistent right away rather than
@@ -939,6 +1001,197 @@ class SiteBoilerplateScreen(WizardScreen):
 
 
 # =============================================================================
+# EDIT SITE — picks an existing sites.csv row and rewrites it in place.
+# Site code itself is shown read-only (Static, not an Input) -- it's a
+# foreign key used throughout the repo (devices.csv's own Site column, DNS
+# zone names, ad_ou Province checks, ...); changing it here would really be
+# a rename, not an edit, and this tool doesn't support that.
+# =============================================================================
+
+def _new_site_edit_picker():
+    return SiteEditPickerScreen(None, _new_site_edit_picker)
+
+
+class SiteEditPickerScreen(WizardScreen):
+    STEP_NUM = 1
+    STEP_TOTAL = 2
+    STEP_TITLE = "Select Site to Edit"
+
+    def compose_fields(self) -> ComposeResult:
+        yield from _select_field(
+            "Site to edit:", "edit-site-picker",
+            [(f"{code} — {SITES[code].get('City', '')}, {SITES[code].get('Country', '')}", code)
+             for code in sorted(SITES)],
+            value=sorted(SITES)[0],
+        )
+
+    def commit(self):
+        self._picked = self.query_one("#edit-site-picker", Select).value
+        return None
+
+    def next_screen(self):
+        code = self._picked
+
+        def _factory():
+            return SiteEditScreen(SiteDraft.from_existing(code), _factory)
+
+        return _factory()
+
+
+class SiteEditScreen(WizardScreen):
+    STEP_NUM = 2
+    STEP_TOTAL = 2
+    STEP_TITLE = "Edit Site"
+
+    DEFAULT_CSS = """
+    #site-edit-result {
+        margin-top: 1;
+    }
+    """
+
+    _FIELD_IDS = [
+        "esite-city", "esite-country", "esite-countrycode", "esite-officename",
+        "esite-street", "esite-postalcode", "esite-subnet", "esite-gateway",
+        "esite-dc", "esite-fw", "esite-landline", "esite-mobile",
+        "esite-timezone", "esite-ansibleregion", "esite-entity",
+    ]
+
+    def __init__(self, draft, reset_factory):
+        super().__init__(draft, reset_factory)
+        # Same double-guard as SiteReviewScreen/DeviceReviewScreen -- the
+        # row rewrite and the regeneration retry are independent, but the
+        # rewrite itself must only ever happen once per screen instance.
+        self._written = False
+        self._write_succeeded = False
+
+    def compose_fields(self) -> ComposeResult:
+        d = self.draft
+        subnet_text_fn = lambda: self.query_one("#esite-subnet", Input).value  # noqa: E731
+        yield Static(
+            f"Site: {d.site}  (read-only -- used as a key throughout the repo; "
+            f"changing it here would effectively rename the site, not edit it)",
+            classes="field-hint", markup=False,
+        )
+        yield from _field("City", "esite-city", value=d.city,
+                          validators=[RequiredTextValidator("City")])
+        yield from _field("Country", "esite-country", value=d.country,
+                          validators=[RequiredTextValidator("Country")])
+        yield from _field("Country code", "esite-countrycode", value=d.country_code,
+                          validators=[CountryCodeValidator()])
+        yield from _field("Province/State (optional)", "esite-province", value=d.province)
+        yield from _field("Office name", "esite-officename", value=d.office_name,
+                          validators=[RequiredTextValidator("Office name")])
+        yield from _field("Street", "esite-street", value=d.street,
+                          validators=[RequiredTextValidator("Street")])
+        yield from _field("Postal code", "esite-postalcode", value=d.postal_code,
+                          validators=[RequiredTextValidator("Postal code")])
+        yield from _field("Subnet (CIDR)", "esite-subnet", value=d.subnet,
+                          validators=[SubnetValidator(exclude=d.subnet)])
+        # Gateway/DC/FW start BLANK here, not pre-filled with d.gateway/d.dc/
+        # d.fw -- IPInSubnetValidator.validate() queries the Subnet Input via
+        # subnet_text_fn() the instant a non-blank initial `value=` is set
+        # (Input fires its own "changed" validation synchronously inside
+        # __init__), but compose_fields() is still mid-generator at that
+        # point -- the Subnet Input has been yielded as an object but isn't
+        # mounted into the screen's tree yet, so that query_one() raises
+        # NoMatches and crashes the whole screen. Confirmed live while
+        # building this screen (Add Site never hit this -- SiteDraft always
+        # starts blank there, so this exact "non-blank value".value=
+        # on construction path was never exercised before Edit Site).
+        # on_mount() below sets the real values back in, once every sibling
+        # is actually mounted and query_one() is safe.
+        yield from _field("Gateway", "esite-gateway", value="",
+                          validators=[IPInSubnetValidator("Gateway", subnet_text_fn)])
+        yield from _field("DC (domain controller) address", "esite-dc", value="",
+                          validators=[IPInSubnetValidator("DC", subnet_text_fn)])
+        yield from _field("FW (firewall) address", "esite-fw", value="",
+                          validators=[IPInSubnetValidator("FW", subnet_text_fn)])
+        yield from _field("Landline (or 'N/A')", "esite-landline", value=d.landline,
+                          validators=[PhoneValidator()])
+        yield from _field("Mobile (or 'N/A')", "esite-mobile", value=d.mobile,
+                          validators=[PhoneValidator()])
+        yield from _field("Timezone (IANA)", "esite-timezone", value=d.timezone,
+                          validators=[TimezoneValidator()])
+        yield from _field("Ansible region", "esite-ansibleregion", value=d.ansible_region,
+                          validators=[RequiredTextValidator("Ansible region")])
+        yield from _field("Entity", "esite-entity", value=d.entity,
+                          validators=[RequiredTextValidator("Entity")])
+        yield Static("", id="site-edit-result", markup=False)
+
+    def on_mount(self) -> None:
+        super().on_mount()
+        # See compose_fields()'s own comment -- safe to set the real values
+        # back in now that every field, including Subnet, is mounted.
+        self.query_one("#esite-gateway", Input).value = self.draft.gateway
+        self.query_one("#esite-dc", Input).value = self.draft.dc
+        self.query_one("#esite-fw", Input).value = self.draft.fw
+
+    def next_button_label(self) -> str:
+        return "Save Changes (F3)"
+
+    def commit(self):
+        for fid in self._FIELD_IDS:
+            err = _validator_error(self.query_one(f"#{fid}", Input))
+            if err:
+                return err
+
+        d = self.draft
+        d.city = self.query_one("#esite-city", Input).value.strip()
+        d.country = self.query_one("#esite-country", Input).value.strip()
+        d.country_code = self.query_one("#esite-countrycode", Input).value.strip().upper()
+        d.province = self.query_one("#esite-province", Input).value.strip()
+        d.office_name = self.query_one("#esite-officename", Input).value.strip()
+        d.street = self.query_one("#esite-street", Input).value.strip()
+        d.postal_code = self.query_one("#esite-postalcode", Input).value.strip()
+        d.subnet = self.query_one("#esite-subnet", Input).value.strip()
+        d.gateway = self.query_one("#esite-gateway", Input).value.strip()
+        d.dc = self.query_one("#esite-dc", Input).value.strip()
+        d.fw = self.query_one("#esite-fw", Input).value.strip()
+        d.landline = self.query_one("#esite-landline", Input).value.strip()
+        d.mobile = self.query_one("#esite-mobile", Input).value.strip()
+        d.timezone = self.query_one("#esite-timezone", Input).value.strip()
+        d.ansible_region = self.query_one("#esite-ansibleregion", Input).value.strip()
+        d.entity = self.query_one("#esite-entity", Input).value.strip()
+
+        if not self._written:
+            try:
+                _replace_csv_row(
+                    BENARBEJDE / "sites.csv",
+                    REPO_ROOT / "bootstrap" / "web" / "proxmox" / "sites.csv",
+                    lambda row: row.get("Site", "").strip().upper() == d.site,
+                    d.as_csv_row(),
+                )
+            except ValueError as e:
+                self.query_one("#site-edit-result", Static).update(f"Write failed: {e}")
+                return None
+            self._written = True
+
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            ok = ra.regenerate_all(REPO_ROOT, BENARBEJDE / "devices.csv", BENARBEJDE / "sites.csv")
+        log = buf.getvalue()
+
+        if not ok:
+            self._write_succeeded = False
+            self.query_one("#site-edit-result", Static).update(
+                f"sites.csv row for {d.site} WAS updated, but regeneration failed:\n\n"
+                f"{log}\n"
+                "Press Save Changes again to retry regeneration (the row itself won't "
+                "be rewritten twice) once the problem above is fixed."
+            )
+            return None
+
+        self._write_succeeded = True
+        self.query_one("#site-edit-result", Static).update(
+            f"Updated {d.site} in sites.csv and regenerated every derived artefact:\n\n{log}"
+        )
+        return None
+
+    def next_screen(self):
+        return None  # stays here showing the result either way
+
+
+# =============================================================================
 # ADD-DEVICE VALIDATORS — Stage 4.
 # =============================================================================
 
@@ -1030,6 +1283,42 @@ def _next_device_number(site, role):
     return n
 
 
+def _load_devices_for_site(site):
+    """All real devices.csv rows at one site, for DeviceEditPickerScreen's
+    second Select -- re-read fresh every call (not cached at import time
+    like SITES/ROLE_CODES) since this runs mid-session, potentially after
+    an earlier Edit Device write in the same run."""
+    rows = []
+    with (BENARBEJDE / "devices.csv").open(newline="", encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            if row.get("Site", "").strip().upper() == site:
+                rows.append(row)
+    return rows
+
+
+def _replace_csv_row(path, mirror_path, match_fn, new_row):
+    """Rewrites the ONE row where match_fn(row_dict) is True with new_row,
+    preserving the header and every other row exactly as they were.
+    Shared by Edit Site and Edit Device -- the only difference between them
+    is match_fn/new_row. Raises rather than silently no-opping or
+    overwriting more than one row if match_fn doesn't resolve to exactly
+    one -- a data-integrity problem this tool should surface loudly, not
+    paper over."""
+    with path.open(newline="", encoding="utf-8") as f:
+        reader = csv.reader(f)
+        header = next(reader)
+        rows = list(reader)
+    matches = [i for i, r in enumerate(rows) if match_fn(dict(zip(header, r)))]
+    if len(matches) != 1:
+        raise ValueError(f"expected exactly 1 matching row in {path.name}, found {len(matches)}.")
+    rows[matches[0]] = new_row
+    with path.open("w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f, lineterminator="\n")
+        writer.writerow(header)
+        writer.writerows(rows)
+    mirror_path.write_bytes(path.read_bytes())
+
+
 # =============================================================================
 # ADD-DEVICE WIZARD — Stage 4. Mirrors devices.csv's own 12-column order,
 # split across Site/Role/Octet/Detail input screens + one Review screen.
@@ -1053,6 +1342,36 @@ class DeviceDraft:
         self.legacy = ""
         self.migrating = ""
         self.planned = ""
+        self.edit_mode = False
+
+    @classmethod
+    def from_existing(cls, site, type_, number):
+        """Loads an EXISTING devices.csv row for Edit Device. site/type_/
+        number are the identity triple already picked by
+        DeviceEditPickerScreen -- raises if devices.csv has drifted since
+        (should never happen inside one TUI run, but silently fabricating a
+        blank row would be worse)."""
+        with (BENARBEJDE / "devices.csv").open(newline="", encoding="utf-8") as f:
+            for row in csv.DictReader(f):
+                if (row.get("Site", "").strip().upper() == site
+                        and row.get("Type", "").strip().upper() == type_
+                        and row.get("Number", "").strip() == str(number)):
+                    d = cls()
+                    d.site = site
+                    d.type = type_
+                    d.number = number
+                    d.host_octet = row.get("HostOctet", "").strip()
+                    d.os = row.get("OS", "").strip()
+                    d.connection_type = row.get("ConnectionType", "").strip()
+                    d.managed = row.get("Managed", "").strip()
+                    d.notes = row.get("Notes", "").strip()
+                    d.subnet_site = row.get("SubnetSite", "").strip()
+                    d.legacy = row.get("Legacy", "").strip()
+                    d.migrating = row.get("Migrating", "").strip()
+                    d.planned = row.get("Planned", "").strip()
+                    d.edit_mode = True
+                    return d
+        raise ValueError(f"No devices.csv row found for {type_} #{number} at {site}.")
 
     def as_csv_row(self):
         """Exact devices.csv column order: Site,Type,Number,HostOctet,OS,
@@ -1292,8 +1611,10 @@ class DeviceReviewScreen(WizardScreen):
 
     def commit(self):
         if not self._written:
+            # lineterminator="\n" -- see SiteReviewScreen.commit()'s own
+            # identical comment; same bug class, same fix.
             with (BENARBEJDE / "devices.csv").open("a", newline="", encoding="utf-8") as f:
-                csv.writer(f).writerow(self.draft.as_csv_row())
+                csv.writer(f, lineterminator="\n").writerow(self.draft.as_csv_row())
             (REPO_ROOT / "bootstrap" / "web" / "proxmox" / "devices.csv").write_bytes(
                 (BENARBEJDE / "devices.csv").read_bytes()
             )
@@ -1334,6 +1655,180 @@ class DeviceReviewScreen(WizardScreen):
             after_hostname=self.draft.hostname(),
         ))
         return None
+
+
+# =============================================================================
+# EDIT DEVICE — picks an existing devices.csv row and rewrites it in place.
+# Site/Type/Number/HostOctet are all shown read-only -- the first three feed
+# generate_inventory.py's build_hostname() directly, and HostOctet is the
+# address_policy.csv-governed identity of this exact device within its
+# site's subnet; changing any of them here would really mean creating a
+# different device, not editing this one.
+# =============================================================================
+
+def _new_device_edit_picker():
+    return DeviceEditPickerScreen(None, _new_device_edit_picker)
+
+
+class DeviceEditPickerScreen(WizardScreen):
+    STEP_NUM = 1
+    STEP_TOTAL = 2
+    STEP_TITLE = "Select Device to Edit"
+
+    def _device_options(self, site):
+        rows = _load_devices_for_site(site)
+        if not rows:
+            return [("(no devices at this site)", "")]
+        opts = []
+        for row in sorted(rows, key=lambda r: (r["Type"], int(r["Number"]))):
+            hostname = gi.build_hostname(row["Type"], site, int(row["Number"]))
+            label = f"{row['Type']} #{row['Number']} — {hostname}"
+            if row.get("Notes"):
+                label += f" ({row['Notes']})"
+            opts.append((label, f"{row['Type']}:{row['Number']}"))
+        return opts
+
+    def compose_fields(self) -> ComposeResult:
+        default_site = sorted(SITES)[0]
+        device_opts = self._device_options(default_site)
+        yield from _select_field(
+            "Site:", "edit-device-site",
+            [(f"{code} — {SITES[code].get('City', '')}, {SITES[code].get('Country', '')}", code)
+             for code in sorted(SITES)],
+            value=default_site,
+        )
+        yield from _select_field("Device:", "edit-device-pick", device_opts, value=device_opts[0][1])
+
+    def on_select_changed(self, event: Select.Changed) -> None:
+        if event.select.id != "edit-device-site":
+            return
+        device_select = self.query_one("#edit-device-pick", Select)
+        opts = self._device_options(event.select.value)
+        device_select.set_options(opts)
+        device_select.value = opts[0][1]
+
+    def commit(self):
+        site = self.query_one("#edit-device-site", Select).value
+        picked = self.query_one("#edit-device-pick", Select).value
+        if not picked:
+            return f"{site} has no devices yet -- pick a different site, or use Add Device instead."
+        self._site = site
+        self._type, number_text = picked.split(":")
+        self._number = int(number_text)
+        return None
+
+    def next_screen(self):
+        site, type_, number = self._site, self._type, self._number
+
+        def _factory():
+            return DeviceEditScreen(DeviceDraft.from_existing(site, type_, number), _factory)
+
+        return _factory()
+
+
+class DeviceEditScreen(WizardScreen):
+    STEP_NUM = 2
+    STEP_TOTAL = 2
+    STEP_TITLE = "Edit Device"
+
+    DEFAULT_CSS = """
+    #device-edit-result {
+        margin-top: 1;
+    }
+    """
+
+    def __init__(self, draft, reset_factory):
+        super().__init__(draft, reset_factory)
+        self._written = False
+        self._write_succeeded = False
+
+    def compose_fields(self) -> ComposeResult:
+        d = self.draft
+        yield Static(
+            f"Site: {d.site}   Type: {d.type}   Number: {d.number}   "
+            f"Hostname: {d.hostname()}   HostOctet: {d.host_octet}\n"
+            "(all read-only -- these feed the hostname/address computation; "
+            "changing any of them here would mean a different device, not an "
+            "edit of this one)",
+            classes="field-hint", markup=False,
+        )
+        # Same CONNECTION_TYPES-override-first fallback as DeviceDetailScreen.
+        default_conn = d.connection_type or nsb.CONNECTION_TYPES.get(
+            d.type, ROLE_CODES.get(d.type, {}).get("ConnectionMethod", "")
+        )
+        yield from _field("OS (optional)", "edev-os", value=d.os)
+        yield from _select_field("ConnectionType:", "edev-conntype",
+                                 CONNECTION_TYPE_OPTIONS, value=default_conn)
+        yield from _select_field("Managed:", "edev-managed", BOOL_OPTIONS, value=d.managed)
+        yield from _field("Notes (optional)", "edev-notes", value=d.notes)
+        yield from _field(
+            "SubnetSite override (optional)", "edev-subnetsite", value=d.subnet_site,
+            validators=[OptionalSiteCodeValidator()],
+        )
+        yield from _select_field("Legacy:", "edev-legacy", LEGACY_OPTIONS, value=d.legacy)
+        yield from _select_field("Migrating:", "edev-migrating", BOOL_OPTIONS, value=d.migrating)
+        yield from _select_field("Planned:", "edev-planned", BOOL_OPTIONS, value=d.planned)
+        yield Static("", id="device-edit-result", markup=False)
+
+    def next_button_label(self) -> str:
+        return "Save Changes (F3)"
+
+    def commit(self):
+        err = _validator_error(self.query_one("#edev-subnetsite", Input))
+        if err:
+            return err
+
+        d = self.draft
+        d.os = self.query_one("#edev-os", Input).value.strip()
+        d.connection_type = self.query_one("#edev-conntype", Select).value
+        d.managed = self.query_one("#edev-managed", Select).value
+        d.notes = self.query_one("#edev-notes", Input).value.strip()
+        d.subnet_site = self.query_one("#edev-subnetsite", Input).value.strip().upper()
+        d.legacy = self.query_one("#edev-legacy", Select).value
+        d.migrating = self.query_one("#edev-migrating", Select).value
+        d.planned = self.query_one("#edev-planned", Select).value
+
+        if not self._written:
+            try:
+                _replace_csv_row(
+                    BENARBEJDE / "devices.csv",
+                    REPO_ROOT / "bootstrap" / "web" / "proxmox" / "devices.csv",
+                    lambda row: (
+                        row.get("Site", "").strip().upper() == d.site
+                        and row.get("Type", "").strip().upper() == d.type
+                        and row.get("Number", "").strip() == str(d.number)
+                    ),
+                    d.as_csv_row(),
+                )
+            except ValueError as e:
+                self.query_one("#device-edit-result", Static).update(f"Write failed: {e}")
+                return None
+            self._written = True
+
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            ok = ra.regenerate_all(REPO_ROOT, BENARBEJDE / "devices.csv", BENARBEJDE / "sites.csv")
+        log = buf.getvalue()
+
+        if not ok:
+            self._write_succeeded = False
+            self.query_one("#device-edit-result", Static).update(
+                f"devices.csv row for {d.hostname()} WAS updated, but regeneration "
+                f"failed:\n\n{log}\n"
+                "Press Save Changes again to retry regeneration (the row itself won't "
+                "be rewritten twice) once the problem above is fixed."
+            )
+            return None
+
+        self._write_succeeded = True
+        self.query_one("#device-edit-result", Static).update(
+            f"Updated {d.hostname()} in devices.csv and regenerated every derived "
+            f"artefact:\n\n{log}"
+        )
+        return None
+
+    def next_screen(self):
+        return None  # stays here showing the result either way
 
 
 # =============================================================================
@@ -1462,6 +1957,14 @@ class AboutModal(ModalScreen):
                 markup=False,
             )
             yield Static(
+                "Edit Site and Edit Device do the same validate-then-write-then-"
+                "regenerate for an EXISTING row instead of a new one. Identity-bearing "
+                "fields (a site's own code; a device's Site/Type/Number/HostOctet) are "
+                "shown read-only -- changing any of them would really be a rename, not "
+                "an edit, and isn't supported here.",
+                markup=False,
+            )
+            yield Static(
                 "Local-only -- never connects to a Proxmox API, never touches a PVE node "
                 "or any other live host. Nothing is written to any file until a wizard's "
                 "Review screen's Confirm is pressed.",
@@ -1501,6 +2004,10 @@ class HelpModal(ModalScreen):
         "                 standard day-one equipment boilerplate afterwards.",
         "Add Device       Validate then write one row to devices.csv, run the",
         "                 post-save quick checks afterwards automatically.",
+        "Edit Site        Pick an existing site, change any field except its",
+        "                 own code, rewrite that one row in place.",
+        "Edit Device      Pick an existing device, change any field except",
+        "                 Site/Type/Number/HostOctet, rewrite in place.",
         "Run Quick Checks Run the same post-save checks on demand, any time --",
         "                 not tied to just-having added a device.",
     ]
