@@ -1101,6 +1101,34 @@ Why this order, not some other one:
   hand the night before, PSK re-synced from disk) completed with `failed=0` and no API error —
   the PSK itself was never the problem; the connection was.
 
+### A fresh firewall's `tools.yml` apt install fails with "Failed to update apt cache" — wrong gateway, not DNS
+
+Confirmed live, 2026-11-19, `EXAFWLMCR001`: `tools.yml`'s "Install common packages" task
+failed with a generic `Failed to update apt cache after 5 retries` and no further detail.
+First guess (resetting `/etc/resolv.conf`) was wrong and didn't fix it — the real cause,
+found by pulling `ip route`/`cat /etc/resolv.conf`/a direct ping to `9.9.9.9` off the box
+itself, was the WAN/provisioning interface's **default route pointing at the wrong
+address**: `192.168.139.253` instead of the real gateway, `192.168.139.254`.
+
+`192.168.139.253` is VRK's `FW` column in `sites.csv` (the vRACK firewall's own address on
+that subnet) — not a router, so nothing off-subnet is reachable through it. `192.168.139.8`
+(local DNS, same subnet) answered fine the whole time, which is what made this look like a
+DNS problem at first; `9.9.9.9` (needs to actually leave the subnet) came back "host
+unreachable", which is the real tell. `192.168.139.254` is VRK's actual `Gateway` column —
+same value `firewallme.sh` already hardcodes as `WAN_STATIC_GW` and `menu.ipxe` labels
+"gateway .254" — so this was always the one correct answer, just not what this specific
+box's WAN NIC had been given.
+
+Fix (single line, run from the control node, substitute hostname/IP/interface as needed):
+
+```bash
+ansible -i "EXAFWLMCR001," -e ansible_host=192.168.139.161 EXAFWLMCR001 -m ansible.builtin.shell -a 'CONN=$(nmcli -t -f GENERAL.CONNECTION device show ens18 | cut -d: -f2); nmcli connection modify "$CONN" ipv4.gateway 192.168.139.254; nmcli connection up "$CONN"; ip route replace default via 192.168.139.254 dev ens18' --ask-pass --become
+```
+
+This both fixes the live route immediately and corrects the persistent NetworkManager
+profile (`nmcli connection modify`), so it survives a reboot — not just a same-session
+patch. Re-run `tools.yml` straight after.
+
 ### Quick reference — the same four commands the control node's own MOTD shows
 
 `/etc/update-motd.d/10-examplemusic` (written by `bootstrap/web/provision/ansibleme.sh`,
