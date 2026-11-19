@@ -16,11 +16,6 @@
                 "uuid": "362fd521753e455b9cdff62fe9614f19",
                 "template": "Example Music Infra Linux Unattended Upgrades",
                 "name": "Example Music Infra Linux Unattended Upgrades",
-                "templates": [
-                    {
-                        "name": "Example Music Infra Debian Reboot Urgency"
-                    }
-                ],
                 "groups": [
                     {
                         "name": "Example Music Infra"
