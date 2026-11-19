@@ -1,0 +1,899 @@
+{
+    "zabbix_export": {
+        "version": "7.0",
+        "template_groups": [
+            {
+                "uuid": "b326b65027684effad7509023e983790",
+                "name": "Example Music Infra"
+            },
+            {
+                "uuid": "d9792c7e70434b53b6c23fab791afeab",
+                "name": "Templates"
+            }
+        ],
+        "templates": [
+            {
+                "uuid": "362fd521753e455b9cdff62fe9614f19",
+                "template": "Example Music Infra Linux Unattended Upgrades",
+                "name": "Example Music Infra Linux Unattended Upgrades",
+                "templates": [
+                    {
+                        "name": "Example Music Infra Debian Reboot Urgency"
+                    }
+                ],
+                "groups": [
+                    {
+                        "name": "Example Music Infra"
+                    },
+                    {
+                        "name": "Templates"
+                    }
+                ],
+                "items": [
+                    {
+                        "uuid": "0a1d8387d62945fab9fbeb7e4c3cbd40",
+                        "name": "OS release: Codename",
+                        "type": "DEPENDENT",
+                        "key": "os.release.codename",
+                        "delay": "0",
+                        "history": "6h",
+                        "value_type": "TEXT",
+                        "trends": "0",
+                        "preprocessing": [
+                            {
+                                "type": "JSONPATH",
+                                "parameters": [
+                                    "$.codename"
+                                ]
+                            }
+                        ],
+                        "master_item": {
+                            "key": "vfs.file.contents[/etc/os-release]"
+                        },
+                        "triggers": [
+                            {
+                                "uuid": "df0f8ba2124a4e6e9a6f30515835d6f1",
+                                "expression": "find(/Example Music Infra Linux Unattended Upgrades/os.release.codename,,\"regexp\",\"{$OS.EOL.WARN.CODENAMES}\")=1",
+                                "name": "OS approaching end-of-life: {HOST.NAME} running {?last(/{HOST.HOST}/os.release.pretty_name)}",
+                                "priority": "WARNING"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "1a6403edb4924fd7b08bbfae34e476a2",
+                        "name": "OS release: ID",
+                        "type": "DEPENDENT",
+                        "key": "os.release.id",
+                        "delay": "0",
+                        "history": "6h",
+                        "value_type": "TEXT",
+                        "trends": "0",
+                        "preprocessing": [
+                            {
+                                "type": "JSONPATH",
+                                "parameters": [
+                                    "$.id"
+                                ]
+                            }
+                        ],
+                        "master_item": {
+                            "key": "vfs.file.contents[/etc/os-release]"
+                        }
+                    },
+                    {
+                        "uuid": "ff08985dd1e149f1affebdbeb18b8db5",
+                        "name": "OS release: ID_LIKE",
+                        "type": "DEPENDENT",
+                        "key": "os.release.id_like",
+                        "delay": "0",
+                        "history": "6h",
+                        "value_type": "TEXT",
+                        "trends": "0",
+                        "preprocessing": [
+                            {
+                                "type": "JSONPATH",
+                                "parameters": [
+                                    "$.id_like"
+                                ]
+                            }
+                        ],
+                        "master_item": {
+                            "key": "vfs.file.contents[/etc/os-release]"
+                        }
+                    },
+                    {
+                        "uuid": "0622a0fbe8ad4041999bbf613c749fe1",
+                        "name": "OS release: ID:major",
+                        "type": "DEPENDENT",
+                        "key": "os.release.id_major",
+                        "delay": "0",
+                        "history": "6h",
+                        "value_type": "TEXT",
+                        "trends": "0",
+                        "preprocessing": [
+                            {
+                                "type": "JSONPATH",
+                                "parameters": [
+                                    "$.id_major"
+                                ]
+                            }
+                        ],
+                        "master_item": {
+                            "key": "vfs.file.contents[/etc/os-release]"
+                        }
+                    },
+                    {
+                        "uuid": "b8f482924f214c819a5ab524b42c221e",
+                        "name": "OS release: ID:point",
+                        "type": "DEPENDENT",
+                        "key": "os.release.id_point",
+                        "delay": "0",
+                        "history": "6h",
+                        "value_type": "CHAR",
+                        "trends": "0",
+                        "preprocessing": [
+                            {
+                                "type": "JAVASCRIPT",
+                                "parameters": [
+                                    "var o = JSON.parse(value);\nvar m = o.version.match(/^(\\d+\\.\\d+(?:\\.\\d+)?)/);\nreturn o.id + ':' + (m ? m[1] : o.version_id);"
+                                ]
+                            }
+                        ],
+                        "master_item": {
+                            "key": "vfs.file.contents[/etc/os-release]"
+                        },
+                        "triggers": [
+                            {
+                                "uuid": "77c87c0bc99842159b51badcdb6f0fa2",
+                                "expression": "find(/Example Music Infra Linux Unattended Upgrades/os.release.id_point,,\"regexp\",\"^ubuntu:\")=1 and find(/Example Music Infra Linux Unattended Upgrades/os.release.id_point,,\"regexp\",\"{$OS.LATEST.POINT}\")=0",
+                                "name": "OS behind latest point release: {HOST.NAME} on {ITEM.LASTVALUE1}",
+                                "opdata": "{ITEM.LASTVALUE1}",
+                                "priority": "INFO"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "885469a7e04248ee9a6391297794639b",
+                        "name": "OS release: Name",
+                        "type": "DEPENDENT",
+                        "key": "os.release.name",
+                        "delay": "0",
+                        "history": "6h",
+                        "value_type": "TEXT",
+                        "trends": "0",
+                        "preprocessing": [
+                            {
+                                "type": "JSONPATH",
+                                "parameters": [
+                                    "$.name"
+                                ]
+                            }
+                        ],
+                        "master_item": {
+                            "key": "vfs.file.contents[/etc/os-release]"
+                        }
+                    },
+                    {
+                        "uuid": "3a7f7e422f9244ddbf389921b24519b2",
+                        "name": "OS release: Pretty name",
+                        "type": "DEPENDENT",
+                        "key": "os.release.pretty_name",
+                        "delay": "0",
+                        "history": "6h",
+                        "value_type": "TEXT",
+                        "trends": "0",
+                        "preprocessing": [
+                            {
+                                "type": "JSONPATH",
+                                "parameters": [
+                                    "$.pretty_name"
+                                ]
+                            }
+                        ],
+                        "master_item": {
+                            "key": "vfs.file.contents[/etc/os-release]"
+                        },
+                        "triggers": [
+                            {
+                                "uuid": "8d22ad9d908f46dfaf52fa749573df06",
+                                "expression": "change(/Example Music Infra Linux Unattended Upgrades/os.release.pretty_name)=1",
+                                "name": "Release Changed on {HOST.NAME}",
+                                "priority": "INFO"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "efbbbaacaeda43a1b5eea228b095d491",
+                        "name": "OS release: Version",
+                        "type": "DEPENDENT",
+                        "key": "os.release.version",
+                        "delay": "0",
+                        "history": "6h",
+                        "value_type": "TEXT",
+                        "trends": "0",
+                        "preprocessing": [
+                            {
+                                "type": "JSONPATH",
+                                "parameters": [
+                                    "$.version"
+                                ]
+                            }
+                        ],
+                        "master_item": {
+                            "key": "vfs.file.contents[/etc/os-release]"
+                        }
+                    },
+                    {
+                        "uuid": "0c58004e34ed4a89929915aaa1460545",
+                        "name": "OS release: Version ID",
+                        "type": "DEPENDENT",
+                        "key": "os.release.version_id",
+                        "delay": "0",
+                        "history": "6h",
+                        "value_type": "TEXT",
+                        "trends": "0",
+                        "preprocessing": [
+                            {
+                                "type": "JSONPATH",
+                                "parameters": [
+                                    "$.version_id"
+                                ]
+                            }
+                        ],
+                        "master_item": {
+                            "key": "vfs.file.contents[/etc/os-release]"
+                        }
+                    },
+                    {
+                        "uuid": "bacddd1d5014442cbb56066137b735d0",
+                        "name": "Facter",
+                        "type": "ZABBIX_ACTIVE",
+                        "key": "system.run[/usr/bin/facter]",
+                        "delay": "900s",
+                        "history": "90d",
+                        "value_type": "TEXT",
+                        "trends": "0",
+                        "description": "User facter to find out, well, facts about this system",
+                        "triggers": [
+                            {
+                                "uuid": "183c803be3b54090a4669ae619ac767a",
+                                "expression": "find(/Example Music Infra Linux Unattended Upgrades/system.run[/usr/bin/facter],,\"like\",\"jessie\")=1 or find(/Example Music Infra Linux Unattended Upgrades/system.run[/usr/bin/facter],,\"like\",\"trusty\")=1 or find(/Example Music Infra Linux Unattended Upgrades/system.run[/usr/bin/facter],,\"like\",\"precise\")=1",
+                                "name": "Hey! {HOST.NAME} has a pending Distribution Upgrade",
+                                "priority": "WARNING",
+                                "description": "We can add EOL distros here, and then it will trigger an alert. Please be aware that for example, 16.04 might be out of date, but also supported. Take htis into account before adding another OS."
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "3bace7f4df094082a8dab7cb07ec9c69",
+                        "name": "HWE Support Status",
+                        "key": "system.run[/usr/bin/hwe-support-status --verbose]",
+                        "delay": "300s",
+                        "history": "90d",
+                        "value_type": "TEXT",
+                        "trends": "0",
+                        "description": "hwe-support-status --verbose will output info such as:\n\nYour Hardware Enablement Stack (HWE) is supported until April 2019.\n\nWARNING: Security updates for your current Hardware Enablement Stack \nended on 2016-08-04:  (not support HWE raise a critical alert sincen o more swecurity updates)\n\nYou are not running a system with a Hardware Enablement Stack. Your system is supported until April 2019. (not using HWE)",
+                        "tags": [
+                            {
+                                "tag": "Application",
+                                "value": "Unattended Upgrades"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "61224bad83e04cb8b38493f44a6da95a",
+                        "name": "Distro Code Name",
+                        "key": "system.run[/usr/bin/lsb_release -c]",
+                        "delay": "15m",
+                        "history": "90d",
+                        "value_type": "TEXT",
+                        "trends": "0",
+                        "description": "Grab the distribution codename. E.g. stretch, buster, bionic, xenial etc.\n\nRequired as not all the parameters in the 50unattended-upgrades file exist in all the distros.",
+                        "preprocessing": [
+                            {
+                                "type": "LTRIM",
+                                "parameters": [
+                                    "Codename:\\t"
+                                ]
+                            }
+                        ],
+                        "tags": [
+                            {
+                                "tag": "Application",
+                                "value": "Unattended Upgrades"
+                            }
+                        ],
+                        "triggers": [
+                            {
+                                "uuid": "38ec32d599c54ef1b99b219505289b08",
+                                "expression": "last(/Example Music Infra Linux Unattended Upgrades/system.run[/usr/bin/lsb_release -c])=\"Noble\"",
+                                "name": "Ubuntu LTS Check",
+                                "url": "https://ubuntu.com/server/docs/how-to-upgrade-your-release",
+                                "description": "Host needs upgraded to the Latest Ubuntu LTS"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "ed5305f6a09747bab4ebbb4caf298b6f",
+                        "name": "Distro ID",
+                        "key": "system.run[/usr/bin/lsb_release -i]",
+                        "delay": "15m",
+                        "history": "90d",
+                        "value_type": "TEXT",
+                        "trends": "0",
+                        "description": "Grab the distribution ID. E.g. Debian, Ubuntu, etc.\n\nRequired as not all the parameters in the 50unattended-upgrades file exist in all the distros.",
+                        "preprocessing": [
+                            {
+                                "type": "LTRIM",
+                                "parameters": [
+                                    "Distributor ID: "
+                                ]
+                            }
+                        ],
+                        "tags": [
+                            {
+                                "tag": "Application",
+                                "value": "Unattended Upgrades"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "76066269324b4ced97c5e552d8fcb25b",
+                        "name": "Ubuntu Server Metapackage",
+                        "key": "system.run[/usr/bin/tasksel --list-tasks | /bin/grep 'Basic Ubuntu server']",
+                        "delay": "15m",
+                        "history": "90d",
+                        "value_type": "TEXT",
+                        "trends": "0",
+                        "description": "find out if the ubuntu server metapackage is installed. we list them all then do a regex match to find just that line",
+                        "tags": [
+                            {
+                                "tag": "Application",
+                                "value": "Unattended Upgrades"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "0511065078fd4275a472e0829cea78c6",
+                        "name": "apt-check output",
+                        "key": "system.run[/usr/lib/update-notifier/apt-check --human-readable]",
+                        "delay": "300s",
+                        "history": "90d",
+                        "value_type": "TEXT",
+                        "trends": "0",
+                        "description": "https://www.zabbix.com/forum/showthread.php?t=12576",
+                        "tags": [
+                            {
+                                "tag": "Application",
+                                "value": "Unattended Upgrades"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "6ba1d6271f134276833ab3ea1fa3510e",
+                        "name": "Kernel Build",
+                        "key": "system.sw.os[short]",
+                        "delay": "15m",
+                        "history": "90d",
+                        "value_type": "TEXT",
+                        "trends": "0",
+                        "description": "This Value will rturn the Linux OS String. From there, we write triggers to aler if build is less than:\n\n4.8.0-26.28 for Ubuntu 16.10\n4.4.0-45.66 for Ubuntu 16.04 LTS\n3.13.0-100.147 for Ubuntu 14.04 LTS\n3.2.0-113.155 for Ubuntu 12.04 LTS\n3.16.36-1+deb8u2 for Debian 8\n3.2.82-1 for Debian 7\n4.7.8-1 for Debian unstable",
+                        "tags": [
+                            {
+                                "tag": "Application",
+                                "value": "Unattended Upgrades"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "5955f0ec7e6c4c11a88e3fec3b19dd8c",
+                        "name": "/etc/sudoers checksum",
+                        "key": "vfs.file.cksum[/etc/sudoers]",
+                        "delay": "300s",
+                        "history": "90d",
+                        "description": "get checksum of /etc/sudoers to see if it's been tampered with",
+                        "tags": [
+                            {
+                                "tag": "Application",
+                                "value": "Unattended Upgrades"
+                            }
+                        ],
+                        "triggers": [
+                            {
+                                "uuid": "6e9368bd6f8448e4b730db526ccff360",
+                                "expression": "(last(/Example Music Infra Linux Unattended Upgrades/vfs.file.cksum[/etc/sudoers],#1)<>last(/Example Music Infra Linux Unattended Upgrades/vfs.file.cksum[/etc/sudoers],#2))>0",
+                                "name": "/etc/sudoers has been changed on {HOST.NAME}",
+                                "priority": "WARNING"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "c0d9f2b19db74ba3adc6ca164ee7f02b",
+                        "name": "OS release: raw data",
+                        "key": "vfs.file.contents[/etc/os-release]",
+                        "delay": "1h",
+                        "history": "1d",
+                        "value_type": "TEXT",
+                        "trends": "0",
+                        "preprocessing": [
+                            {
+                                "type": "JAVASCRIPT",
+                                "parameters": [
+                                    "var out = {};\nvalue.split(/\\r?\\n/).forEach(function (line) {\n    var m = line.match(/^([A-Z0-9_]+)=(.*)$/);\n    if (!m) return;\n    out[m[1]] = m[2].trim().replace(/^[\"']|[\"']$/g, '');\n});\nvar codename = out.VERSION_CODENAME || out.UBUNTU_CODENAME || '';\nif (!codename && out.VERSION) {\n    var c = out.VERSION.match(/\\(([^)]+)\\)/);\n    if (c) codename = c[1].split(' ')[0];\n}\nvar id = (out.ID || 'unknown').toLowerCase();\nvar vid = out.VERSION_ID || '';\nreturn JSON.stringify({\n    id: id,\n    id_like: out.ID_LIKE || '',\n    name: out.NAME || '',\n    version_id: vid,\n    version: out.VERSION || '',\n    codename: codename.toLowerCase(),\n    pretty_name: out.PRETTY_NAME || '',\n    id_major: id + ':' + vid.split('.')[0]\n});"
+                                ]
+                            }
+                        ],
+                        "tags": [
+                            {
+                                "tag": "component",
+                                "value": "os"
+                            }
+                        ],
+                        "triggers": [
+                            {
+                                "uuid": "2cb678b4bd4f462c979772a96ab211a9",
+                                "expression": "nodata(/Example Music Infra Linux Unattended Upgrades/vfs.file.contents[/etc/os-release],3h)=1",
+                                "name": "No data received from OS release checks for 1 hour",
+                                "priority": "INFO"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "318e1b98aad9457f8909a50df94f0def",
+                        "name": "Debian Base OS",
+                        "key": "vfs.file.exists[/etc/debian_version]",
+                        "delay": "15m",
+                        "history": "90d",
+                        "description": "If /etc/debian_version exists, then we are running Debian, not Ubuntu. This will comei nto play when using triggers for certain packages.",
+                        "preprocessing": [
+                            {
+                                "type": "BOOL_TO_DECIMAL",
+                                "parameters": [
+                                    ""
+                                ]
+                            }
+                        ],
+                        "tags": [
+                            {
+                                "tag": "Application",
+                                "value": "Unattended Upgrades"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "d344b4660f294ffb88150c38ef4a696b",
+                        "name": "Unattended Upgrades MOTD notifier",
+                        "key": "vfs.file.exists[/etc/update-motd.d/90-updates-available]",
+                        "delay": "15m",
+                        "history": "90d",
+                        "description": "/etc/update-motd.d/90-updates-available needs to exist or update-notifier-common package is not installed so you don't get a MOTD notification as a fall back for unattended upgrades",
+                        "preprocessing": [
+                            {
+                                "type": "BOOL_TO_DECIMAL",
+                                "parameters": [
+                                    ""
+                                ]
+                            }
+                        ],
+                        "tags": [
+                            {
+                                "tag": "Application",
+                                "value": "Unattended Upgrades"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "cba9ba5ac57b42f6bac2ac844fa94f7f",
+                        "name": "Aptitude Package",
+                        "key": "vfs.file.exists[/usr/bin/aptitude]",
+                        "delay": "15m",
+                        "history": "90d",
+                        "description": "aptitude is needed by the purge-old-kernels.sh script",
+                        "preprocessing": [
+                            {
+                                "type": "BOOL_TO_DECIMAL",
+                                "parameters": [
+                                    ""
+                                ]
+                            }
+                        ],
+                        "tags": [
+                            {
+                                "tag": "Application",
+                                "value": "Unattended Upgrades"
+                            }
+                        ],
+                        "triggers": [
+                            {
+                                "uuid": "a8376fe2eb674d97aaed33e53a92c9a7",
+                                "expression": "last(/Example Music Infra Linux Unattended Upgrades/vfs.file.exists[/usr/bin/aptitude])=0",
+                                "name": "Hey! {HOST.NAME} has no aptitude package installed",
+                                "priority": "INFO",
+                                "description": "If /usr/bin/aptitude binary doesn't exist then package aptitude is not installed and therefore, alert us to this fact."
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "2419971c2d41441a9060a51b0b376d27",
+                        "name": "Facter Package",
+                        "key": "vfs.file.exists[/usr/bin/facter]",
+                        "delay": "15m",
+                        "history": "90d",
+                        "description": "Checks if host needs a reboot presence of file confirms it does",
+                        "preprocessing": [
+                            {
+                                "type": "BOOL_TO_DECIMAL",
+                                "parameters": [
+                                    ""
+                                ]
+                            }
+                        ],
+                        "tags": [
+                            {
+                                "tag": "Application",
+                                "value": "Unattended Upgrades"
+                            }
+                        ],
+                        "triggers": [
+                            {
+                                "uuid": "e829c23a55be4760a4e7425f9b1b3cdf",
+                                "expression": "last(/Example Music Infra Linux Unattended Upgrades/vfs.file.exists[/usr/bin/facter])=0",
+                                "name": "Hey! {HOST.NAME} has no facter package installed",
+                                "priority": "INFO",
+                                "description": "If /usr/bin/facter binary doesn't exist then package facter is not installed and therefore, alert us to this fact."
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "9108cbefb2494377afab35c3275614c8",
+                        "name": "Unattended Upgrade Packages",
+                        "key": "vfs.file.exists[/usr/bin/unattended-upgrade]",
+                        "delay": "15m",
+                        "history": "90d",
+                        "description": "If this binary does not exist then unattended-upgrades package is not installed",
+                        "preprocessing": [
+                            {
+                                "type": "BOOL_TO_DECIMAL",
+                                "parameters": [
+                                    ""
+                                ]
+                            }
+                        ],
+                        "tags": [
+                            {
+                                "tag": "Application",
+                                "value": "Unattended Upgrades"
+                            }
+                        ],
+                        "triggers": [
+                            {
+                                "uuid": "9f3654556dc445929968636133531708",
+                                "expression": "last(/Example Music Infra Linux Unattended Upgrades/vfs.file.exists[/usr/bin/unattended-upgrade])=0",
+                                "name": "Hey! {HOST.NAME} has no unattended-upgrades package installed",
+                                "priority": "INFO",
+                                "description": "If /usr/bin/unattended-upgrade binary doesn't exist then package unattended-upgrades is not installed and therefore, alert us to this fact."
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "5d8174eec05848fcb5b82d65551f3c8c",
+                        "name": "Zabbix Get Package",
+                        "key": "vfs.file.exists[/usr/bin/zabbix_get]",
+                        "delay": "15m",
+                        "history": "90d",
+                        "description": "If this binary does not exist then zabbix-get is not installed",
+                        "preprocessing": [
+                            {
+                                "type": "BOOL_TO_DECIMAL",
+                                "parameters": [
+                                    ""
+                                ]
+                            }
+                        ],
+                        "tags": [
+                            {
+                                "tag": "Application",
+                                "value": "Unattended Upgrades"
+                            }
+                        ],
+                        "triggers": [
+                            {
+                                "uuid": "0ffae18f045f4b53a3ac96dc76cea661",
+                                "expression": "last(/Example Music Infra Linux Unattended Upgrades/vfs.file.exists[/usr/bin/zabbix_get])=0",
+                                "name": "Hey! {HOST.NAME} has no zabbix-get package installed",
+                                "priority": "INFO",
+                                "description": "If /usr/bin/zabbix_get binary doesn't exist then package zabbix-get is not installed and therefore, alert us to this fact."
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "2114614c05a846c1b92a30fc3467be52",
+                        "name": "Unattended Upgrades Clean old kernels",
+                        "key": "vfs.file.exists[/usr/local/bin/purge-old-kernels.sh]",
+                        "delay": "15m",
+                        "history": "90d",
+                        "description": "/usr/local/bin/purge-old-kernels.sh needs to exist or update-notifier-common package is not installed so you don't get a MOTD notification as a fall back for unattended upgrades",
+                        "preprocessing": [
+                            {
+                                "type": "BOOL_TO_DECIMAL",
+                                "parameters": [
+                                    ""
+                                ]
+                            }
+                        ],
+                        "tags": [
+                            {
+                                "tag": "Application",
+                                "value": "Unattended Upgrades"
+                            }
+                        ],
+                        "triggers": [
+                            {
+                                "uuid": "5723faa1dfa2406db2ab232d2c757280",
+                                "expression": "last(/Example Music Infra Linux Unattended Upgrades/vfs.file.exists[/usr/local/bin/purge-old-kernels.sh])=0",
+                                "name": "Hey! {HOST.NAME} has no purge-old-kernels.sh script installed",
+                                "status": "DISABLED",
+                                "priority": "INFO",
+                                "description": "If /usr/local/bin/purge-old-kernels.sh file doesn't exist then package update-notifier-common is not installed and therefore, alert us to this fact."
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "ead5b7d1f37f4d6297070fefeb6995e1",
+                        "name": "Unattended Upgrades auto-fix dpkg enabled",
+                        "key": "vfs.file.regmatch[/etc/apt/apt.conf.d/50unattended-upgrades,Unattended-Upgrade\\:\\:AutoFixInterruptedDpkg\\s+\\\"true\\\"\\;,UTF8,,]",
+                        "delay": "15m",
+                        "history": "90d",
+                        "description": "ensure /etc/apt/apt.conf.d/50unattended-upgrades has the  Unattended-Upgrade::AutoFixInterruptedDpkg \"true\"; line uncommented",
+                        "tags": [
+                            {
+                                "tag": "Application",
+                                "value": "Unattended Upgrades"
+                            }
+                        ],
+                        "triggers": [
+                            {
+                                "uuid": "38207edae30d4aaab6b47eb4e3428071",
+                                "expression": "last(/Example Music Infra Linux Unattended Upgrades/vfs.file.regmatch[/etc/apt/apt.conf.d/50unattended-upgrades,Unattended-Upgrade\\:\\:AutoFixInterruptedDpkg\\s+\\\"true\\\"\\;,UTF8,,])=0",
+                                "name": "Hey! {HOST.NAME} auto-fix dpkg not enabled in /etc/apt/apt.conf.d/50unattended-upgrades",
+                                "priority": "INFO",
+                                "description": "If auto-fix dpkg is not enabled in /etc/apt/apt.conf.d/50unattended-upgrades throw an alert"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "c01725f7cd544170aa3176e1243a2724",
+                        "name": "Unattended Upgrades remove unused dependencies enabled",
+                        "key": "vfs.file.regmatch[/etc/apt/apt.conf.d/50unattended-upgrades,Unattended-Upgrade\\:\\:Remove-Unused-Dependencies\\s+\\\"true\\\"\\;,UTF8,,]",
+                        "delay": "15m",
+                        "history": "90d",
+                        "description": "ensure /etc/apt/apt.conf.d/50unattended-upgrades has the //Unattended-Upgrade::Remove-Unused-Dependencies \"true\"; line uncommented",
+                        "tags": [
+                            {
+                                "tag": "Application",
+                                "value": "Unattended Upgrades"
+                            }
+                        ],
+                        "triggers": [
+                            {
+                                "uuid": "e762c41174e245578d349ea75e0c9e14",
+                                "expression": "last(/Example Music Infra Linux Unattended Upgrades/vfs.file.regmatch[/etc/apt/apt.conf.d/50unattended-upgrades,Unattended-Upgrade\\:\\:Remove-Unused-Dependencies\\s+\\\"true\\\"\\;,UTF8,,])=0",
+                                "name": "Hey! {HOST.NAME} Remove-Unused-Dependencies not enabled in /etc/apt/apt.conf.d/50unattended-upgrades",
+                                "priority": "INFO",
+                                "description": "if Remove-Unused-Dependencies is not enabled in /etc/apt/apt.conf.d/50unattended-upgrades throw an alert"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "ed3bb3a8dfe14dd6a42cb5361c28e31a",
+                        "name": "Unattended Upgrades Remove-Unused-Kernel-Packages dpkg enabled",
+                        "key": "vfs.file.regmatch[/etc/apt/apt.conf.d/50unattended-upgrades,Unattended-Upgrade\\:\\:Remove\\-Unused\\-Kernel\\-Packages\\s+\\\"true\\\"\\;,UTF8,,]",
+                        "delay": "15m",
+                        "history": "90d",
+                        "description": "ensure /etc/apt/apt.conf.d/50unattended-upgrades has the Remove-Unused-Kernel-Packages \"true\"; line uncommented",
+                        "tags": [
+                            {
+                                "tag": "Application",
+                                "value": "Unattended Upgrades"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "038f84a642504c9cb8f5e559c1f34364",
+                        "name": "Ubuntu Unattended Upgrades non-security updates enabled",
+                        "key": "vfs.file.regmatch[/etc/apt/apt.conf.d/50unattended-upgrades,\\s+\\\"\\$\\{distro\\_id}\\:\\$\\{distro\\_codename\\}\\-updates\\\"\\;,UTF8,,]",
+                        "delay": "15m",
+                        "history": "90d",
+                        "description": "ensure /etc/apt/apt.conf.d/50unattended-upgrades has the  \"${distro_id}:${distro_codename}-updates\"; uncommented",
+                        "tags": [
+                            {
+                                "tag": "Application",
+                                "value": "Unattended Upgrades"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "eab60b91c73e4d59b4656e1511bd3c35",
+                        "name": "Debian Unattended Upgrades security updates enabled",
+                        "key": "vfs.file.regmatch[/etc/apt/apt.conf.d/50unattended-upgrades,^\\s*\\\"origin\\=Debian\\Wcodename\\=\\$\\{distro_codename}\\Wlabel\\=Debian\\-Security\\\"\\;,UTF8,,]",
+                        "delay": "15m",
+                        "history": "90d",
+                        "description": "ensure /etc/apt/apt.conf.d/50unattended-upgrades has the          \"origin=Debian,codename=${distro_codename},label=Debian-Security\";\n\nI have used \\W for non-word character as \\, passed regex tests online but made zabbix say too many parameters.\n\nThis is the debian check as it differs somewha from the Ubuntu check syntax.\n\nTriggers take account of both.",
+                        "tags": [
+                            {
+                                "tag": "Application",
+                                "value": "Unattended Upgrades"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "c46c4f297b8745639992f493326c4e99",
+                        "name": "Debian Unattended Upgrades non-security updates enabled",
+                        "key": "vfs.file.regmatch[/etc/apt/apt.conf.d/50unattended-upgrades,^\\s+\\\"o\\=Debian\\Wa\\=stable\\-updates\\\"\\;,UTF8,,]",
+                        "delay": "15m",
+                        "history": "90d",
+                        "description": "ensure /etc/apt/apt.conf.d/50unattended-upgrades has the\n      \"o=Debian,a=stable-updates\";\n\nI have used \\W for non-word character as \\, passed regex tests online but made zabbix say too many parameters.\n\nThis is the debian check as it differs somewha from the Ubuntu check syntax.\n\nTriggers take account of both.",
+                        "tags": [
+                            {
+                                "tag": "Application",
+                                "value": "Unattended Upgrades"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "d924f23f7b4c4165b63bd7a9c072497e",
+                        "name": "Ubuntu Unattended Upgrades security updates enabled",
+                        "key": "vfs.file.regmatch[/etc/apt/apt.conf.d/50unattended-upgrades,^\\s+\\\"\\$\\{distro_id\\}\\:\\$\\{distro_codename\\}\\-security\\\"\\;,UTF8,,]",
+                        "delay": "15m",
+                        "history": "90d",
+                        "description": "ensure /etc/apt/apt.conf.d/50unattended-upgrades has the  \"${distro_id}:${distro_codename}-security\"; uncommented\n\nThis is the Ubuntu item.",
+                        "tags": [
+                            {
+                                "tag": "Application",
+                                "value": "Unattended Upgrades"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "5dd0bd325c624b76a2fde438e45896af",
+                        "name": "Unattended Upgrades Kernel Purge cron job",
+                        "key": "vfs.file.regmatch[/etc/crontab,purge-old-kernels,UTF8,,]",
+                        "delay": "15m",
+                        "history": "90d",
+                        "description": "/var/spool/cron/crontabs/root must contain the cron job for alert to clear.",
+                        "tags": [
+                            {
+                                "tag": "Application",
+                                "value": "Unattended Upgrades"
+                            }
+                        ],
+                        "triggers": [
+                            {
+                                "uuid": "7162ce284e774bf99e02437c0874550e",
+                                "expression": "last(/Example Music Infra Linux Unattended Upgrades/vfs.file.regmatch[/etc/crontab,purge-old-kernels,UTF8,,],#1)=0",
+                                "name": "Hey {HOST.NAME} has no purge old kernels cron job",
+                                "status": "DISABLED",
+                                "priority": "INFO",
+                                "description": "/etc/crontab must contain the line 00 7   *   *   *    /usr/local/bin/purge-old-kernels.sh --keep 2 for this check to be OK. This will clean the kernels at 07:00 each morning."
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "3fc880544731483fa56165fee66d0556",
+                        "name": "Remote Commands Enabled Zabbix Agent",
+                        "key": "vfs.file.regmatch[/etc/zabbix/zabbix_agentd.conf,EnableRemoteCommands=1,UTF8,,]",
+                        "delay": "90s",
+                        "history": "90d",
+                        "description": "EnableRemoteCommands=1 must exist in agent config or Facter checks will not work",
+                        "tags": [
+                            {
+                                "tag": "Application",
+                                "value": "Unattended Upgrades"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "1b8883635c334c4f94750952203f7ca1",
+                        "name": "Unattended Upgrades Update notifier Zabbix Agent",
+                        "key": "vfs.file.regmatch[/etc/zabbix/zabbix_agentd.conf,update-notifier,UTF8,,]",
+                        "delay": "90s",
+                        "history": "90d",
+                        "description": "/var/spool/cron/crontabs/root must contain the cron job for alert to clear.",
+                        "tags": [
+                            {
+                                "tag": "Application",
+                                "value": "Unattended Upgrades"
+                            }
+                        ],
+                        "triggers": [
+                            {
+                                "uuid": "54790196034747a79214dd703b371639",
+                                "expression": "last(/Example Music Infra Linux Unattended Upgrades/vfs.file.regmatch[/etc/zabbix/zabbix_agentd.conf,update-notifier,UTF8,,],#1)=1",
+                                "name": "Hey {HOST.NAME} has the Update Notifier Zabbix UserParameter please remove",
+                                "priority": "INFO",
+                                "description": "UserParameter=debian_updates[*],/usr/lib/update-notifier/apt-check --human-readable | /bin/grep $1 | /usr/bin/cut -d \" \" -f1"
+                            }
+                        ]
+                    }
+                ],
+                "macros": [
+                    {
+                        "macro": "{$OS.EOL.CODENAMES}",
+                        "value": "^(squeeze|wheezy|jessie|stretch|buster|bullseye|precise|trusty|xenial|bionic|focal|mantic|lunar|kinetic|oracular)$"
+                    },
+                    {
+                        "macro": "{$OS.EOL.IDMAJOR}",
+                        "value": "^(centos:[5-8]|rhel:[5-7]|ol:[5-7]|rocky:8|almalinux:8)$"
+                    },
+                    {
+                        "macro": "{$OS.EOL.WARN.CODENAMES}",
+                        "value": "^(jammy|bookworm|plucky)$"
+                    },
+                    {
+                        "macro": "{$OS.LATEST.POINT}",
+                        "value": "^(ubuntu:22\\.04\\.5|ubuntu:24\\.04\\.5|ubuntu:26\\.04\\.1)$"
+                    }
+                ]
+            }
+        ],
+        "triggers": [
+            {
+                "uuid": "34e5786722bb4cb99e389da0e5d3ab2c",
+                "expression": "find(/Example Music Infra Linux Unattended Upgrades/system.run[/usr/bin/tasksel --list-tasks | /bin/grep 'Basic Ubuntu server'],,\"regexp\",\"^i\")=0 and find(/Example Music Infra Linux Unattended Upgrades/system.run[/usr/bin/lsb_release -i],,\"like\",\"Ubuntu\")=1",
+                "name": "Hey! {HOST.NAME} has no Basic Ubuntu server metapackage",
+                "status": "DISABLED",
+                "priority": "INFO",
+                "description": "if the package is not installed, then this line will not match, so throw an alert"
+            },
+            {
+                "uuid": "836ef7942f3a48138593d89058b45b05",
+                "expression": "last(/Example Music Infra Linux Unattended Upgrades/vfs.file.exists[/etc/update-motd.d/90-updates-available])=0 and last(/Example Music Infra Linux Unattended Upgrades/vfs.file.exists[/etc/debian_version])<>1",
+                "name": "Hey! {HOST.NAME} has no update-notifier-common package installed",
+                "priority": "INFO",
+                "description": "If /etc/update-motd.d/90-updates-available file doesn't exist then package update-notifier-common is not installed and therefore, alert us to this fact."
+            },
+            {
+                "uuid": "0887b0ba2c0844fa9a942f243718103c",
+                "expression": "last(/Example Music Infra Linux Unattended Upgrades/vfs.file.regmatch[/etc/apt/apt.conf.d/50unattended-upgrades,^\\s+\\\"o\\=Debian\\Wa\\=stable\\-updates\\\"\\;,UTF8,,])=0 and find(/Example Music Infra Linux Unattended Upgrades/system.run[/usr/bin/lsb_release -i],,\"like\",\"Debian\")=1",
+                "name": "Hey! {HOST.NAME} non-security updates not enabled in /etc/apt/apt.conf.d/50unattended-upgrades (Debian)",
+                "priority": "INFO",
+                "description": "If automatic install of non-security updates is not enabled in /etc/apt/apt.conf.d/50unattended-upgrades throw an alert"
+            },
+            {
+                "uuid": "1f584618c3eb4bf2ab6a8e7477fbcdc0",
+                "expression": "last(/Example Music Infra Linux Unattended Upgrades/vfs.file.regmatch[/etc/apt/apt.conf.d/50unattended-upgrades,\\s+\\\"\\$\\{distro\\_id}\\:\\$\\{distro\\_codename\\}\\-updates\\\"\\;,UTF8,,])=0 and find(/Example Music Infra Linux Unattended Upgrades/system.run[/usr/bin/lsb_release -i],,\"like\",\"Ubuntu\")=1",
+                "name": "Hey! {HOST.NAME} non-security updates not enabled in /etc/apt/apt.conf.d/50unattended-upgrades (Ubuntu)",
+                "priority": "INFO",
+                "description": "If automatic install of non-security updates is not enabled in /etc/apt/apt.conf.d/50unattended-upgrades throw an alert"
+            },
+            {
+                "uuid": "3d024a233a6c43d391850b344c3f8ee0",
+                "expression": "last(/Example Music Infra Linux Unattended Upgrades/vfs.file.regmatch[/etc/apt/apt.conf.d/50unattended-upgrades,Unattended-Upgrade\\:\\:Remove\\-Unused\\-Kernel\\-Packages\\s+\\\"true\\\"\\;,UTF8,,])=0 and find(/Example Music Infra Linux Unattended Upgrades/system.run[/usr/bin/lsb_release -c],,\"like\",\"trusty\")=0 and find(/Example Music Infra Linux Unattended Upgrades/system.run[/usr/bin/lsb_release -c],,\"like\",\"xenial\")=0 and find(/Example Music Infra Linux Unattended Upgrades/system.run[/usr/bin/lsb_release -i],,\"like\",\"Debian\")=0",
+                "name": "Hey! {HOST.NAME} Remove-Unused-Kernel-Packages not enabled in /etc/apt/apt.conf.d/50unattended-upgrades",
+                "priority": "INFO",
+                "description": "If Remove-Unused-Kernel-Packages is not enabled in /etc/apt/apt.conf.d/50unattended-upgrades throw an alert.\n\nalso checks if the distro, e..g xenial or trusty as some distros do not include the purge kernels line, and the Distro ID for Debian as Debian does not use this line either."
+            },
+            {
+                "uuid": "e47514a0fa77499a849a25f88cc6d40a",
+                "expression": "last(/Example Music Infra Linux Unattended Upgrades/vfs.file.regmatch[/etc/apt/apt.conf.d/50unattended-upgrades,^\\s*\\\"origin\\=Debian\\Wcodename\\=\\$\\{distro_codename}\\Wlabel\\=Debian\\-Security\\\"\\;,UTF8,,])=0 and find(/Example Music Infra Linux Unattended Upgrades/system.run[/usr/bin/lsb_release -i],,\"like\",\"debian\")=1",
+                "name": "Hey! {HOST.NAME} security updates not enabled in /etc/apt/apt.conf.d/50unattended-upgrades (Debian)",
+                "status": "DISABLED",
+                "priority": "INFO",
+                "description": "If automatic install of security updates is not enabled in /etc/apt/apt.conf.d/50unattended-upgrades throw an alert this trigger is for Debian Linux only"
+            },
+            {
+                "uuid": "0033e50f368b4721924fbbd24fea99c9",
+                "expression": "last(/Example Music Infra Linux Unattended Upgrades/vfs.file.regmatch[/etc/apt/apt.conf.d/50unattended-upgrades,^\\s+\\\"\\$\\{distro_id\\}\\:\\$\\{distro_codename\\}\\-security\\\"\\;,UTF8,,])=0 and find(/Example Music Infra Linux Unattended Upgrades/system.run[/usr/bin/lsb_release -i],,\"like\",\"Ubuntu\")=1",
+                "name": "Hey! {HOST.NAME} security updates not enabled in /etc/apt/apt.conf.d/50unattended-upgrades (Ubuntu)",
+                "priority": "INFO",
+                "description": "If automatic install of security updates is not enabled in /etc/apt/apt.conf.d/50unattended-upgrades throw an alert"
+            },
+            {
+                "uuid": "e420ce7bf3be4542a5d4505c041d318f",
+                "expression": "find(/Example Music Infra Linux Unattended Upgrades/os.release.codename,,\"regexp\",\"{$OS.EOL.CODENAMES}\")=1 or find(/Example Music Infra Linux Unattended Upgrades/os.release.id_major,,\"regexp\",\"{$OS.EOL.IDMAJOR}\")=1",
+                "name": "OS is end-of-life: {HOST.NAME} running {?last(/Example Music Infra Linux Unattended Upgrades/os.release.pretty_name)}",
+                "priority": "HIGH"
+            }
+        ]
+    }
+}
