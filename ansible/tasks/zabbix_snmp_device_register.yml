@@ -21,6 +21,15 @@
 # Changelog:
 #   2026-11-17  Initial file, extracted out of zabbix_server.yml's own inline block for
 #               the loop-on-block reason above.
+#   2026-11-19  Added vendor-fit template lookup (template.get, never template.create --
+#               the 5 official templates this resolves to must be imported into
+#               EXAZABCLD001 by Robert first). Fixes a real gap found the same day:
+#               EXAUFCCLD001 (CLD,UFC,1) is a Debian Linux host running UniFi Network
+#               Controller software, not a Ubiquiti hardware AP -- now correctly resolves
+#               to the official "Linux by SNMP" template instead of falling through
+#               whatever a network-hardware grouping would have suggested. See
+#               ansible/playbooks/zabbix/files/mibs/README.md for the full per-vendor
+#               MIBs-used verification this was built from.
 # =============================================================================
 
 - name: "[SNMP devices] Register/refresh {{ item.hostname }} (block/rescue, never fatal to the whole run)"
@@ -111,6 +120,58 @@
           NAS: "NAS Storage"
       when: zbx_snmp_host_check.json.result | length == 0
 
+    # Vendor-fit research, 2026-11-19 (see ansible/playbooks/zabbix/files/mibs/README.md's
+    # own "Cross-checked against Zabbix's own official templates" section for the full
+    # per-template MIBs-used verification): Cisco/TP-Link/Dell/HPE hardware all have a
+    # confirmed-fit official Zabbix 7.0 template, keyed off the real vendor string already
+    # in devices.csv's OS column. UFC is a genuine fix, not a vendor match -- EXAUFCCLD001
+    # (CLD,UFC,1) is a Debian Linux host running UniFi Network Controller software, NOT a
+    # Ubiquiti hardware AP (confirmed via ad_computers.json: OS "Debian trixie", Description
+    # "UniFi Network Controller -- manages WAPs across the estate"), so it needs the
+    # official "Linux by SNMP" template, not a network-hardware one -- keyed off Type, not
+    # OS, since every current/future UFC row is this same controller-host pattern by design
+    # (role_codes.csv: "UniFi Network Controller (WiFi mgmt)"). PRN deliberately has no
+    # match here -- no official Zabbix printer template exists at all (checked, not
+    # assumed: zero printer/brother paths in the whole 7.0 template tree); Robert's own
+    # call pending on community-template-vs-custom-build. Blank-OS ILO/RAC rows (most of
+    # them -- real vendor not yet confirmed) also deliberately fall through to no match.
+    - name: "[SNMP devices] Resolve this device's Zabbix template name, if a vendor fit is known"
+      ansible.builtin.set_fact:
+        zbx_snmp_template_name: >-
+          {{ 'Linux by SNMP' if item.type == 'UFC'
+             else 'Cisco IOS by SNMP' if item.os is search('Cisco')
+             else 'TP-LINK by SNMP' if item.os is search('TP-Link')
+             else 'DELL PowerEdge R740 by SNMP' if item.os is search('Dell')
+             else 'HPE ProLiant DL380 by SNMP' if item.os is search('HPE')
+             else '' }}
+      when: zbx_snmp_host_check.json.result | length == 0
+
+    # Look-up only -- NEVER template.create. These 5 official templates have to be
+    # imported into EXAZABCLD001 by Robert himself first (git.zabbix.com/.../release/7.0,
+    # or the GitHub mirror github.com/zabbix/zabbix at the same branch); until then this
+    # resolves to an empty result and host.create below correctly falls back to templates: [].
+    - name: "[SNMP devices] Look up the resolved template's real templateid, if a vendor fit was found"
+      ansible.builtin.uri:
+        url: "http://{{ site_services.zabbix.ip }}/zabbix/api_jsonrpc.php"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ vault_zabbix_api_token }}"
+        body_format: json
+        body:
+          jsonrpc: "2.0"
+          method: template.get
+          params:
+            filter:
+              host: ["{{ zbx_snmp_template_name }}"]
+          id: 1
+        status_code: 200
+      register: zbx_snmp_template_check
+      delegate_to: localhost
+      become: false
+      when:
+        - zbx_snmp_host_check.json.result | length == 0
+        - zbx_snmp_template_name | default('') != ''
+
     - name: "[SNMP devices] Get-or-create this device's role-based group"
       ansible.builtin.uri:
         url: "http://{{ site_services.zabbix.ip }}/zabbix/api_jsonrpc.php"
@@ -154,7 +215,11 @@
 
     # status: 1 == disabled in the Zabbix web UI -- Robert's explicit ask: get the
     # host/interface/MIB plumbing in place without turning on live monitoring yet.
-    # templates: deliberately empty -- see zabbix_server.yml's own 2026-11-17 changelog entry.
+    # templates: linked only for the confirmed vendor fits above (Cisco/TP-Link/Dell/HPE/
+    # UFC's Linux-by-SNMP), and only once the lookup above actually found a real
+    # templateid -- empty list otherwise (printers, unconfirmed-vendor BMCs, or any of the
+    # 5 official templates not yet imported into EXAZABCLD001). See the 2026-11-19
+    # changelog entry below and ansible/playbooks/zabbix/files/mibs/README.md.
     - name: "[SNMP devices] Register {{ item.hostname }} via host.create (SNMP interface, disabled)"
       ansible.builtin.uri:
         url: "http://{{ site_services.zabbix.ip }}/zabbix/api_jsonrpc.php"
@@ -175,6 +240,13 @@
                  else [{'groupid': zbx_snmp_metagroup_create.json.result.groupids[0]}]) +
                 ([{'groupid': zbx_snmp_site_group_check.json.result[0].groupid}] if zbx_snmp_site_group_check.json.result | length > 0
                  else [{'groupid': zbx_snmp_site_group_create.json.result.groupids[0]}])
+              }}
+            templates: >-
+              {{
+                ([{'templateid': zbx_snmp_template_check.json.result[0].templateid}]
+                 if (zbx_snmp_template_name | default('') != ''
+                     and zbx_snmp_template_check.json.result | default([]) | length > 0)
+                 else [])
               }}
             interfaces:
               - type: 2
@@ -209,7 +281,13 @@
       ansible.builtin.debug:
         msg: >-
           {{ item.hostname }}: {{ (zbx_snmp_host_check.json.result | length > 0)
-             | ternary('Already registered.', 'Newly registered, DISABLED, SNMP interface ' + item.ip + ':161.') }}
+             | ternary('Already registered.', 'Newly registered, DISABLED, SNMP interface '
+               + item.ip + ':161, template ' + zbx_snmp_template_result + '.') }}
+      vars:
+        zbx_snmp_template_result: >-
+          {{ 'none (no known vendor fit)' if zbx_snmp_template_name | default('') == ''
+             else zbx_snmp_template_name if zbx_snmp_template_check.json.result | default([]) | length > 0
+             else 'none (' + zbx_snmp_template_name + ' not yet imported)' }}
   rescue:
     - name: "[SNMP devices] WARN -- could not register {{ item.hostname }}"
       ansible.builtin.debug:
