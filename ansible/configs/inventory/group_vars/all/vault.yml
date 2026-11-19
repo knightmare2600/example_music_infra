@@ -29,6 +29,11 @@
 #               Presented as an Authorization: Bearer header, not the deprecated JSON-RPC
 #               "auth" field (confirmed against the real 7.0 API docs before writing any
 #               code -- api/general/description.html's own token-auth example).
+#   2026-11-17  Added vault_snmp_read_community -- the read-only monitoring community
+#               vault_snmp_write_community's own 2026-08-04 entry already said would exist
+#               "once that exists". Used by zabbix_server.yml's new "snmp_devices" play
+#               (host.create with an SNMP, not agent, interface) -- deliberately a separate
+#               string from the write community, same reasoning as that entry.
 # =============================================================================
 
 vault_local_admin_password:   "CHANGEME"  # 2026-10-01: confirmed unused (grepped -- zero
@@ -39,4 +44,11 @@ vault_local_admin_password:   "CHANGEME"  # 2026-10-01: confirmed unused (greppe
 vault_domain_join_password:   "CHANGEME"
 vault_winrm_password:         "CHANGEME"
 vault_snmp_write_community:   "CHANGEME"
+vault_snmp_read_community:    "public"  # Robert's explicit call, 2026-11-17 -- the classic
+# SNMP default, most likely to already be live on the switches/printers/BMCs without
+# needing a per-device reconfigure first. Flagging once: it's also the single most
+# commonly sprayed community string in automated scans, so worth knowing the exposure
+# is bounded by UFW's outbound-only 161/udp rule (Zabbix server -> device, LAN-internal,
+# nothing inbound) rather than anything being reachable from outside. Not changing this
+# unilaterally either way -- his call, noted here for anyone reading this file later.
 vault_zabbix_api_token:       "de43fe4102425f0e3876c371a210c5e2d5fe3cc1cbd90529d5db408f568a9221"  # Users -> API tokens on EXAZABCLD001, NOT Admin's password

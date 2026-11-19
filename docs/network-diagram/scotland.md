@@ -701,7 +701,6 @@ graph TD
 graph TD
     O_INET["🌐 Internet"]
     O_RTR["📡 EXARTRCLY001<br/>Debian 12 · WAN edge router<br/>192.168.41.1"]
-    O_SWI["🔀 EXASWICLY001<br/>Cisco Catalyst 9300 · Core switch<br/>192.168.41.250"]
     O_DCR1["🗝️ EXADCRCLY001<br/>DC Primary<br/>192.168.41.10"]
     O_DCR2["🗝️ EXADCRCLY002<br/>DC Secondary<br/>192.168.41.11"]
     O_PHN["📞 EXAPHNCLY001<br/>Android · Phone<br/>No IP Address"]
@@ -709,16 +708,14 @@ graph TD
     O_SVR["🗄️ EXASVRCLY001<br/>Rocky Linux · Oracle DB server<br/>192.168.41.20"]
     O_TAB["📱 EXATABCLY001<br/>Windows 11 Pro · Android tablet<br/>192.168.41.62"]
     O_INET --> O_RTR
-    O_RTR --> O_SWI
-    O_SWI --> O_DCR2
-    O_SWI --> O_PHN
-    O_SWI --> O_SUR
-    O_SWI --> O_SVR
-    O_SWI --> O_TAB
+    O_RTR --> O_DCR2
+    O_RTR --> O_PHN
+    O_RTR --> O_SUR
+    O_RTR --> O_SVR
+    O_RTR --> O_TAB
 
     style O_INET fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_RTR fill:#000000,stroke:#FFFFFF,color:#FFFFFF
-    style O_SWI fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_DCR1 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_DCR2 fill:#000000,stroke:#FFFFFF,color:#FFFFFF
     style O_PHN fill:#000000,stroke:#FFFFFF,color:#FFFFFF

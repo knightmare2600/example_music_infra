@@ -321,6 +321,17 @@ docs/zabbix_templates/ex[0-9]*.json
 /private/
 
 ###############################################################################
+# Robert's own dropped-in vendor MIB source material at the repo root (a full
+# LibreNMS checkout + the nagios.manubulon.com Cisco bundle + a generic MIB
+# tarball, ~1.4GB, 2026-11-17) -- same category as /private/ above: raw
+# reference material to extract specific files FROM, never committed wholesale.
+# The actual files needed were copied out to
+# ansible/playbooks/zabbix/files/mibs/<vendor>/, which IS tracked normally.
+###############################################################################
+
+/mibs/
+
+###############################################################################
 # Working backlog -- Robert's explicit instruction, 2026-11-02: backlog
 # tracking stays between him and Claude, never committed to the shared repo.
 ###############################################################################

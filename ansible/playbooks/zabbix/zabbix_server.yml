@@ -112,6 +112,26 @@
 #               and file its two credentials into KeePass the same way windows_dc does,
 #               per his own stated sequencing from 2026-09-01 ("we'll backport it to
 #               ansible"). Not yet live-tested.
+#   2026-11-17  Added a SECOND play, "Zabbix — SNMP device registration" (tag
+#               snmp_devices) -- Robert's ask: register every real devices.csv
+#               ConnectionType=snmp device (switches/printers/BMCs -- agentless, can't run
+#               zabbix-agent) into Zabbix with an SNMP interface, left DISABLED in the web
+#               UI -- getting the host/interface/MIB plumbing in place, not turning on live
+#               monitoring yet. Robert's explicit call on shape: folded into this file (not
+#               a new standalone playbook -- see feedback_ask_before_new_standalone_playbook),
+#               but also runnable on its own via --tags snmp_devices (tags only filter
+#               tasks, not which play's hosts: line is resolved, so a tags-only run still
+#               connects to the real target host for the MIB-deploy half -- same as every
+#               other tagged subset of this file). Vendor MIBs (Cisco/TP-Link/Dell-iDRAC/
+#               HPE-iLO/Brother + generic Printer-MIB/HOST-RESOURCES-MIB) extracted from
+#               source material Robert dropped in, see files/mibs/README.md for exactly
+#               which files and why. Per-vendor Zabbix TEMPLATE linking is deliberately a
+#               placeholder below (host.create still registers + disables the host without
+#               one) -- Robert's call, 2026-11-17: use Zabbix's own bundled/public SNMP
+#               templates where one genuinely exists, only build our own where it doesn't;
+#               which of Zabbix's bundled templates actually fit each vendor hasn't been
+#               checked against the real running instance yet, so nothing is hardcoded here
+#               on a guess.
 #   2026-10-17  BUG FIX, Robert's ask: nodeinfo_role used host_role | lower (e.g. "zab")
 #               despite host_role itself already being uppercase at its own source
 #               (hostname_facts.yml's regex_search runs against an already-.upper()'d
@@ -1344,3 +1364,94 @@
       ansible.builtin.systemd:
         name: ssh
         state: restarted
+
+# =============================================================================
+# Second play -- SNMP device registration, agentless, disabled by default.
+# See this file's own 2026-11-17 changelog entry above for the full "why".
+#
+# Targets the real Zabbix server itself (same hosts: line as the play above) because
+# the MIB-deploy tasks below genuinely need to write files/restart a service ON that
+# box -- the device-registration loop that follows is API-only and delegates to
+# localhost regardless, same convention zabbix_agent_onboard.yml's own host.create
+# loop already uses.
+# =============================================================================
+
+- name: Zabbix — SNMP device registration (agentless, disabled by default)
+  hosts: "{{ target_hosts | default(target | default('all')) }}"
+  become: true
+  gather_facts: false
+  tags: [zabbix, monitoring, snmp_devices]
+
+  vars:
+    zbx_kcs_repo_root: "{{ playbook_dir }}/../../.."
+    zbx_snmp_mibs_src: "{{ playbook_dir }}/files/mibs"
+    zbx_snmp_mibs_dest: "/usr/share/snmp/mibs/examplemusic"
+
+  tasks:
+
+    # ── MIB deployment (on the real Zabbix server box) ──────────────────────────────
+
+    - name: "[SNMP devices] Ensure our own MIB directory exists"
+      ansible.builtin.file:
+        path: "{{ zbx_snmp_mibs_dest }}/{{ item }}"
+        state: directory
+        mode: "0755"
+      loop: [cisco, tplink, dell, hp, brother, printer]
+      tags: [zabbix, monitoring, snmp_devices]
+
+    - name: "[SNMP devices] Deploy our own vendor MIB files"
+      ansible.builtin.copy:
+        src: "{{ zbx_snmp_mibs_src }}/{{ item }}/"
+        dest: "{{ zbx_snmp_mibs_dest }}/{{ item }}/"
+        mode: "0644"
+      loop: [cisco, tplink, dell, hp, brother, printer]
+      notify: Restart zabbix-server
+      tags: [zabbix, monitoring, snmp_devices]
+
+    # snmp-mibs-downloader's own dirs (/usr/share/mibs/...) are already on the default
+    # net-snmp search path once the "mibs :" suppression line is removed (the first play
+    # above already does that) -- this ADDS our own dir alongside, doesn't replace it.
+    - name: "[SNMP devices] Add our own MIB directory to snmp.conf's mibdirs"
+      ansible.builtin.lineinfile:
+        path: /etc/snmp/snmp.conf
+        regexp: "^mibdirs"
+        line: "mibdirs +{{ zbx_snmp_mibs_dest }}/cisco:{{ zbx_snmp_mibs_dest }}/tplink:{{ zbx_snmp_mibs_dest }}/dell:{{ zbx_snmp_mibs_dest }}/hp:{{ zbx_snmp_mibs_dest }}/brother:{{ zbx_snmp_mibs_dest }}/printer"
+      notify: Restart zabbix-server
+      tags: [zabbix, monitoring, snmp_devices]
+
+    - name: "[SNMP devices] Flush handlers (MIBs must be in place before Zabbix server restarts and before registration below)"
+      meta: flush_handlers
+      tags: [zabbix, monitoring, snmp_devices]
+
+    # ── Device list (real devices.csv, resolved via the real generator, never re-derived here) ──
+
+    - name: "[SNMP devices] Resolve the real SNMP-capable device list"
+      ansible.builtin.command:
+        cmd: "python3 {{ zbx_kcs_repo_root }}/benarbejde/snmp_device_inventory.py{{ (' --site ' + snmp_site_filter) if (snmp_site_filter | default('')) != '' else '' }}"
+      register: zbx_snmp_devices_raw
+      changed_when: false
+      delegate_to: localhost
+      become: false
+      run_once: true
+      tags: [zabbix, monitoring, snmp_devices]
+
+    - name: "[SNMP devices] Parse the device list"
+      ansible.builtin.set_fact:
+        zbx_snmp_devices: "{{ zbx_snmp_devices_raw.stdout | from_json }}"
+      run_once: true
+      tags: [zabbix, monitoring, snmp_devices]
+
+    # ── API registration -- idempotent, same get-before-create shape as zabbix_agent_onboard.yml ──
+    #
+    # The actual per-device block/rescue logic lives in its own tasks file
+    # (../../tasks/zabbix_snmp_device_register.yml) -- NOT inline here -- because `loop:`
+    # is not a valid attribute on a `block:` in this Ansible version (confirmed live,
+    # ansible-core 2.19.11: "'loop' is not a valid attribute for a Block"). `loop:` on an
+    # `include_tasks:` wrapping the block works instead -- confirmed live the same way
+    # before writing this for real.
+    - name: "[SNMP devices] Register/refresh each device"
+      include_tasks: ../../tasks/zabbix_snmp_device_register.yml
+      loop: "{{ zbx_snmp_devices }}"
+      loop_control:
+        label: "{{ item.hostname }}"
+      tags: [zabbix, monitoring, snmp_devices]

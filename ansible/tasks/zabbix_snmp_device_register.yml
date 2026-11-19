@@ -1,0 +1,220 @@
+---
+# =============================================================================
+# tasks/zabbix_snmp_device_register.yml
+# Example Music Limited — Zabbix host.create for one agentless SNMP device
+# =============================================================================
+# Included (with loop:) from zabbix_server.yml's "snmp_devices" play, once per real
+# devices.csv ConnectionType=snmp row -- NOT inlined as a block there because `loop:`
+# is not a valid attribute on a `block:` in ansible-core 2.19.11 (confirmed live before
+# writing this file: "'loop' is not a valid attribute for a Block"). `loop:` on the
+# include_tasks: call itself works fine instead -- also confirmed live.
+#
+# `item` here is one entry from benarbejde/snmp_device_inventory.py's own JSON output:
+# {hostname, site, effective_subnet_site, type, os, ip, notes}.
+#
+# SNMP interface schema (type: 2, details: {version, bulk, community}) is per Zabbix
+# 7.0's documented host-object/interface fields -- NOT independently re-verified against
+# the live EXAZABCLD001 instance this session, unlike the agent-registration task file's
+# own header, which does say that. Check the first real run's API response before
+# trusting this unattended.
+# =============================================================================
+# Changelog:
+#   2026-11-17  Initial file, extracted out of zabbix_server.yml's own inline block for
+#               the loop-on-block reason above.
+# =============================================================================
+
+- name: "[SNMP devices] Register/refresh {{ item.hostname }} (block/rescue, never fatal to the whole run)"
+  block:
+    - name: "[SNMP devices] Check whether {{ item.hostname }} is already registered"
+      ansible.builtin.uri:
+        url: "http://{{ site_services.zabbix.ip }}/zabbix/api_jsonrpc.php"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ vault_zabbix_api_token }}"
+        body_format: json
+        body:
+          jsonrpc: "2.0"
+          method: host.get
+          params:
+            filter:
+              host: ["{{ item.hostname }}"]
+          id: 1
+        status_code: 200
+      register: zbx_snmp_host_check
+      delegate_to: localhost
+      become: false
+
+    - name: "[SNMP devices] Get-or-create this site's own host group"
+      ansible.builtin.uri:
+        url: "http://{{ site_services.zabbix.ip }}/zabbix/api_jsonrpc.php"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ vault_zabbix_api_token }}"
+        body_format: json
+        body:
+          jsonrpc: "2.0"
+          method: hostgroup.get
+          params:
+            filter:
+              name: ["Site - {{ item.site }}"]
+          id: 1
+        status_code: 200
+      register: zbx_snmp_site_group_check
+      delegate_to: localhost
+      become: false
+      when: zbx_snmp_host_check.json.result | length == 0
+
+    - name: "[SNMP devices] Create this site's host group, if it doesn't exist yet"
+      ansible.builtin.uri:
+        url: "http://{{ site_services.zabbix.ip }}/zabbix/api_jsonrpc.php"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ vault_zabbix_api_token }}"
+        body_format: json
+        body:
+          jsonrpc: "2.0"
+          method: hostgroup.create
+          params:
+            name: "Site - {{ item.site }}"
+          id: 1
+        status_code: 200
+      register: zbx_snmp_site_group_create
+      delegate_to: localhost
+      become: false
+      when:
+        - zbx_snmp_host_check.json.result | length == 0
+        - zbx_snmp_site_group_check.json.result | length == 0
+
+    # Role-based group alongside the per-site one, Robert's ask 2026-11-17 (same idea as
+    # 35-pools.yml's pool-per-site in Proxmox -- get-or-create, idempotent, keyed off a
+    # fixed map rather than one flat catch-all). RAC and ILO deliberately share one group
+    # (Robert's own naming: "RAC (ILO/BMC)") -- both are BMCs, vendor decides which code.
+    # Fallback 'SNMP Devices (other)' covers any devices.csv Type this map doesn't know
+    # about yet, so registration never silently fails for lack of a group to put it in.
+    # RTR/FWL/NAS are mapped even though NO real devices.csv row currently resolves to any
+    # of them via this script (checked: role_codes.csv's own ConnectionMethod for all
+    # three is ssh/telnet, not snmp -- Routers/Firewalls/NAS Storage groups won't actually
+    # get created until a real SNMP-connected device of one of those types exists) --
+    # future-proofing, not a current gap.
+    - name: "[SNMP devices] Resolve this device's role-based group name"
+      ansible.builtin.set_fact:
+        zbx_snmp_role_group: "{{ zbx_snmp_role_group_map[item.type] | default('SNMP Devices (other)') }}"
+      vars:
+        zbx_snmp_role_group_map:
+          SWI: "Switches"
+          RAC: "RAC (ILO/BMC)"
+          ILO: "RAC (ILO/BMC)"
+          PRN: "Printers"
+          UFC: "Network Management"
+          RTR: "Routers"
+          FWL: "Firewalls"
+          NAS: "NAS Storage"
+      when: zbx_snmp_host_check.json.result | length == 0
+
+    - name: "[SNMP devices] Get-or-create this device's role-based group"
+      ansible.builtin.uri:
+        url: "http://{{ site_services.zabbix.ip }}/zabbix/api_jsonrpc.php"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ vault_zabbix_api_token }}"
+        body_format: json
+        body:
+          jsonrpc: "2.0"
+          method: hostgroup.get
+          params:
+            filter:
+              name: ["{{ zbx_snmp_role_group }}"]
+          id: 1
+        status_code: 200
+      register: zbx_snmp_metagroup_check
+      delegate_to: localhost
+      become: false
+      when: zbx_snmp_host_check.json.result | length == 0
+
+    - name: "[SNMP devices] Create this device's role-based group, if it doesn't exist yet"
+      ansible.builtin.uri:
+        url: "http://{{ site_services.zabbix.ip }}/zabbix/api_jsonrpc.php"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ vault_zabbix_api_token }}"
+        body_format: json
+        body:
+          jsonrpc: "2.0"
+          method: hostgroup.create
+          params:
+            name: "{{ zbx_snmp_role_group }}"
+          id: 1
+        status_code: 200
+      register: zbx_snmp_metagroup_create
+      delegate_to: localhost
+      become: false
+      when:
+        - zbx_snmp_host_check.json.result | length == 0
+        - zbx_snmp_metagroup_check.json.result | length == 0
+
+    # status: 1 == disabled in the Zabbix web UI -- Robert's explicit ask: get the
+    # host/interface/MIB plumbing in place without turning on live monitoring yet.
+    # templates: deliberately empty -- see zabbix_server.yml's own 2026-11-17 changelog entry.
+    - name: "[SNMP devices] Register {{ item.hostname }} via host.create (SNMP interface, disabled)"
+      ansible.builtin.uri:
+        url: "http://{{ site_services.zabbix.ip }}/zabbix/api_jsonrpc.php"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ vault_zabbix_api_token }}"
+        body_format: json
+        body:
+          jsonrpc: "2.0"
+          method: host.create
+          params:
+            host: "{{ item.hostname }}"
+            status: 1
+            description: "{{ item.os }} ({{ item.type }}) -- {{ item.notes }}. Agentless/SNMP, registered disabled by Ansible (zabbix_server.yml, snmp_devices play)."
+            groups: >-
+              {{
+                ([{'groupid': zbx_snmp_metagroup_check.json.result[0].groupid}] if zbx_snmp_metagroup_check.json.result | length > 0
+                 else [{'groupid': zbx_snmp_metagroup_create.json.result.groupids[0]}]) +
+                ([{'groupid': zbx_snmp_site_group_check.json.result[0].groupid}] if zbx_snmp_site_group_check.json.result | length > 0
+                 else [{'groupid': zbx_snmp_site_group_create.json.result.groupids[0]}])
+              }}
+            interfaces:
+              - type: 2
+                main: 1
+                useip: 1
+                ip: "{{ item.ip }}"
+                dns: ""
+                port: "161"
+                details:
+                  version: 2
+                  bulk: 1
+                  community: "{{ vault_snmp_read_community }}"
+          id: 1
+        status_code: 200
+      register: zbx_snmp_host_create
+      delegate_to: localhost
+      become: false
+      no_log: true
+      when: zbx_snmp_host_check.json.result | length == 0
+
+    - name: "[SNMP devices] FAIL loudly if host.create returned an API-level error"
+      ansible.builtin.fail:
+        msg: >-
+          host.create API error for {{ item.hostname }}:
+          {{ zbx_snmp_host_create.json.error.message }} -- {{ zbx_snmp_host_create.json.error.data | default('') }}
+      when:
+        - zbx_snmp_host_create is defined
+        - zbx_snmp_host_create.json is defined
+        - zbx_snmp_host_create.json.error is defined
+
+    - name: "[SNMP devices] Registration summary for {{ item.hostname }}"
+      ansible.builtin.debug:
+        msg: >-
+          {{ item.hostname }}: {{ (zbx_snmp_host_check.json.result | length > 0)
+             | ternary('Already registered.', 'Newly registered, DISABLED, SNMP interface ' + item.ip + ':161.') }}
+  rescue:
+    - name: "[SNMP devices] WARN -- could not register {{ item.hostname }}"
+      ansible.builtin.debug:
+        msg: >-
+          WARN: Zabbix API registration failed for {{ item.hostname }} ({{ item.ip }}) --
+          EXAZABCLD001 unreachable, or a real API-level error. Non-critical, continuing
+          with the rest of the device list.
+  tags: [zabbix, monitoring, snmp_devices]
