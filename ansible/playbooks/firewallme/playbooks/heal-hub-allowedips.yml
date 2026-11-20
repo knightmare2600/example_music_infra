@@ -1,23 +1,35 @@
 ---
 # =============================================================================
 # playbooks/heal-hub-allowedips.yml
-# Example Music Limited — add every spoke's own missing WAN address to its AllowedIPs
+# Example Music Limited — strip every spoke's own WAN address back out of its AllowedIPs
 # =============================================================================
 # Does exactly one thing: on a WireGuard hub (hub-primary/hub-regional), for every
 # already-registered spoke's "# BEGIN/END ANSIBLE MANAGED BLOCK <site>" peer block in
-# /etc/wireguard/wg0.conf, checks whether its AllowedIPs already includes that spoke's own
-# WAN address, and appends it if not.
+# /etc/wireguard/wg0.conf, checks whether its AllowedIPs still includes that spoke's own WAN
+# address, and removes it if so.
 #
-# Root cause this heals: INC-2026-10-30-WG-ALLOWEDIPS (docs/INCIDENT-LOG.md) -- the hub
-# silently discards a reply arriving from a spoke's own WAN identity (e.g. a connection
-# relayed via the hub rather than originating from the spoke's local network) unless its
-# AllowedIPs explicitly includes that address. Fixed in the code that WRITES a peer block on
-# registration (roles/firewall/tasks/10_register_spoke_on_hub.yml / add-wg-spoke.yml), but
-# that only takes effect the next time a spoke successfully completes its OWN run against the
-# hub. A spoke that can't currently reach the hub to re-register (e.g. its own inbound SSH is
-# broken, the exact trigger for this playbook, EXAFWLLIV001, 2026-11-05) stays stuck with its
-# old, incomplete entry indefinitely -- this reconciles every already-registered spoke from
-# the hub side alone, needing no access to any spoke at all.
+# REVERSED, 2026-11-20, Robert's explicit architecture call -- this playbook originally ADDED
+# the WAN address (INC-2026-10-30-WG-ALLOWEDIPS, see the superseded entry below) to stop the
+# hub discarding a reply arriving from a spoke's own WAN identity. That fix worked, but
+# AllowedIPs is WireGuard's only mechanism -- it can't govern the crypto ingress filter without
+# wg-quick's Table=auto also routing outbound WAN-to-WAN traffic through wg0 instead of the
+# flat VRK L2 network. Confirmed live, same day, EXAFWLCLD001 -> EXAFWLEDI001/EXAFWLDET001: SSH
+# to either one's own WAN address hung despite a healthy tunnel, because `ip route get` showed
+# `dev wg0`, not the direct connected route -- breaking Robert's stated architecture (anything
+# on 192.168.139.0/24 reaches any device's WAN interface directly, full stop; wg0 is for
+# LAN-to-LAN only). The real fix is upstream: tasks/zabbix_agent_onboard.yml now registers a
+# firewall's Zabbix interface as its LAN IP, never WAN, so the scenario this addition existed
+# for can't occur any more. See roles/firewall/files/heal_wg_allowedips.py's own header for
+# the full detail -- same script, same mechanism, now doing the opposite of its original job.
+#
+# Root cause this ORIGINALLY healed (now itself healed away, see above): INC-2026-10-30-
+# WG-ALLOWEDIPS (docs/INCIDENT-LOG.md) -- the hub silently discarded a reply arriving from a
+# spoke's own WAN identity unless its AllowedIPs explicitly included that address. A spoke
+# that couldn't reach the hub to re-register (e.g. its own inbound SSH broken, the exact
+# trigger for this playbook, EXAFWLLIV001, 2026-11-05) stayed stuck with its old entry
+# indefinitely -- this playbook reconciled every already-registered spoke from the hub side
+# alone, needing no access to any spoke. Same mechanism now reconciles every spoke back the
+# other way.
 #
 # Deliberately does NOT recompute the whole AllowedIPs string. The LAN subnet and WAN address
 # are both pure conventions from each site's own octet (confirmed directly against
@@ -43,7 +55,10 @@
 # dedupe-wg-peers.yml, which this playbook deliberately mirrors in shape.
 #
 # Changelog:
-#   2026-11-05  Initial version. Robert, after EXAFWLLIV001 turned up unreachable from
+#   2026-11-20  REVERSED (see header above) -- now strips the WAN address entry instead of
+#               adding it. Same playbook, same mechanism (file + heal_wg_allowedips.py +
+#               wg syncconf), opposite direction.
+#   2026-11-05  Initial version (SUPERSEDED above). Robert, after EXAFWLLIV001 turned up unreachable from
 #               EXAANSCLD001 with the exact INC-2026-10-30-WG-ALLOWEDIPS symptom: "I was
 #               strongly under the impression last week's fix was going to solve that issue
 #               permanently... a run of the playbook against CLD... couldn't heal it all in
@@ -107,7 +122,7 @@
       loop_control:
         label: "{{ item.Site }}"
 
-    - name: "[heal-hub-allowedips] Preview — scan for spokes missing their own WAN address (always runs, never writes)"
+    - name: "[heal-hub-allowedips] Preview — scan for spokes still carrying their own WAN address (always runs, never writes)"
       ansible.builtin.script:
         cmd: >-
           {{ playbook_dir }}/../roles/firewall/files/heal_wg_allowedips.py
@@ -127,7 +142,7 @@
 
     - name: "[heal-hub-allowedips] NOTE — nothing to do"
       ansible.builtin.debug:
-        msg: "{{ inventory_hostname }}: every registered spoke's AllowedIPs already includes its own WAN address. Nothing to do."
+        msg: "{{ inventory_hostname }}: no registered spoke's AllowedIPs still has its own WAN address. Nothing to do."
       when: not _heal_found
 
     - name: "[heal-hub-allowedips] NOTE — preview only, re-run with -e apply=true to fix the spoke(s) shown above"
@@ -141,11 +156,11 @@
       ansible.builtin.pause:
         prompt: |
 
-          ── {{ inventory_hostname }}: AllowedIPs gap(s) found, shown above ──
-          Only the AllowedIPs line in each spoke listed above gets the one missing entry
-          (that spoke's own WAN address) appended. Tunnel IP, LAN subnet, any extra subnets,
-          PublicKey, PresharedKey, and Endpoint are left completely untouched, in every block,
-          including every spoke NOT listed above.
+          ── {{ inventory_hostname }}: spoke(s) still carrying their own WAN address, shown above ──
+          Only the AllowedIPs line in each spoke listed above has that one entry (its own WAN
+          address) removed. Tunnel IP, LAN subnet, any extra subnets, PublicKey, PresharedKey,
+          and Endpoint are left completely untouched, in every block, including every spoke
+          NOT listed above.
           A timestamped-by-content backup is written to wg0.conf.bak-heal-allowedips first.
 
           Type CONFIRM to fix them now, or Ctrl+C to abort.

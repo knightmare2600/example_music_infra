@@ -39,17 +39,31 @@
 #      without a full restart
 #
 # Changelog:
-#   2026-10-30  BUG FIX, real live bug: AllowedIPs here is the hub's inbound source filter for
-#               this peer, not just a route -- never included the spoke's own WAN/VRK address
-#               (_spoke_ip), only its tunnel IP + LAN subnet. Found via roles/firewall/tasks/
-#               10_register_spoke_on_hub.yml's own 2026-10-30 changelog entry (the automatic
-#               path) -- same bug, same fix, same traffic pattern (a spoke's own WAN address
-#               replying through the tunnel, new as of feedback_vrack_masquerade_broke_zabbix_allowlist's
-#               masquerade exclusion).
-#   2026-10-30  FOLLOW-UP, same day: the "Live-add peer via wg set" task below had its own,
-#               separate inline copy of this list, missed in the first pass -- `wg set` REPLACES
-#               a peer's live AllowedIPs rather than merging, so it was silently undoing the
-#               blockinfile fix above on every re-run. Same fix applied to this copy too.
+#   2026-11-20  REVERTED (Robert's explicit architecture call), same revert and same reasoning
+#               as roles/firewall/tasks/10_register_spoke_on_hub.yml's own 2026-11-20 entry --
+#               the 2026-10-30 fix below traded the FAL reply-rejection bug for a worse one:
+#               wg-quick's Table=auto means AllowedIPs can't govern the crypto ingress filter
+#               without also routing outbound WAN-to-WAN traffic through wg0 instead of the flat
+#               VRK L2 network, breaking direct 192.168.139.0/24 reachability (SSH, ad-hoc ops,
+#               Ansible's own first-run connections) to any spoke this had been applied to.
+#               Robert's stated architecture: 192.168.139.0/24 reaches any device's WAN interface
+#               directly, full stop -- wg0 is for LAN-to-LAN traffic only. The real fix is
+#               upstream: tasks/zabbix_agent_onboard.yml now registers a firewall's Zabbix
+#               interface as its LAN IP, never its WAN IP, so the WAN-sourced-reply scenario this
+#               AllowedIPs entry existed for can't occur any more -- _spoke_ip + '/32' dropped
+#               from both AllowedIPs lists below.
+#   2026-10-30  BUG FIX, real live bug (SUPERSEDED above): AllowedIPs here is the hub's inbound
+#               source filter for this peer, not just a route -- never included the spoke's own
+#               WAN/VRK address (_spoke_ip), only its tunnel IP + LAN subnet. Found via
+#               roles/firewall/tasks/10_register_spoke_on_hub.yml's own 2026-10-30 changelog
+#               entry (the automatic path) -- same bug, same fix, same traffic pattern (a spoke's
+#               own WAN address replying through the tunnel, new as of
+#               feedback_vrack_masquerade_broke_zabbix_allowlist's masquerade exclusion).
+#   2026-10-30  FOLLOW-UP, same day (SUPERSEDED above): the "Live-add peer via wg set" task below
+#               had its own, separate inline copy of this list, missed in the first pass -- `wg
+#               set` REPLACES a peer's live AllowedIPs rather than merging, so it was silently
+#               undoing the blockinfile fix above on every re-run. Same fix applied to this copy
+#               too, at the time.
 #   2026-07-18  Added a wait_for reachability check against the spoke's port 22 before
 #               the SSH key-fetch tasks -- previously an unreachable spoke (not yet up,
 #               or mid-maintenance) hit a raw SSH failure via failed_when instead of a
@@ -357,7 +371,7 @@
           PublicKey    = {{ _spoke_pubkey }}
           PresharedKey = {{ _spoke_psk }}
           Endpoint     = {{ _spoke_ip }}:{{ _spoke_listen_port }}
-          AllowedIPs   = {{ ([_spoke_tunnel_ip + '/32', _spoke_lan_subnet, _spoke_ip + '/32'] + _spoke_extra_subnets) | join(', ') }}
+          AllowedIPs   = {{ ([_spoke_tunnel_ip + '/32', _spoke_lan_subnet] + _spoke_extra_subnets) | join(', ') }}
           PersistentKeepalive = 25
       register: _wg_conf_changed
       when: not (_spoke_reachable.failed | default(true))
@@ -377,7 +391,7 @@
       ansible.builtin.shell: |
         wg set wg0 peer {{ _spoke_pubkey }} \
           preshared-key /tmp/.wg-psk-{{ spoke_site }} \
-          allowed-ips {{ ([_spoke_tunnel_ip + '/32', _spoke_lan_subnet, _spoke_ip + '/32'] + _spoke_extra_subnets) | join(',') }}
+          allowed-ips {{ ([_spoke_tunnel_ip + '/32', _spoke_lan_subnet] + _spoke_extra_subnets) | join(',') }}
       when: _wg_conf_changed.changed
 
     - name: "[add-wg-spoke] Remove PSK tmpfile"

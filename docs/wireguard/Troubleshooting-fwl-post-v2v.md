@@ -18,6 +18,7 @@
 | 1.3     | 2026-03-07 | Infra   | Added WireGuard diagnosis and recovery (Steps 9-10) — wrong hub endpoint, wg-quick bounce, bidirectional nmap test; validated against EXAFWLGLA001↔EXAFWLFAL001 |
 | 1.4     | 2026-03-07 | Infra   | Added Step 7b — dnsmasq interface name fix (sed + dnsmasq --test + verify); added dnsmasq rows to Quick Reference  |
 | 1.5     | 2026-03-11 | Infra   | Added Step 0 — NetworkManager boot cycle fix (systemd ordering cycle introduced by virt-v2v; guestfs-firstboot disable). Validated against EXAFWLFAL001. Real terminal output included. Note: convert-v2v.py now automates these fixes via virt-customize — Step 0 is the manual fallback. |
+| 1.6     | 2026-11-20 | Infra   | Added Step 8 — asymmetric routing (missing CLD-LAN static route), not V2V-specific. Covers both the NetworkManager fix (already-onboarded spokes, FAL/MCR/LND) and a minimal/no-NetworkManager variant via plain `ip route add`, validated live against EXAFWLLIV001 rebuilt from a bare Debian Trixie install. Added a matching Quick Reference row. |
 
 ---
 
@@ -624,6 +625,56 @@ ssh ansible@<WAN_IP>
 
 ---
 
+### Step 8 — Asymmetric routing: reachable from the hub but not from behind it
+
+A distinct symptom from everything above: the firewall is reachable (SSH, ping) from
+`EXAFWLCLD001` (the hub) directly, but **not** from `EXAANSCLD001` or anything else on
+CLD's own LAN (`192.168.69.0/24`) — `nmap` shows every port `filtered`, ARP has no entry,
+SSH says "No route to host". This is not V2V-specific — it has turned up both on
+migrated spokes (FAL/MCR/LND, 2026-11-05) and on a firewall rebuilt from a bare, minimal
+Debian install with nothing on it yet (`EXAFWLLIV001`, 2026-11-20, no `nmcli`, no
+nftables, no WireGuard peer — confirmed by checking each in turn, not assumed).
+
+**Why:** `192.168.139.0/24` doubles as every firewall's WAN/provisioning range. Every
+firewall's own default route on that interface points at the shared gateway,
+`192.168.139.254` — a different device from `EXAFWLCLD001` (`192.168.139.69`), the one
+box that actually has a route back to `192.168.69.0/24`. A packet from `EXAANSCLD001`
+reaches the spoke fine (the hub forwards it directly over the shared `192.168.139.0/24`
+segment), but the spoke's reply goes out via `.254` instead of back through the hub, and
+vanishes. Confirm before fixing:
+
+```bash
+ip route get 192.168.69.9      # EXAANSCLD001's real address
+```
+
+If the output shows `via 192.168.139.254` rather than `via 192.168.139.69`, this is it.
+
+**Fix — box with NetworkManager** (already-onboarded spokes; persists across reboots):
+
+```bash
+sudo nmcli connection modify wan +ipv4.routes "192.168.69.0/24 192.168.139.69"
+sudo nmcli device reapply ens18
+```
+
+**Fix — minimal install, no NetworkManager** (a box rebuilt from scratch, nothing
+installed yet beyond base Debian):
+
+```bash
+sudo ip route add 192.168.69.0/24 via 192.168.139.69 dev ens18
+```
+
+This second form doesn't survive a reboot — it doesn't need to. It exists purely to let
+`EXAANSCLD001` reach the box once, so a normal `ansible-playbook
+playbooks/linux/tools.yml --limit <host> --ask-vault-pass` (or a full `90-firewall.yml`
+run) can lay down the real, persistent config (`wan.nmconnection.j2` already has the
+correct route baked in via `fw_cld_vrk_ip`) through the proper template instead.
+
+Full write-up and the `qm guest exec` path for a box with no SSH access at all:
+`docs/ansible/beginners_guide_to_ansible.md`, "Spoke unreachable, AllowedIPs already
+correct — check for the missing CLD-LAN route".
+
+---
+
 ### Step 9 — Verify WireGuard
 
 > **Note (2026-08-03):** the worked examples in Steps 9-10 below (GLA↔FAL) reflect the FAL/ODE/BRK
@@ -780,6 +831,7 @@ Then update the NM profiles and nftables config one final time to use `eth0`/`et
 | What endpoint is the spoke pointing at? | `sudo cat /etc/wireguard/wg0.conf` |
 | Bounce WireGuard interface | `sudo wg-quick down wg0 && sudo wg-quick up wg0` |
 | Is WireGuard service healthy? | `systemctl status wg-quick@wg0` |
+| What gateway would a reply to CLD's LAN use? (asymmetric routing check) | `ip route get 192.168.69.9` |
 | Test tunnel routing (SSH + Cockpit) | `nmap -p22,9090 <REMOTE_LAN_IP> -oG -` |
 | Is NM enabled but dead with no journal entries? | `systemctl is-enabled NetworkManager && journalctl -u NetworkManager -b 0 --no-pager` |
 | Did systemd delete NM job to break ordering cycle? | `journalctl -b 0 -p err --no-pager \| grep "ordering cycle"` |

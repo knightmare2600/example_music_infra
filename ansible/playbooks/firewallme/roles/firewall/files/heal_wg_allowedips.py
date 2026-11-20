@@ -1,50 +1,55 @@
 #!/usr/bin/env python3
 # =============================================================================
 # roles/firewall/files/heal_wg_allowedips.py
-# Example Music Limited — add a spoke's own missing WAN address to its AllowedIPs
+# Example Music Limited — strip a spoke's own WAN address back out of its AllowedIPs
 # =============================================================================
 # Pushed to and run ON the hub by playbooks/heal-hub-allowedips.yml (ansible.builtin.script),
 # operating on that hub's own /etc/wireguard/wg0.conf.
 #
-# Root cause this heals: INC-2026-10-30-WG-ALLOWEDIPS (docs/INCIDENT-LOG.md) found the hub's
-# per-spoke AllowedIPs list never included that spoke's own WAN address -- only its tunnel IP
-# and LAN subnet -- so the hub silently discards a reply arriving from a spoke's own WAN
-# identity (e.g. replying to a connection relayed via the hub, not originating from the
-# spoke's local network). Fixed in the code that WRITES a peer block on registration
-# (10_register_spoke_on_hub.yml / add-wg-spoke.yml) -- but that fix only applies the next time
-# a spoke successfully completes its OWN run, pushing itself onto the hub. A spoke that can't
-# currently reach the hub to re-register (e.g. its own inbound SSH is broken -- the exact
-# scenario this script exists for) stays stuck with its old, incomplete entry indefinitely,
-# with no way to self-heal via the normal path. This script reconciles every ALREADY-
-# registered spoke's entry from the hub side alone, needing no access to any spoke at all.
+# REVERSED, 2026-11-20, Robert's explicit architecture call. This script originally ADDED a
+# spoke's own WAN address to its AllowedIPs (INC-2026-10-30-WG-ALLOWEDIPS, see the superseded
+# changelog entry below) to stop the hub silently discarding a reply arriving from a spoke's
+# own WAN identity. That fix worked, but AllowedIPs is WireGuard's only mechanism -- there is
+# no way to use it as a crypto ingress filter without wg-quick's Table=auto *also* routing
+# outbound WAN-to-WAN traffic through wg0 instead of the flat VRK L2 network. Confirmed live,
+# same day, EXAFWLCLD001 -> EXAFWLEDI001/EXAFWLDET001: SSH to either one's own WAN address hung
+# indefinitely even with a healthy, actively-transferring tunnel, because `ip route get`
+# showed `dev wg0`, not the direct connected route. Robert's stated, intentional architecture:
+# 192.168.139.0/24 reaches any device's WAN interface directly over that flat network, full
+# stop -- wg0 is for LAN-to-LAN traffic only. The real fix for the original problem is
+# upstream: tasks/zabbix_agent_onboard.yml now registers a firewall's Zabbix interface as its
+# LAN IP, never its WAN IP, so the WAN-sourced-reply scenario this addition existed for can't
+# occur any more -- this script now does the opposite of its original job, removing the entry
+# if present rather than adding it if missing, to clean up every spoke this was already
+# applied to (8, per feedback_wg_allowedips_duplicated_seven_places_2026_10_30.md).
 #
-# Deliberately does NOT recompute the whole AllowedIPs string from scratch. The tunnel IP in
-# particular is an ask-time value with a real override history (00_preflight_3_ask.yml:
-# older spokes defaulted to .2, newer ones to .1, changed 2026-07-19) -- it is not safely
-# re-derivable from the site octet alone, and guessing it here risks silently replacing a
-# legitimately non-default value with the wrong one. Every other component (LAN subnet, WAN
-# address) IS a pure convention from the site octet, confirmed directly against
-# 00_preflight_1_derive.yml (fw_subnet = "192.168.<octet>", fw_wan_static_ip =
-# "192.168.139.<octet>"), so only the one specific, known-missing piece -- the WAN address --
-# is checked and appended; the tunnel IP, LAN subnet, and any extra subnets already on file
-# are left completely untouched, whatever they are.
+# Deliberately does NOT touch anything else in the block. The tunnel IP in particular is an
+# ask-time value with a real override history (00_preflight_3_ask.yml: older spokes defaulted
+# to .2, newer ones to .1, changed 2026-07-19) and is left completely untouched either way,
+# same as the LAN subnet and any extra subnets -- only the one specific entry (the WAN address,
+# if present) is removed.
 #
 # Needs each site's octet to compute its WAN address -- passed in as a JSON object
 # (site_code -> octet) built from the control node's own wg_site_octets var, not
 # hand-maintained a second time here.
 #
-# Idempotent: a spoke whose AllowedIPs already includes its own WAN address is left alone,
-# HEAL_COUNT=0 if none needed it, exit 0.
-# --check: reports exactly what would be added, writes nothing.
+# Idempotent: a spoke whose AllowedIPs doesn't have its own WAN address (already correct, or
+# never had this applied) is left alone, HEAL_COUNT=0 if none needed it, exit 0.
+# --check: reports exactly what would be removed, writes nothing.
 # Apply mode: backs up the original file to <path>.bak-heal-allowedips before writing.
 # =============================================================================
 # Changelog:
-#   2026-11-05  Initial version. Robert, after EXAFWLLIV001 turned up unreachable from
-#               EXAANSCLD001 with the exact INC-2026-10-30-WG-ALLOWEDIPS symptom, and asked
-#               whether a hub-only run could have healed it (rather than a one-off manual
-#               command) -- it could, given every value needed except the tunnel IP already
-#               derives from sites.csv alone, so built as a real, idempotent, reusable
-#               mechanism rather than a one-off fix, matching dedupe_wg_peers.py's own shape.
+#   2026-11-20  REVERSED (see header above) -- removes the WAN address entry instead of
+#               adding it. Same file, same mechanism, opposite direction; kept as one file
+#               rather than a new script so the git history/blame for this exact AllowedIPs
+#               entry stays in one place.
+#   2026-11-05  Initial version (SUPERSEDED above). Robert, after EXAFWLLIV001 turned up
+#               unreachable from EXAANSCLD001 with the exact INC-2026-10-30-WG-ALLOWEDIPS
+#               symptom, and asked whether a hub-only run could have healed it (rather than a
+#               one-off manual command) -- it could, given every value needed except the
+#               tunnel IP already derives from sites.csv alone, so built as a real, idempotent,
+#               reusable mechanism rather than a one-off fix, matching dedupe_wg_peers.py's own
+#               shape.
 # =============================================================================
 
 import argparse
@@ -110,10 +115,10 @@ def main():
         existing_entries = [e.strip() for e in current.split(",") if e.strip()]
         wan_entry = f"{wan_ip}/32"
 
-        if wan_entry in existing_entries:
-            continue  # already correct, nothing to do for this site
+        if wan_entry not in existing_entries:
+            continue  # already correct (never had it, or already stripped), nothing to do
 
-        new_entries = existing_entries + [wan_entry]
+        new_entries = [e for e in existing_entries if e != wan_entry]
         new_allowedips = ", ".join(new_entries)
         new_block_body = (
             block_body[: ai_match.start(2)] + new_allowedips + block_body[ai_match.end(2) :]
@@ -126,7 +131,7 @@ def main():
         return 0
 
     for _start, _end, site_code, _new_body, old_ai, new_ai in fixes:
-        print(f"-- {site_code}: AllowedIPs missing its own WAN address --")
+        print(f"-- {site_code}: AllowedIPs still has its own WAN address, removing --")
         print(f"   current : {old_ai}")
         print(f"   corrected: {new_ai}")
 

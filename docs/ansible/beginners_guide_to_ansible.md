@@ -1348,6 +1348,27 @@ any other spoke. Once `EXAANSCLD001` can reach the box again, a completely norma
 Ansible code needed, since the template already has it; the manual command is purely to
 unblock reachability so the existing self-heal path can take over.
 
+**Minimal install, no NetworkManager at all** — confirmed live on `EXAFWLLIV001`,
+2026-11-20, after Robert fully wiped and rebuilt that VM as a bare Debian Trixie install
+(no `nmcli`, nothing but the base system). Same root cause, same fix, just via `iproute2`
+directly instead of `nmcli` since there's no NetworkManager to ask:
+
+```bash
+sudo ip route add 192.168.69.0/24 via 192.168.139.69 dev ens18
+```
+
+Confirmed the diagnosis first rather than assuming it, since this box's history made the
+earlier `nftables`/WireGuard theories genuinely plausible before being ruled out one by
+one: `ip route get 192.168.69.9` from `EXAFWLLIV001` itself showed the reply would go out
+via `192.168.139.254` (the shared VRK gateway, no route back to CLD's LAN) — not via
+`192.168.139.69` (`EXAFWLCLD001`, which does have one) — exactly this bug, not nftables
+(there wasn't any — minimal install, nothing had run yet) and not WireGuard (no peer
+existed yet either). This doesn't survive a reboot (no persistent NM profile to hold it),
+but it doesn't need to — it's purely to let `EXAANSCLD001` in once so a real Ansible run
+can lay down the persistent config properly. See also
+`docs/wireguard/Troubleshooting-fwl-post-v2v.md` Step 8 for the same fix written up as a
+standalone diagnostic procedure.
+
 ### Windows bootstrap — re-running to confirm a fix actually held
 
 > **Correction, 2026-09-21**: this section previously showed `windows_dc/site.yml
@@ -2600,6 +2621,7 @@ command on one line before trusting it.
 | 2026-11-05 | Added "Hub AllowedIPs self-heal -- preview, then apply", right after "WireGuard duplicate peer cleanup" -- `heal-hub-allowedips.yml`'s real preview/apply/`CONFIRM` sequence against `EXAFWLCLD001`, with real captured output. First live run found the gap was estate-wide (8 spokes still missing their own WAN address, not just the one that surfaced it), confirming `INC-2026-10-30-WG-ALLOWEDIPS` was never fully rolled out past the two spokes originally tested. Also documents a real bug that first run hit (`'sites_csv_path' is undefined` -- a role-only default this standalone play didn't inherit, same issue `add-wg-spoke.yml` already solved back on 2026-07-16, missed the first time round). Robert's explicit call: keep this as its own standalone playbook rather than folding it into an existing one for now, but make sure it's documented here. |
 | 2026-11-05 | Added "Spoke unreachable, AllowedIPs already correct -- check for the missing CLD-LAN route", right after the AllowedIPs self-heal section -- a second, distinct cause of the same "unreachable from `EXAANSCLD001`" symptom, hit live on FAL/MCR/LND after AllowedIPs and the PresharedKey were both already confirmed correct. Root cause is asymmetric routing (the shared VRK gateway, `192.168.139.254`, has no route back to CLD's own LAN, `192.168.69.0/24`), already fixed in `wan.nmconnection.j2` on 2026-10-30 via `fw_cld_vrk_ip` but, same bug class as the AllowedIPs gap, never rolled out to every already-built spoke. Documents the manual `nmcli` hotfix (the same "path of last resort" pattern as `INC-2026-10-30-WG-ALLOWEDIPS`'s own hotfix commands) plus a `qm guest exec` form for reaching a box via its own Proxmox host's QEMU guest agent when no other out-of-band path is convenient -- including the two real gotchas (`qm guest exec` is async and needs a follow-up `exec-status` call; it runs as root by default, so `sudo` is dropped). |
 | 2026-11-05 | Added "PVE scripts + systemd units only, no access/network/cluster changes -- `--tags scripts,systemd_units`", right after "Full BIND9 rebuild" -- Robert's ask, a scoped `proxmox/site.yml` run touching only `40-scripts.yml`/`50-systemd-units.yml`. Documents why `-e pve_force_full_onboard=true` is passed explicitly even though an undefined-variable `default(true)` fallback would quietly do the same thing once `--tags` skips `00-preflight.yml`'s onboarded-check task -- an implicit side-effect isn't the same as a deliberate, auditable flag, matching this repo's existing `pve_force_full_onboard`/`bootstrap_force` convention. Also flags the one real live effect (`zabbix-agent` restart via the NIC-guard drop-in's handler) and the presumption that the target is already a real `pvenodes` inventory member. |
+| 2026-11-20 | Added a "Minimal install, no NetworkManager at all" note under "Spoke unreachable, AllowedIPs already correct -- check for the missing CLD-LAN route" -- same asymmetric-routing root cause, hit live rebuilding `EXAFWLLIV001` from scratch as a bare Debian Trixie install with nothing on it yet (no `nmcli`, no nftables, no WireGuard peer -- all genuinely ruled out in turn before landing on this, not assumed). Fix is the same static route via `ip route add` directly instead of `nmcli connection modify`, since there's no NetworkManager to ask. Also added as its own Step 8 in `docs/wireguard/Troubleshooting-fwl-post-v2v.md`. |
 
 ---
 

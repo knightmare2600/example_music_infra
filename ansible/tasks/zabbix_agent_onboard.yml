@@ -173,6 +173,56 @@
     zbx_real_hostname: "{{ target_hostname | default(ansible_hostname | default(inventory_hostname)) }}"
   tags: [zabbix, monitoring]
 
+# 2026-11-20, Robert's explicit ask: a firewall's Zabbix interface must be its LAN IP,
+# never its WAN IP. ansible_default_ipv4.address (the fallback below, used for every
+# other role) resolves to whatever interface carries the default route -- for a
+# firewall that's always the WAN NIC (every firewall's default route is
+# `via <site-octet gateway> dev <wan iface>`), so registering a firewall with that
+# address silently points Zabbix at 192.168.139.<site-octet> instead of
+# 192.168.<site-octet>.253. That's the address every spoke's own AllowedIPs entry on
+# the hub now has to special-case (the 2026-10-30 WG-ALLOWEDIPS fix) purely because
+# Zabbix's checks were arriving over the flat VRK network instead of down the tunnel
+# like every other internal-LAN traffic -- fixing the target address here is the real
+# fix; the AllowedIPs special-case was treating the symptom. firewallme's own
+# 14_finish.yml writes this exact value into nodeinfo.json's top-level `lan_ip` key
+# (merged in via nodeinfo_extra, confirmed against tasks/nodeinfo.yml's own combine()
+# chain) -- read it back here rather than re-deriving it. Only present once firewallme
+# has run at least once; a firewall's very first-ever tools.yml run (before
+# firewallme) has no nodeinfo.json yet, so the WAN-address fallback is unavoidable for
+# that one bootstrap case only -- self-corrects on the very next run via the drift fix
+# below, same as everything else nodeinfo.json-dependent in this repo.
+- name: "[Zabbix] Check for an existing nodeinfo.json (firewall LAN-IP lookup)"
+  ansible.builtin.stat:
+    path: /etc/example-music/nodeinfo.json
+  register: zbx_nodeinfo_stat
+  when: host_role | upper == 'FWL'
+  tags: [zabbix, monitoring]
+
+- name: "[Zabbix] Read nodeinfo.json (firewall LAN-IP lookup)"
+  ansible.builtin.slurp:
+    src: /etc/example-music/nodeinfo.json
+  register: zbx_nodeinfo_raw
+  when:
+    - host_role | upper == 'FWL'
+    - zbx_nodeinfo_stat.stat.exists | default(false)
+  tags: [zabbix, monitoring]
+
+- name: "[Zabbix] Resolve the correct monitoring IP (LAN IP for firewalls, default route IP otherwise)"
+  set_fact:
+    zbx_target_ip: >-
+      {{
+        ((zbx_nodeinfo_raw.content | b64decode | from_json).lan_ip | default(''))
+        if (host_role | upper == 'FWL' and zbx_nodeinfo_raw is defined and zbx_nodeinfo_raw.content is defined)
+        else ''
+      }}
+  tags: [zabbix, monitoring]
+
+- name: "[Zabbix] Fall back to the pre-existing resolution when no firewall LAN IP is available yet"
+  set_fact:
+    zbx_target_ip: "{{ (ansible_default_ipv4.address if ansible_default_ipv4 is defined else (ansible_host | default(zbx_real_hostname))) }}"
+  when: zbx_target_ip | default('') == ''
+  tags: [zabbix, monitoring]
+
 - name: "[Zabbix] Install the real zabbix-release package (shared with zabbix_server.yml)"
   include_tasks: zabbix_repo_install.yml
   tags: [zabbix, monitoring]
@@ -351,6 +401,7 @@
           params:
             filter:
               host: ["{{ zbx_real_hostname }}"]
+            selectInterfaces: ["interfaceid", "ip"]
           id: 1
         status_code: 200
       register: zbx_host_check
@@ -564,7 +615,7 @@
               - type: 1
                 main: 1
                 useip: 1
-                ip: "{{ (ansible_default_ipv4.address if ansible_default_ipv4 is defined else (ansible_host | default(zbx_real_hostname))) }}"
+                ip: "{{ zbx_target_ip }}"
                 dns: ""
                 port: "10050"
             tls_connect: 2
@@ -609,6 +660,39 @@
       no_log: true
       when: zbx_host_check.json.result | length > 0
 
+    # 2026-11-20, Robert's explicit ask: every firewall already registered before the
+    # LAN-IP fix above was added picked up its WAN address instead (see zbx_target_ip's
+    # own comment). host.update never touches "interfaces" -- that field is create-only
+    # -- so an already-registered host needs its own direct hostinterface.update to
+    # correct it; this never happens for a newly-created host (host.create above
+    # already wrote the right IP) because zbx_host_check.json.result would be empty
+    # for it, same guard host.update itself uses. Same "disk always wins, unconditional
+    # push" shape as the PSK sync just above -- comparing first would need another
+    # round-trip for no real benefit, and pushing the same already-correct IP is a
+    # no-op on the Zabbix side.
+    - name: "[Zabbix] Correct a drifted interface IP for an already-registered host (on-disk value always wins)"
+      ansible.builtin.uri:
+        url: "http://{{ site_services.zabbix.ip }}/zabbix/api_jsonrpc.php"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ vault_zabbix_api_token }}"
+        body_format: json
+        body:
+          jsonrpc: "2.0"
+          method: hostinterface.update
+          params:
+            interfaceid: "{{ zbx_host_check.json.result[0].interfaces[0].interfaceid }}"
+            ip: "{{ zbx_target_ip }}"
+          id: 1
+        status_code: 200
+      register: zbx_interface_update
+      delegate_to: localhost
+      become: false
+      when:
+        - zbx_host_check.json.result | length > 0
+        - zbx_host_check.json.result[0].interfaces | default([]) | length > 0
+        - zbx_host_check.json.result[0].interfaces[0].ip != zbx_target_ip
+
     # 2026-10-29, real live finding: ansible.builtin.uri's status_code: 200 only
     # validates the HTTP layer -- Zabbix's JSON-RPC API returns HTTP 200 even for an
     # API-level error (bad token, validation failure), with the real failure sitting
@@ -641,6 +725,16 @@
         - zbx_host_update is defined
         - zbx_host_update.json is defined
         - zbx_host_update.json.error is defined
+
+    - name: "[Zabbix] FAIL if hostinterface.update returned an API-level error"
+      ansible.builtin.fail:
+        msg: >-
+          hostinterface.update API error for {{ zbx_real_hostname }}:
+          {{ zbx_interface_update.json.error.message }} -- {{ zbx_interface_update.json.error.data | default('') }}
+      when:
+        - zbx_interface_update is defined
+        - zbx_interface_update.json is defined
+        - zbx_interface_update.json.error is defined
 
     - name: "[Zabbix] Registration summary"
       ansible.builtin.debug:
