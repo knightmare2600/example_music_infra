@@ -163,15 +163,25 @@
 
           # ── WAN inbound ───────────────────────────────────────────────
 
-          # SSH from the VRK/provisioning network — always allowed, independent of
-          # fw_wan_ssh_enabled below. This is Ansible's own management path (every
-          # firewall's ansible_host is this same interface's 192.168.139.<site octet>
-          # address, matching fw_wan_static_ip's derivation) -- not the same thing as
-          # "WAN SSH", which is about exposing SSH to arbitrary WAN/internet sources, a
-          # separate, legitimately opt-in decision. Without this, fw_wan_ssh_enabled
-          # defaulting to false (its own default, unchanged) would silently block
-          # Ansible's own routine connections the moment this ruleset is loaded.
-          iifname "{{ fw_wan_iface }}" ip saddr 192.168.139.0/24 tcp dport 22 accept  comment "SSH from VRK (Ansible management)"
+          # SSH from the VRK/provisioning network (and CLD's own LAN) — always allowed,
+          # independent of fw_wan_ssh_enabled below. This is Ansible's own management
+          # path (every firewall's ansible_host is this same interface's
+          # 192.168.139.<site octet> address, matching fw_wan_static_ip's derivation) --
+          # not the same thing as "WAN SSH", which is about exposing SSH to arbitrary
+          # WAN/internet sources, a separate, legitimately opt-in decision. Without
+          # this, fw_wan_ssh_enabled defaulting to false (its own default, unchanged)
+          # would silently block Ansible's own routine connections the moment this
+          # ruleset is loaded.
+          #
+          # 2026-11-20, real live finding, Robert: 192.168.139.0/24 alone was never
+          # enough -- EXAANSCLD001 (the one and only control node) is on CLD's own LAN,
+          # 192.168.69.0/24, not on the VRK subnet itself. This only ever worked because
+          # of two accidents that have both now been fixed/reverted (see
+          # 00_preflight_1_derive.yml's fw_cld_lan_subnet comment for the full chain) --
+          # confirmed live: EXAFWLCLD001 (genuinely on 192.168.139.0/24) could SSH
+          # straight to a spoke's WAN address, the identical connection from
+          # EXAANSCLD001 could not. fw_cld_lan_subnet added as a second trusted source.
+          iifname "{{ fw_wan_iface }}" ip saddr { 192.168.139.0/24, {{ fw_cld_lan_subnet }} } tcp dport 22 accept  comment "SSH from VRK + CLD LAN (Ansible management)"
 
       {% if fw_wan_ssh_enabled %}
       {% if fw_wan_ssh_src %}

@@ -112,6 +112,22 @@
     # firewall can route a reply back to CLD's LAN (192.168.69.0/24) via CLD --
     # see wan.nmconnection.j2's own comment for why this is now required.
     fw_cld_vrk_ip:     "192.168.139.{{ wg_site_octets['CLD'] | default('') }}"
+    # 2026-11-20, real live finding, Robert: 07_nftables.yml's always-on "SSH from VRK
+    # (Ansible management)" rule only ever trusted sources inside 192.168.139.0/24
+    # itself -- EXAANSCLD001 (the one and only control node) is on CLD's own LAN,
+    # 192.168.69.0/24, never inside that range. This went unnoticed for months because
+    # the hub's old masquerade rule rewrote EXAANSCLD001's source to the hub's own WAN
+    # address before it ever reached a spoke (fixed 2026-10-29, see
+    # feedback_vrack_masquerade_broke_zabbix_allowlist), and after that, the AllowedIPs
+    # WAN-address hack (reverted today, see 10_register_spoke_on_hub.yml's own 2026-11-20
+    # entry) accidentally routed EXAANSCLD001's traffic through wg0 instead, landing on
+    # the separate, unconditional "SSH over WG tunnel" rule. Reverting that hack
+    # (correctly, per Robert's architecture call) exposed this dormant gap: confirmed live,
+    # EXAFWLCLD001 -> EXAFWLGLA001/EXAFWLEDI001/EXAFWLDET001 direct SSH worked (hub's own
+    # address is genuinely inside 192.168.139.0/24), the identical connection from
+    # EXAANSCLD001 did not. Derived from wg_site_octets exactly like fw_cld_vrk_ip just
+    # above -- same source, same reasoning, just the LAN-side /24 instead of the WAN /32.
+    fw_cld_lan_subnet: "192.168.{{ wg_site_octets['CLD'] | default('') }}.0/24"
 
 # ── LAN IP — derived from instance number, not asked ─────────────────────────
 # Robert, 2026-07-17: the standard-slot convention is fixed, not an operator choice --
