@@ -208,6 +208,67 @@
         - _heal_apply is not skipped
         - _heal_apply.changed
 
+    # 2026-11-20, real live finding: `wg syncconf` above only corrects WireGuard's own
+    # crypto-routing/AllowedIPs state -- it does NOT remove whatever kernel route
+    # wg-quick's Table=auto previously installed for an entry that's no longer in
+    # AllowedIPs. Confirmed live, EXAFWLCLD001: after a syncconf-only heal run,
+    # `ip route get 192.168.139.131` still showed `dev wg0`, and SSH to EDI's/DET's own
+    # WAN address still hung, until the stale `/32 dev wg0` routes were removed by hand.
+    # heal_wg_allowedips.py now prints which sites it actually changed (FIXED_SITES=);
+    # only those get a route deletion attempted, not every site in wg_site_octets, so a
+    # site whose AllowedIPs genuinely still needs its WAN address for some other reason
+    # (none exist today, but this stays scoped rather than blanket) is left untouched.
+    # ignore_errors: true -- the route may already be gone (e.g. a previous manual
+    # cleanup, or this site never had one), which is the desired end state either way,
+    # not a failure.
+    - name: "[heal-hub-allowedips] Set fact — the raw FIXED_SITES= line, if any"
+      ansible.builtin.set_fact:
+        _heal_fixed_sites_lines: "{{ _heal_apply.stdout_lines | select('match', '^FIXED_SITES=') | list }}"
+      when:
+        - _heal_apply is not skipped
+        - _heal_apply.changed
+
+    # Avoids the `| first` filter on a possibly-empty list -- confirmed in testing that
+    # some Jinja2 versions raise UndefinedError immediately rather than returning a
+    # soft Undefined `default()` could catch, so a plain length check is used instead.
+    - name: "[heal-hub-allowedips] Set fact — which sites were actually fixed, if any"
+      ansible.builtin.set_fact:
+        _heal_fixed_sites: >-
+          {{
+            (_heal_fixed_sites_lines[0].split('=', 1)[1].split(',') | select('truthy') | list)
+            if (_heal_fixed_sites_lines | default([]) | length > 0)
+            else []
+          }}
+      when:
+        - _heal_apply is not skipped
+        - _heal_apply.changed
+
+    - name: "[heal-hub-allowedips] Remove the now-stale kernel route for each fixed site's WAN address"
+      ansible.builtin.command: >-
+        ip route del {{ wan_prefix }}{{ wg_site_octets[item] }}/32 dev wg0
+      loop: "{{ _heal_fixed_sites | default([]) }}"
+      loop_control:
+        label: "{{ item }}"
+      vars:
+        wan_prefix: "192.168.139."
+      register: _heal_route_del
+      changed_when: _heal_route_del.rc == 0
+      failed_when: false
+      when:
+        - _heal_apply is not skipped
+        - _heal_apply.changed
+        - item in wg_site_octets
+
+    - name: "[heal-hub-allowedips] Route cleanup result"
+      ansible.builtin.debug:
+        msg: >-
+          {{ _heal_fixed_sites | default([]) | length }} site(s) had their stale WAN route checked
+          ({{ _heal_fixed_sites | default([]) }}) -- a non-zero `ip route del` for any of them just
+          means that route was already gone, not a failure.
+      when:
+        - _heal_apply is not skipped
+        - _heal_apply.changed
+
     - name: "[heal-hub-allowedips] Show live peer state after sync"
       ansible.builtin.command: wg show wg0 allowed-ips
       register: _wg_show_after

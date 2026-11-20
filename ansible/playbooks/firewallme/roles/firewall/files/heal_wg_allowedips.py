@@ -150,6 +150,14 @@ def main():
     Path(args.path + ".bak-heal-allowedips").write_text(content)
     Path(args.path).write_text(new_content)
     print(f"HEAL_COUNT={len(fixes)}")
+    # 2026-11-20: removing an AllowedIPs entry here only corrects WireGuard's own
+    # crypto-routing state (via the caller's `wg syncconf` afterward) -- it does NOT
+    # remove whatever kernel route wg-quick's Table=auto previously installed for that
+    # same entry (confirmed live: EXAFWLCLD001 kept routing to EDI/DET's WAN addresses
+    # via wg0 after a syncconf-only heal run, because the `192.168.139.x/32 dev wg0`
+    # route itself was untouched). Printed so the caller can clean those up too, without
+    # this script needing route-table access/privileges of its own.
+    print("FIXED_SITES=" + ",".join(site_code for _s, _e, site_code, _b, _o, _n in fixes))
     return 0
 
 
