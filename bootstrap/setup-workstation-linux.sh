@@ -716,6 +716,19 @@ fetch_archive() {
 # doesn't apply to it either. Branch on the asset filename's own extension
 # rather than adding a new manifest field -- the format is already fully
 # determined by what upstream actually published, nothing new to track.
+#
+# 2026-11-22: godap's linux-* assets are real .tar.gz archives (LICENSE +
+# README.md + the 'godap' binary at the archive root, confirmed live) --
+# same "can't just install -m 0755 the downloaded file directly" problem as
+# .deb above, but for a different reason: the downloaded archive's own
+# sha256 (what the manifest's digest actually covers) will never match the
+# extracted binary's sha256, so the raw-binary idempotency check below can't
+# apply here either. godap has a real 'godap version' subcommand printing
+# 'Godap vX.Y.Z' that matches the pinned tag exactly (confirmed live) --
+# used for drift detection instead, same spirit as the .deb branch's dpkg
+# version check, better than .dmg's existence-only fallback below (that one
+# is forced into existence-only by OpenRSAT's own Info.plist always
+# reporting 0.0.0 -- godap has no equivalent limitation).
 install_workstation_tools() {
   if [[ ! -f "$MANIFEST" ]]; then
     msg_warn "Manifest not found: ${MANIFEST} -- skipping workstation_tools install."
@@ -751,7 +764,9 @@ install_workstation_tools() {
     local install_dir="/usr/local/bin"
     local install_path="${install_dir}/${name}"
     local is_deb=false
+    local is_archive=false
     [[ "$asset_name" == *.deb ]] && is_deb=true
+    [[ "$asset_name" == *.tar.gz ]] && is_archive=true
 
     msg_info "Checking ${name} (${repo}@${tag}, ${platform_key})..."
 
@@ -779,6 +794,16 @@ install_workstation_tools() {
       if [[ "$installed_version" == "$expected_version" ]]; then
         msg_ok "  ${name} already at ${tag} (dpkg version ${installed_version})"
         continue
+      fi
+    elif $is_archive; then
+      if [[ -x "$install_path" ]]; then
+        local installed_version
+        installed_version="$("$install_path" version 2>/dev/null || true)"
+        if [[ "$installed_version" == *"$tag"* ]]; then
+          msg_ok "  ${name} already at ${tag} (${installed_version})"
+          continue
+        fi
+        msg_info "  Installed ${name} doesn't match pinned ${tag} -- reinstalling."
       fi
     elif [[ -f "$install_path" ]]; then
       local current_hash
@@ -817,6 +842,15 @@ install_workstation_tools() {
       sudo apt-get install -y "$tmp_deb_path"
       rm -f "$tmp_deb_path"
       msg_ok "  ${name} installed via apt (${tag}, sha256:${actual_hash})"
+    elif $is_archive; then
+      local tmp_extract_dir
+      tmp_extract_dir="$(mktemp -d)"
+      tar -xzf "$tmp_path" -C "$tmp_extract_dir" "$name"
+      rm -f "$tmp_path"
+      sudo mkdir -p "$install_dir"
+      sudo install -m 0755 "${tmp_extract_dir}/${name}" "$install_path"
+      rm -rf "$tmp_extract_dir"
+      msg_ok "  ${name} installed to ${install_path} (${tag}, archive sha256:${actual_hash})"
     else
       sudo mkdir -p "$install_dir"
       sudo install -m 0755 "$tmp_path" "$install_path"

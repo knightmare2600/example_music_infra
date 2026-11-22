@@ -87,6 +87,21 @@
     "picks it up), not something to silently auto-adopt.",
     "",
     "Changelog:",
+    "2026-11-22  Added godap (github.com/Macmod/godap, third-party -- not Robert's own tool,",
+    "            same category as openrsat) -- pinned v2.12.2. Robert's ask: a complete Go TUI",
+    "            for browsing/editing LDAP directories (AD included), added to the DC onboarding",
+    "            tooling (windows_bootstrap/tasks/rsat.yml) and all 3 technician workstation",
+    "            build scripts. Checked live, no Chocolatey package exists for it -- rolled the",
+    "            same way openrsat was: fetched from GitHub Releases, checksum-verified against",
+    "            the API's own digest field. Unlike every entry so far, godap's own release ships",
+    "            the binary inside a .tar.gz (linux/darwin) or .zip (windows) alongside",
+    "            LICENSE/README.md, not as a raw executable or a .deb/.dmg -- confirmed live by",
+    "            downloading and listing both archive types (member name is always 'godap' or",
+    "            'godap.exe' at the archive root, no subdirectory). Also confirmed live: godap",
+    "            has a real 'godap version' subcommand printing 'Godap v2.12.2' -- exactly the",
+    "            pinned tag -- used by the 3 scripts' own idempotency check instead of openrsat's",
+    "            existence-only fallback (OpenRSAT's Info.plist hardcodes 0.0.0, a real upstream",
+    "            limitation godap doesn't share).",
     "2026-11-03  Added graensevagt (github.com/knightmare2600/graensevagt, Robert's golden-",
     "            image pivot for pfSense deployment, menu.ipxe v2.26/v2.27) -- three",
     "            github_release entries (kernel-amd64, initramfs-amd64.cpio.gz, the ~485MB",
@@ -360,6 +375,19 @@
         "darwin-amd64": "OpenRSAT-darwin-x64.dmg",
         "darwin-arm64": "OpenRSAT-darwin-arm.dmg",
         "windows-amd64": "OpenRSAT-windows-x64.exe"
+      }
+    },
+    {
+      "name": "godap",
+      "_comment": "Third-party (Macmod/godap, not Robert's own tool) -- a complete Go TUI for browsing/editing LDAP directories (AD included), Robert's ask 2026-11-22 alongside the DC onboarding's RSAT tooling (windows_bootstrap/tasks/rsat.yml -- Windows SERVERS get it in C:\\Windows\\System32\\, same precedent as openrsat above) and all 3 technician workstation build scripts (their own usual /usr/local/bin or C:\\Tools\\<name>\\ convention). No Chocolatey package exists for it (checked live, 2026-11-22) -- rolled the same way openrsat was. Unlike every entry here so far, godap's own release ships the binary inside a .tar.gz (linux/darwin) or .zip (windows) alongside LICENSE/README.md, not a raw executable or a .deb/.dmg -- confirmed live, member is always 'godap' (linux/darwin) or 'godap.exe' (windows) at the archive root, no subdirectory. Has a real 'godap version' subcommand printing 'Godap v2.12.2' -- exactly this tag -- confirmed live and used for version-drift detection (unlike openrsat's existence-only fallback, forced by OpenRSAT's own Info.plist hardcoding 0.0.0).",
+      "repo": "Macmod/godap",
+      "tag": "v2.12.2",
+      "assets": {
+        "linux-amd64": "godap-v2.12.2-linux-amd64.tar.gz",
+        "linux-arm64": "godap-v2.12.2-linux-arm64.tar.gz",
+        "darwin-amd64": "godap-v2.12.2-darwin-amd64.tar.gz",
+        "darwin-arm64": "godap-v2.12.2-darwin-arm64.tar.gz",
+        "windows-amd64": "godap-v2.12.2-windows-amd64.zip"
       }
     }
   ]

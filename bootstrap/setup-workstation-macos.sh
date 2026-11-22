@@ -756,6 +756,13 @@ fetch_archive() {
 # version, so unlike Linux's dpkg-version check, this can only be an
 # existence check -- a genuine upstream limitation, not a gap worth closing
 # by hashing the whole .app bundle on every run.
+#
+# 2026-11-22: godap's darwin-* assets are real .tar.gz archives (LICENSE +
+# README.md + the 'godap' binary at the archive root, confirmed live) -- same
+# "downloaded-asset hash != installed-file hash" problem as openrsat's .dmg
+# above, but godap has no equivalent upstream limitation: its real 'godap
+# version' subcommand prints 'Godap vX.Y.Z' matching the pinned tag exactly
+# (confirmed live), used for drift detection instead of an existence-only check.
 install_workstation_tools() {
   if [[ ! -f "$MANIFEST" ]]; then
     msg_warn "Manifest not found: ${MANIFEST} -- skipping workstation_tools install."
@@ -790,7 +797,9 @@ install_workstation_tools() {
     local install_dir="/usr/local/bin"
     local install_path="${install_dir}/${name}"
     local is_dmg=false
+    local is_archive=false
     [[ "$asset_name" == *.dmg ]] && is_dmg=true
+    [[ "$asset_name" == *.tar.gz ]] && is_archive=true
 
     msg_info "Checking ${name} (${repo}@${tag}, ${platform_key})..."
 
@@ -820,6 +829,16 @@ install_workstation_tools() {
       if [[ -n "$existing_app" ]]; then
         msg_ok "  ${name} already installed (${existing_app}) -- pinned-version drift can't be detected for this tool, see comment above."
         continue
+      fi
+    elif $is_archive; then
+      if [[ -x "$install_path" ]]; then
+        local installed_version
+        installed_version="$("$install_path" version 2>/dev/null || true)"
+        if [[ "$installed_version" == *"$tag"* ]]; then
+          msg_ok "  ${name} already at ${tag} (${installed_version})"
+          continue
+        fi
+        msg_info "  Installed ${name} doesn't match pinned ${tag} -- reinstalling."
       fi
     elif [[ -f "$install_path" ]]; then
       local current_hash
@@ -863,6 +882,20 @@ install_workstation_tools() {
       rmdir "$mount_point" 2>/dev/null || true
       rm -f "$tmp_path"
       msg_ok "  ${name} installed to /Applications/$(basename "$app_path") (${tag}, sha256:${actual_hash})"
+    elif $is_archive; then
+      # Same /usr/local/bin ownership detection as the raw-binary branch below.
+      local use_sudo=""
+      if [[ ! -d "$install_dir" ]] || [[ ! -w "$install_dir" ]]; then
+        use_sudo="sudo"
+      fi
+      local tmp_extract_dir
+      tmp_extract_dir="$(mktemp -d)"
+      tar -xzf "$tmp_path" -C "$tmp_extract_dir" "$name"
+      rm -f "$tmp_path"
+      $use_sudo mkdir -p "$install_dir"
+      $use_sudo install -m 0755 "${tmp_extract_dir}/${name}" "$install_path"
+      rm -rf "$tmp_extract_dir"
+      msg_ok "  ${name} installed to ${install_path} (${tag}, archive sha256:${actual_hash})"
     else
       # /usr/local/bin's ownership is inconsistent across Macs, unlike Linux
       # (always root-owned there): Homebrew on Intel chowns it to the current

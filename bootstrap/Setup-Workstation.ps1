@@ -571,6 +571,15 @@ function Install-WorkstationTools {
 
         $installDir = "C:\Tools\$name"
         $installPath = Join-Path $installDir "$name.exe"
+        # 2026-11-22: godap's windows-amd64 asset is a real .zip (LICENSE +
+        # README.md + godap.exe at the archive root, confirmed live), not a raw
+        # portable .exe like every entry before it (fyrtaarn, openrsat) -- the
+        # downloaded archive's own hash (what the manifest's digest covers) will
+        # never match the extracted $installPath's hash, so the raw-binary
+        # idempotency check below can't apply. godap has a real "godap version"
+        # subcommand printing "Godap vX.Y.Z" matching the pinned tag exactly
+        # (confirmed live) -- used for drift detection instead.
+        $isArchive = $assetName -like '*.zip'
 
         Write-Info "Checking $name ($repo@$tag, $platformKey)..."
 
@@ -588,7 +597,16 @@ function Install-WorkstationTools {
         }
         $expectedHash = ($asset.digest -replace '^sha256:', '')
 
-        if (Test-Path $installPath) {
+        if ($isArchive) {
+            if (Test-Path $installPath) {
+                $installedVersion = & $installPath version 2>$null
+                if ($installedVersion -and ($installedVersion -match [regex]::Escape($tag))) {
+                    Write-Ok "  $name already at $tag ($installedVersion)"
+                    continue
+                }
+                Write-Info "  Installed $name doesn't match pinned $tag -- reinstalling."
+            }
+        } elseif (Test-Path $installPath) {
             $currentHash = Get-Sha256 -Path $installPath
             if ($currentHash -eq $expectedHash) {
                 Write-Ok "  $name already at $tag (sha256:$currentHash)"
@@ -598,15 +616,35 @@ function Install-WorkstationTools {
         }
 
         New-Item -ItemType Directory -Path $installDir -Force | Out-Null
-        & curl.exe -fsSL -o $installPath $asset.browser_download_url
 
-        $actualHash = Get-Sha256 -Path $installPath
-        if ($actualHash -ne $expectedHash) {
-            Write-Err2 "  CHECKSUM MISMATCH for ${name}: expected $expectedHash, got $actualHash"
-            Remove-Item $installPath -Force
-            continue
+        if ($isArchive) {
+            $tmpZip = Join-Path $env:TEMP "$name-$tag.zip"
+            & curl.exe -fsSL -o $tmpZip $asset.browser_download_url
+
+            $actualHash = Get-Sha256 -Path $tmpZip
+            if ($actualHash -ne $expectedHash) {
+                Write-Err2 "  CHECKSUM MISMATCH for ${name}: expected $expectedHash, got $actualHash"
+                Remove-Item $tmpZip -Force
+                continue
+            }
+
+            $extractDir = Join-Path $env:TEMP "$name-$tag-extract"
+            if (Test-Path $extractDir) { Remove-Item $extractDir -Recurse -Force }
+            Expand-Archive -Path $tmpZip -DestinationPath $extractDir -Force
+            Copy-Item -Path (Join-Path $extractDir "$name.exe") -Destination $installPath -Force
+            Remove-Item $tmpZip, $extractDir -Recurse -Force
+            Write-Ok "  $name installed to $installPath ($tag, archive sha256:$actualHash)"
+        } else {
+            & curl.exe -fsSL -o $installPath $asset.browser_download_url
+
+            $actualHash = Get-Sha256 -Path $installPath
+            if ($actualHash -ne $expectedHash) {
+                Write-Err2 "  CHECKSUM MISMATCH for ${name}: expected $expectedHash, got $actualHash"
+                Remove-Item $installPath -Force
+                continue
+            }
+            Write-Ok "  $name installed to $installPath ($tag, sha256:$actualHash)"
         }
-        Write-Ok "  $name installed to $installPath ($tag, sha256:$actualHash)"
 
         $machinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine')
         if (($machinePath -split ';') -notcontains $installDir) {

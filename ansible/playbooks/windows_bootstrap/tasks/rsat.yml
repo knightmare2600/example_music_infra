@@ -49,6 +49,24 @@
 #               outbound internet access of its own, which nothing else in this estate does.
 #               Requires is_server_core (tasks/preflight.yml or playbooks/45-rsat.yml's own
 #               inline detection, both added the same day).
+#   2026-11-22  Added godap (github.com/Macmod/godap, Robert's ask) -- a complete Go TUI for
+#               browsing/editing LDAP directories (AD included). Gated on is_server (Robert's
+#               own wording: "windows servers"), not is_server_core like OpenRSAT above -- this
+#               isn't a substitute for a Windows Feature that can fail on Core, it's a tool
+#               Robert wants on every DC/server regardless. Same System32 placement precedent
+#               as OpenRSAT (no PATH-add step needed) and same manifest-driven fetch-on-
+#               control-node-then-win_copy pattern. No Chocolatey package exists for it (checked
+#               live) -- rolled the same way. Unlike OpenRSAT's plain portable .exe, godap's
+#               windows-amd64 asset is a real .zip (LICENSE + README.md + godap.exe at the
+#               archive root, confirmed live) -- extracted on the CONTROL NODE (ansible.builtin.
+#               unarchive, delegate_to: localhost) before the win_copy push, matching this
+#               repo's existing preference for doing archive work centrally rather than
+#               assuming Expand-Archive hygiene on a possibly-Server-Core target. The 3
+#               technician workstation build scripts (bootstrap/setup-workstation-linux.sh,
+#               setup-workstation-macos.sh, Setup-Workstation.ps1) get the same godap entry too,
+#               but install it to their own existing /usr/local/bin or C:\Tools\<name>\
+#               convention instead -- those aren't "windows servers", so OpenRSAT's System32
+#               precedent doesn't apply there.
 #   2026-09-26  Later the same day, Robert's own call, live: installed straight to
 #               C:\Windows\System32\OpenRSAT.exe instead of this repo's usual
 #               C:\Tools\<name>\ convention (sidesteps needing a machine-PATH-add step --
@@ -189,6 +207,76 @@
   register: _openrsat_symlink
   changed_when: "'changed' in _openrsat_symlink.stdout"
   when: is_server_core
+
+# ---------------------------------------------------------------------------
+# godap -- every Windows SERVER gets it in System32 (2026-11-22, see this
+# file's own changelog entry above for the full reasoning). Not gated on
+# is_server_core -- this runs on every server, Core or not.
+# ---------------------------------------------------------------------------
+
+- name: "[Stage 15] godap — resolve manifest entry"
+  set_fact:
+    _godap: >-
+      {{ (lookup('file', playbook_dir + '/../../../../benarbejde/asset_manifest.json') | from_json).workstation_tools
+         | selectattr('name', 'equalto', 'godap') | first }}
+  when: is_server
+
+- name: "[Stage 15] godap — query GitHub release metadata"
+  ansible.builtin.uri:
+    url: "https://api.github.com/repos/{{ _godap.repo }}/releases/tags/{{ _godap.tag }}"
+    return_content: true
+  register: _godap_release
+  delegate_to: localhost
+  when: is_server
+  vars:
+    ansible_connection: local
+    ansible_shell_type: sh
+
+- name: "[Stage 15] godap — resolve Windows asset's checksum + download URL"
+  set_fact:
+    _godap_asset: "{{ _godap_release.json.assets | selectattr('name', 'equalto', _godap.assets['windows-amd64']) | first }}"
+  when: is_server
+
+- name: "[Stage 15] godap — ensure the control-node cache directory exists"
+  ansible.builtin.file:
+    path: /tmp/example-music-godap-cache
+    state: directory
+    mode: "0755"
+  delegate_to: localhost
+  when: is_server
+  vars:
+    ansible_connection: local
+    ansible_shell_type: sh
+
+- name: "[Stage 15] godap — download + checksum-verify the zip on the control node"
+  ansible.builtin.get_url:
+    url: "{{ _godap_asset.browser_download_url }}"
+    dest: "/tmp/example-music-godap-cache/{{ _godap.assets['windows-amd64'] }}"
+    checksum: "{{ _godap_asset.digest }}"
+  delegate_to: localhost
+  when: is_server
+  vars:
+    ansible_connection: local
+    ansible_shell_type: sh
+
+- name: "[Stage 15] godap — extract godap.exe from the zip on the control node"
+  ansible.builtin.unarchive:
+    src: "/tmp/example-music-godap-cache/{{ _godap.assets['windows-amd64'] }}"
+    dest: /tmp/example-music-godap-cache/
+    remote_src: false
+    include:
+      - godap.exe
+  delegate_to: localhost
+  when: is_server
+  vars:
+    ansible_connection: local
+    ansible_shell_type: sh
+
+- name: "[Stage 15] godap — copy godap.exe to Windows server target (System32)"
+  ansible.windows.win_copy:
+    src: "/tmp/example-music-godap-cache/godap.exe"
+    dest: 'C:\Windows\System32\godap.exe'
+  when: is_server
 
 - name: "[Stage 15] Install RSAT via Windows Capabilities (Desktop OS)"
   ansible.windows.win_optional_feature:
