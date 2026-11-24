@@ -188,7 +188,7 @@ Vendor documentation and hardware reference.
 | [hardware/S210-X12RS_UG.pdf](hardware/S210-X12RS_UG.pdf) | HW-REF-001 | Supermicro S210-X12RS user guide |
 | [hardware/ExampleMusic_ASAv_Proxmox_Procedure.md](hardware/ExampleMusic_ASAv_Proxmox_Procedure.md) | HW-REF-002 | Cisco ASAv QEMU VM on Proxmox |
 | [hardware/ExampleMusic_Intel_vPro_AMT_NUC_Procedure.md](hardware/ExampleMusic_Intel_vPro_AMT_NUC_Procedure.md) | HW-REF-003 | Enabling Intel vPro AMT (incl. KVM) on `EXAPVEFRD001`'s 7th-gen NUC — planned, not yet exercised |
-| [hardware/6-67770-01_UserGuide_Quantum_NDXServer_BMC_IPMI_AMI__Rev_A.pdf](hardware/6-67770-01_UserGuide_Quantum_NDXServer_BMC_IPMI_AMI__Rev_A.pdf) | HW-REF-004 | Quantum NDX Server BMC/IPMI (AMI MegaRAC) user guide, Rev A — generic AMI web-UI/IPMI reference, not tied to a specific device in this estate; downloaded from `qsupport.quantum.com` 2026-11-23. Full contents not yet reviewed in detail (no `poppler-utils`/PDF text extraction available in this sandbox) |
+| [hardware/6-67770-01_UserGuide_Quantum_NDXServer_BMC_IPMI_AMI__Rev_A.pdf](hardware/6-67770-01_UserGuide_Quantum_NDXServer_BMC_IPMI_AMI__Rev_A.pdf) | HW-REF-004 | Quantum NDX Server BMC/IPMI user guide, Rev A, Nov 2012 (59pp) — covers the Nuvoton WPCM450 BMC controller's IPMI 2.0 web interface (sensors/event log, alerts, LDAP/AD, network/user config, virtual media/KVM) plus firmware flashing via AMI's YAFUFlash/YAFUKCS command-line tools (the "AMI" in the filename — not an AMI MegaRAC web GUI, confirmed by reading the full text). Not tied to a specific device in this estate; downloaded from `qsupport.quantum.com` 2026-11-23 |
 
 ---
 
